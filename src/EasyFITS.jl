@@ -28,6 +28,7 @@ using FITSIO.Libcfitsio
 #import FITSIO.Libcfitsio: libcfitsio
 using FITSIO: fits_try_read_keys
 
+using Base: elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
 import Base: getindex, setindex!, keys, haskey, getkey
 
 """
@@ -43,27 +44,88 @@ of `Base.Filesystem.StatStruct` as returned by the `stat` method.
 exists(st::Base.Filesystem.StatStruct) = (st.nlink != 0)
 exists(path) = exists(stat(path))
 
-struct Data{T,N}
-    hdr::FITSHeader
+"""
+
+```julia
+EasyFITS.Image(arr, hdr)
+```
+
+yields a FITS Image that behaves like a Julia array when indexed by
+integers of Cartesian indices and like a dictionary of FITS keywords when
+indexed by strings.  Argument `arr` specifies the array contents of the
+object and `hdr` specifies the keywords.
+
+"""
+struct Image{T,N} <: DenseArray{T,N}
     arr::Array{T,N}
+    hdr::FITSHeader
 end
 
-getheader(dat::Data) = dat.hdr
-getdata(dat::Data) = dat.arr
-getcomment(dat::Data, k) = FITSIO.get_comment(getheader(dat), k)
+Image(arr::AbstractArray) = Image(arr, header())
+Image(arr::AbstractArray{T,N}, hdr::FITSHeader) where {T,N} =
+    Image{T,N}(convert(Array{T,N}, arr), hdr)
+Image{T}(init, dims::Integer...) where {T} =
+    Image{T}(init, dims)
+Image{T}(init, dims::NTuple{N,Integer}) where {T,N} =
+    Image{T,N}(init, dims)
+Image{T,N}(init, dims::Integer...) where {T,N} =
+    Image{T,N}(init, dims)
+Image{T,N}(init, dims::NTuple{N,Integer}) where {T,N} =
+    Image{T,N}(Array{T,N}(init, dims), header())
 
-FITSIO.get_comment(dat::Data, k) = getcomment(dat, k)
+# Make Image instances behave like arrays (indexing is considered later).
+#Base.eltype(::Image{T,N}) where {T,N} = T # FIXME: not needed
+#Base.ndims(::Image{T,N}) where {T,N} = N # FIXME: not needed
+Base.length(A::Image) = length(parent(A))
+Base.size(A::Image) = size(parent(A))
+Base.size(A::Image, d) = size(parent(A), d)
+Base.axes(A::Image) = axes(parent(A))
+Base.axes(A::Image, d) = axes(parent(A), d)
+@inline Base.axes1(A::Image) = axes1(parent(A))
+Base.IndexStyle(::Type{<:Image}) = IndexLinear()
+@inline Base.parent(A::Image) = A.arr
+Base.similar(::Type{Image{T}}, dims::NTuple{N,Int}) where {T,N} =
+    Image{T,N}(undef, dims)
+Base.elsize(::Type{Image{T,N}}) where {T,N} = elsize(Array{T,N})
+Base.sizeof(A::Image) = sizeof(parent(A))
 
-getindex(dat::Data, key::AbstractString) = getindex(getheader(dat), key)
-getindex(dat::Data, inds...) = getindex(getdata(dat), inds...)
-setindex!(dat::Data, val, inds...) = setindex(getdata(dat), val, inds...)
-setindex!(dat::Data, val, key::AbstractString) =
+# Make Image's efficient iterators.
+@inline Base.iterate(A::Image, i=1) =
+    ((i % UInt) - 1 < length(A) ? (@inbounds A[i], i + 1) : nothing)
+
+# FIXME: copyto!, convert, unsafe_convert, pointer, etc.
+
+getheader(dat::Image) = dat.hdr
+getdata(dat::Image) = parent(dat)
+getcomment(dat::Image, k) = FITSIO.get_comment(getheader(dat), k)
+
+FITSIO.get_comment(dat::Image, k) = getcomment(dat, k)
+
+getindex(dat::Image, key::AbstractString) = getindex(getheader(dat), key)
+#getindex(dat::Image, inds...) = getindex(parent(dat), inds...)
+@inline @propagate_inbounds getindex(A::Image, i::Int) = begin
+    @boundscheck checkbounds(A, i)
+    @inbounds r = getindex(parent(A), i)
+    return r
+end
+
+setindex!(dat::Image, val, key::AbstractString) =
     setkey!(getheader(dat), key, val)
-keys(dat::Data) = keys(getheader(dat))
-nkeys(dat::Data) = nkeys(getheader(dat))
+#setindex!(dat::Image, val, inds...) = setindex!(parent(dat), val, inds...)
+@inline @propagate_inbounds setindex!(A::Image, x, i::Int) = begin
+    @boundscheck checkbounds(A, i)
+    @inbounds r = setindex!(parent(A), x, i)
+    return r
+end
+
+@inline Base.checkbounds(A::Image, i::Int) =
+    1 ≤ i ≤ length(A) || throw_boundserror(A, i)
+
+keys(dat::Image) = keys(getheader(dat))
+nkeys(dat::Image) = nkeys(getheader(dat))
 nkeys(hdr::FITSHeader) = length(hdr)
-haskey(dat::Data, key) = haskey(getheader(dat), key)
-getkey(dat::Data, key, def) = getkey(getheader(dat), key, def)
+haskey(dat::Image, key) = haskey(getheader(dat), key)
+getkey(dat::Image, key, def) = getkey(getheader(dat), key, def)
 
 """
 
@@ -78,7 +140,7 @@ is not found in `hdr` and no default value is provided or if the value to
 be returned has not a type that can be converted to `T`.
 
 """
-getkey(::Type{T}, dat::Data, args...) where {T} =
+getkey(::Type{T}, dat::Image, args...) where {T} =
     _getkey(T, getheader(dat), args...)
 
 """
@@ -138,12 +200,12 @@ set FITS keyword `key` in FITS header `dst` to the value `val`.  Argument `com`
 is an optional comment; if it is not specified and `ky` already exists in
 `dst`, its comment is preserved.
 
-Argument `dst` can be an instance of `FITSIO.FITSHeader` or of `EasyFITS.Data`.
+Argument `dst` can be an instance of `FITSIO.FITSHeader` or of `EasyFITS.Image`.
 
 See also: [`loadfits`](@ref).
 
 """
-setkey!(dat::Data, args...) = setkey!(getheader(dat), args...)
+setkey!(dat::Image, args...) = setkey!(getheader(dat), args...)
 setkey!(hdr::FITSHeader, key::AbstractString, val) = begin
     setindex!(hdr, val, key)
     return nothing
@@ -153,6 +215,17 @@ setkey!(hdr::FITSHeader, key::AbstractString, val, com::AbstractString) = begin
     set_comment!(hdr, key, com)
     return nothing
 end
+
+"""
+
+```julia
+EasyFITS.header()
+```
+
+yields an empty `FITSIO.FITSHeader`.
+
+"""
+header() = FITSHeader(String[], [], String[])
 
 """
 
@@ -280,7 +353,8 @@ A["BITPIX"]                      # get FITS bits per pixel
 EasyFITS.getcomment(A, "BITPIX") # get the associated comment
 A["STUFF"] = 1                   # set value of FITS keyword STUFF
 setkey!(A, "STUFF", 3, "Blah")   # idem with a comment
-arr = EasyFITS.getdata(A)        # get the data part (a regular Julia array)
+arr = parent(A)                  # get the data part (a regular Julia array)
+arr = EasyFITS.getdata(A)        # idem
 hdr = EasyFITS.getheader(A)      # get the header part
 EasyFITS.nkeys(A)                # get the number of keywords
 EasyFITS.nkeys(hdr)              # get the number of keywords
@@ -297,7 +371,7 @@ loadfits(filename::AbstractString, hdu::Integer=1) =
     end
 
 loadfits(fh::FITS, hdu::Integer=1) =
-    Data(read_header(fh[hdu]), read(fh[hdu]))
+    Image(read(fh[hdu]), read_header(fh[hdu]))
 
 # FIXME: The following constitute *type piracy*.
 Base.findfirst(pred::Function, fh::FITS) = findnext(pred, fh, 1)
