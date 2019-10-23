@@ -305,7 +305,7 @@ Base.findlast(pred::Function, fh::FITS) = findprev(pred, fh, length(fh))
 Base.findnext(pred::Function, fh::FITS, i::Integer) = findnext(pred, fh, Int(i))
 Base.findnext(pred::Function, fh::FITS, i::Int=1) = find(pred, fh, i:length(fh))
 Base.findprev(pred::Function, fh::FITS, i::Integer) = findprev(pred, fh, Int(i))
-Base.findprev(pred::Function, fh::FITS, i::Int=1) = find(pred, fh, length(fh):-1:i)
+Base.findprev(pred::Function, fh::FITS, i::Int=1) = find(pred, fh, i:-1:1)
 
 """
 
@@ -383,14 +383,14 @@ getfile(hdu::HDU) = getfile(hdu.fitsfile, hdu.ext)
 """
 
 ```julia
-EasyFITS.tryreadkey(src, T, key) -> val :: Union{T,Nothing}
+tryreadkey(src, T, key) -> val :: Union{T,Nothing}
 ```
 
 attempts to read the value of FITS keywrod `key` keys in source `src` and
 returns a value of type `T` or `nothing` if keyword is not found or if
 parsing its value is unsuccessful.
 
-See also: [`EasyFITS.tryreadkeys`](@ref).
+See also: [`tryreadkeys`](@ref).
 
 """
 tryreadkey(src::Union{FITSFile,FITS,HDU}, ::Type{T}, key::AbstractString) where T =
@@ -399,14 +399,14 @@ tryreadkey(src::Union{FITSFile,FITS,HDU}, ::Type{T}, key::AbstractString) where 
 """
 
 ```julia
-EasyFITS.tryreadkeys(src, T, keys) -> val :: Union{T,Nothing}
+tryreadkeys(src, T, keys) -> val :: Union{T,Nothing}
 ```
 
 attempts to read the raw FITS keywords `keys` in given order in source
 `src` and returns a value of type `T` or `nothing` if no keywords are found
 or if parsing the value of the first matching keyword is unsuccessful.
 
-See also: [`EasyFITS.tryreadkey`](@ref).
+See also: [`tryreadkey`](@ref).
 
 """
 function tryreadkeys(src::Union{FITSFile,FITS,HDU}, ::Type{T},
