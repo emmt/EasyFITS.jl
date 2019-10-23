@@ -5,8 +5,9 @@
 | [![][license-img]][license-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
 
 This package is to facilitate the use of FITS files (widely used in
-Astronomy).  It uses the great [FITSIO][fitsio-url] package which provides
-a [Julia][julia-url] interface to the [CFITSIO][cfitsio-url] library.
+Astronomy) in [Julia][julia-url].  EasyFITS uses the great
+[FITSIO][fitsio-url] package which provides a [Julia][julia-url] interface
+to the [CFITSIO][cfitsio-url] library.
 
 
 ## Usage
@@ -19,24 +20,46 @@ using EasyFITS
 
 ### High level methods
 
-With EasyFITS, you can load a FITS Image (that is a multi-dimensional
-array) and its header as an array-like object which can be indexed by
-integers or Cartesian indices to get/set array values of by strings to
-get/set keyword values.
+EasyFITS provides objects of type `EasyFITS.Image` that, like FITS Image,
+combine a data part which is a multi-dimensional array and a header part.
+Such objects can be indexed by integers or Cartesian indices to get/set
+array values of by strings to get/set keyword values.  Accessing these
+objects as arrays, they should be as fast as oridnary Julia arrays.
 
-The call
+To create an `EasyFITS.Image` from an existing array `arr`, call:
+
+```julia
+EasyFITS.Image(arr, hdr=EasyFITS.header()) -> A
+```
+
+where optional argument `hdr` is a FITS header.  By default, an empty
+header is used.  If array `arr` is an `Array` instance, its contents is
+shared by `A`; otherwise, `arr` is converted to an `Array` instance.  If a
+header is provided its contents is also shared by `A`.  If you do not want to
+share the contents of `arr`, just make a copy:
+
+```julia
+A = EasyFITS.Image(copy(arr))
+```
+
+It is also possible to create an `EasyFITS.Image` with a new data part of
+type `T`, dimensions `dims` and an, initially, empty header:
+
+
+```julia
+A = EasyFITS.Image{T}(undef, dims)
+```
+
+To load a FITS Image extension as an instance of `EasyFITS.Image`, call:
 
 ```julia
 loadfits(arg, hdu=1) -> A
 ```
 
-yields a pseudo-array `A` with the contents of the FITS HDU (*header data
-unit*) `hdu` in `arg`.  Argument `arg` can be the name of a FITS file or a FITS
-handle.  The optional HDU number, the first one by default, must correspond to
-a FITS *Image* extension.  The result is indexable.  Using string index yields
-the value of the corresponding FITS keyword in the header part of the HDU.  Any
-other indices are used to access the contents of data part of the HDU (as a
-regular Julia array).
+which yields a pseudo-array `A` with the contents of the FITS HDU (*header
+data unit*) `hdu` in `arg`.  Argument `arg` can be the name of a FITS file
+or a FITS handle.  The optional HDU number, the first one by default, must
+correspond to a FITS *Image* extension.
 
 Examples:
 
@@ -48,7 +71,8 @@ A["BITPIX"]                      # get FITS bits per pixel
 EasyFITS.getcomment(A, "BITPIX") # get the associated comment
 A["STUFF"] = 1                   # set value of FITS keyword STUFF
 setkey!(A, "STUFF", 3, "Blah")   # idem with a comment
-arr = EasyFITS.getdata(A)        # get the data part (a regular Julia array)
+arr = parent(A)                  # get the data part (a regular Julia array)
+arr = EasyFITS.getdata(A)        # idem
 hdr = EasyFITS.getheader(A)      # get the header part
 EasyFITS.nkeys(A)                # get the number of keywords
 EasyFITS.nkeys(hdr)              # get the number of keywords
@@ -71,7 +95,11 @@ To open an existing FITS file for reading (or updating), call:
 openfits(path) -> fh
 ```
 
-which yields a FITS handle `fh` to read/update the file contents.
+which yields a `FITSIO.FITS` handle `fh` to read/update the contents of the
+FITS file.  This is basically the same as calling `FITSIO.FITS(path)`
+except that if `path` does not exist but `path` does not end with the
+`".gz"` extension and `"$path.gz"` does exist, then the compressed file
+`"$path.gz"` is open instead.
 
 To create a new FITS file for writing, call:
 
@@ -94,15 +122,14 @@ The do-block syntax is supported by `openfits`, `createfits` and
 
 ```julia
 openfits(path) do io
-
+    # Read data from FITS handle io
+    ...
 end
 ```
 
 Also:
 
 ```julia
-loadfits(path, hdu=1)
-
 setkey!(dst, key, val[, com])
 getkey(T, dat, key[, def]) -> val :: T
 
@@ -113,8 +140,6 @@ EasyFITS.getfile(arg [, ext])
 EasyFITS.find(pred, )
 
 ```
-
-
 
 [doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [doc-dev-url]: https://emmt.github.io/EasyFITS.jl/dev
