@@ -3,6 +3,7 @@ module EasyFITSTests
 using Test
 using FITSIO
 using EasyFITS
+using EasyFITS: Image
 
 function samevalues(A::AbstractArray, B::AbstractArray)
     @assert !Base.has_offset_axes(A, B)
@@ -82,7 +83,9 @@ end
     end
 end
 @testset "High-level" begin
+    # Read array+header data and check indexing of array and header.
     A1 = readfits(path)
+    @test isa(A1, Image)
     @test isa(A1["GA"],  Int)     && A1["GA"] == 42
     @test isa(A1["BU"],  String)  && A1["BU"] == "Shadok"
     @test isa(A1["ZO"],  Float64) && A1["ZO"] ≈ 3.1415
@@ -122,6 +125,7 @@ end
     @test size(A1) == size(dat1)
     @test samevalues(A1, dat1)
     A2 = readfits(path, 2)
+    @test isa(A2, Image)
     @test isa(A2["GA"],  Int)     && A2["GA"] == -42
     @test isa(A2["BU"],  String)  && A2["BU"] == "Gibi"
     @test isa(A2["ZO"],  Float64) && A2["ZO"] ≈ sqrt(2)
@@ -130,6 +134,35 @@ end
     @test ndims(A2) == ndims(dat2)
     @test size(A2) == size(dat2)
     @test samevalues(A2, dat2)
+    # Read array data with contraints.
+    A3 = readfits(Array, path, 1)
+    @test isa(A3, Array{eltype(dat1),ndims(dat1)})
+    @test size(A3) == size(dat1)
+    @test samevalues(A3, dat1)
+    A4 = readfits(Array{Int}, path, 2)
+    @test isa(A4, Array{Int,ndims(dat2)})
+    @test size(A4) == size(dat2)
+    @test samevalues(A4, dat2)
+    @test_throws MethodError readfits(Array{Int,ndims(dat2)+1}, path, 2)
+    A5 = readfits(Array{Int,ndims(dat2)}, path, 2)
+    @test isa(A5, Array{Int,ndims(dat2)})
+    @test size(A5) == size(dat2)
+    @test samevalues(A5, dat2)
+    # Read array+header data with contraints.
+    A6 = readfits(Image, path, 1)
+    @test isa(A6, Image{eltype(dat1),ndims(dat1)})
+    @test size(A6) == size(dat1)
+    @test samevalues(A6, dat1)
+    A7 = readfits(Image{Float64}, path, 1)
+    @test isa(A7, Image{Float64,ndims(dat1)})
+    @test size(A7) == size(dat1)
+    @test samevalues(A7, dat1)
+    @test_throws MethodError readfits(Image{Int,ndims(dat2)+1}, path, 2)
+    A8 = readfits(Image{Int,ndims(dat2)}, path, 2)
+    @test isa(A8, Image{Int,ndims(dat2)})
+    @test size(A8) == size(dat2)
+    @test samevalues(A8, dat2)
+
 end
 
 #rm(path)

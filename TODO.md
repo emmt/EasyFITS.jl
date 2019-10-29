@@ -7,3 +7,7 @@
   `loadfitsimage` or `readfitsimage` (to prepare for `readfitstable`).
 * Provide means to write an `EasyFITS.Image`.
 * Provide `EasyFITS.Table` for FITS Table extensions.
+* When an "IMAGE" (resp. "TABLE") extension is expected without other
+  constraint, find the first one.
+* Add method for `readfits(FITSHeader,filename,...)`.
+* Rename `Image` to `FITSImage` (not used by FITSIO) and export it.

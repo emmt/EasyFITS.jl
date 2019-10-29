@@ -350,16 +350,25 @@ end
 """
 
 ```julia
-readfits(arg, hdu=1) -> A
+readfits([T,] arg, hdu=1) -> A
 ```
 
-yields a pseudo-array `A` with the contents of the FITS HDU (*header data
-unit*) `hdu` in `arg`.  Argument `arg` can be the name of a FITS file or a FITS
-handle.  The optional HDU number, the first one by default, must correspond to
-a FITS *Image* extension.  The result is indexable.  Using string index yields
-the value of the corresponding FITS keyword in the header part of the HDU.  Any
-other indices are used to access the contents of data part of the HDU (as a
+If `T` is unspecified, the above statement yields a pseudo-array `A` with
+the contents of the FITS HDU (*header data unit*) `hdu` in `arg`.  Argument
+`arg` can be the name of a FITS file or a FITS handle.  The optional HDU
+number, the first one by default, must correspond to a FITS *Image*
+extension.  The result is indexable.  Using string index yields the value
+of the corresponding FITS keyword in the header part of the HDU.  Any other
+indices are used to access the contents of data part of the HDU (as a
 regular Julia array).
+
+Argument `T` can be used to specify the type of the result. `T` can be
+`Array` or `Array{E}` or `Array{E,N}` to retrieve only the data part of the
+FITS HDU as a regular array with, if these parameters are specified,
+element type `E` and `N` dimensions.  `T` can also be `EasyFITS.Image` (the
+default if `T` is not specified) or `EasyFITS.Image{E}` or
+`EasyFITS.Image{E,N}` to retrieve a pseudo-array, possibly converted to
+suitable element type.
 
 Examples:
 
@@ -386,13 +395,33 @@ keys(hdr)                          # get the list of keywords
 See also: [`openfits`](@ref).
 
 """
-readfits(filename::AbstractString, hdu::Integer=1) =
+readfits(filename::AbstractString, args...; kwds...) =
+    readfits(Image, filename, args...; kwds...)
+
+readfits(::Type{T}, filename::AbstractString, args...; kwds...) where {T} =
     openfits(filename) do io
-        return readfits(io, hdu)
+        return readfits(T, io, args...; kwds...)
     end
 
-readfits(fh::FITS, hdu::Integer=1) =
-    Image(read(fh[hdu]), read_header(fh[hdu]))
+readfits(fh::FITS, args...; kwds...) = readfits(Image, fh, args...; kwds...)
+readfits(::Type{T}, fh::FITS, hdu::Integer=1) where {T} = readfits(T, fh[hdu])
+
+# Read header and data from FITS ImageHDU.
+readfits(::Type{Image}, hdu::HDU) =
+    Image(readfits(Array, hdu), read_header(hdu))
+readfits(::Type{Image{T}}, hdu::HDU) where {T} =
+    Image(readfits(Array{T}, hdu), read_header(hdu))
+readfits(::Type{Image{T,N}}, hdu::HDU) where {T,N} =
+    Image(readfits(Array{T,N}, hdu), read_header(hdu))
+
+# Read array from FITS ImageHDU.
+readfits(::Type{Array}, hdu::ImageHDU) =
+    read(hdu)
+readfits(::Type{Array{T}}, hdu::ImageHDU) where {T} =
+    convert(Array{T}, read(hdu))
+readfits(::Type{Array{T,N}}, hdu::ImageHDU) where {T,N} =
+    convert(Array{T,N}, read(hdu))
+
 
 # FIXME: The following constitute *type piracy*.
 Base.findfirst(pred::Function, fh::FITS) = findnext(pred, fh, 1)

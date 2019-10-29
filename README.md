@@ -83,6 +83,21 @@ keys(A)                            # get the list of keywords
 keys(hdr)                          # get the list of keywords
 ```
 
+It is also possible to specify a type as the first argument of `readfits`
+to constrain the type of the result.  For instance:
+
+```julia
+using EasyFITS
+using EasyFITS: Image             # EasyFITS.Image is the pseudo-array type
+readfits("data.fits")             # load the first array and header
+readfits(Image, "data.fits")      # idem
+readfits(Array, "data.fits")      # only load the array part (as a regular array)
+readfits(Image{T}, "data.fits")   # yields pseudo-array with elements of type T
+readfits(Array{T}, "data.fits")   # yields regular array with elements of type T
+readfits(Image{T,N}, "data.fits") # yields N-dimensional pseudo-array with elements of type T
+readfits(Array{T,N}, "data.fits") # yields N-dimensional regular array with elements of type T
+```
+
 
 ### Lower level methods
 
