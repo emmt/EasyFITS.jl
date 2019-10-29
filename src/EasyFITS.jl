@@ -98,8 +98,8 @@ Base.sizeof(A::Image) = sizeof(getfitsdata(A))
 
 # FIXME: copyto!, convert, unsafe_convert, pointer, etc.
 
-getfitsdata(A::Image) = A.arr
-getfitsheader(dat::Image) = dat.hdr
+getfitsdata(dat::Image) = Base.getfield(dat, :arr)
+getfitsheader(dat::Image) = Base.getfield(dat, :hdr)
 getfitscomment(dat::Image, k) = FITSIO.get_comment(getfitsheader(dat), k)
 
 FITSIO.get_comment(dat::Image, k) = getfitscomment(dat, k)
@@ -113,7 +113,7 @@ getindex(dat::Image, key::AbstractString) = getindex(getfitsheader(dat), key)
 end
 
 setindex!(dat::Image, val, key::AbstractString) =
-    setfitskey!(getfitsheader(dat), key, val)
+    setindex!(getfitsheader(dat), val, key)
 #setindex!(dat::Image, val, inds...) = setindex!(getfitsdata(dat), val, inds...)
 @inline @propagate_inbounds setindex!(A::Image, x, i::Int) = begin
     @boundscheck checkbounds(A, i)
@@ -129,6 +129,28 @@ nkeys(dat::Image) = nkeys(getfitsheader(dat))
 nkeys(hdr::FITSHeader) = length(hdr)
 haskey(dat::Image, key) = haskey(getfitsheader(dat), key)
 getkey(dat::Image, key, def) = getkey(getfitsheader(dat), key, def)
+
+"""
+
+```julia
+EasyFITS.propertyname(T, sym)
+```
+
+converts symbol `sym` to a suitable key for object of type `T` throwing an
+error if this conversion is not supported.
+
+"""
+propertyname(::Type{<:Image}, sym::Symbol) = String(sym)
+@noinline propertyname(::Type{T}, sym::Symbol) where {T} =
+    error(string("Converting symbolic key for objects of type `", T, "` ",
+                 "is not implemented. As a result, syntax `obj.key` is not ",
+                 "supported for such objects."))
+
+# Extend methods so that syntax `obj.field` can be used.
+@inline Base.getproperty(A::T, sym::Symbol) where {T<:Image} =
+    getindex(getfitsheader(A), propertyname(T, sym))
+@inline Base.setproperty!(A::T, sym::Symbol, val) where {T<:Image} =
+    setindex!(getfitsheader(A), val, propertyname(T, sym))
 
 """
 
@@ -338,8 +360,10 @@ using EasyFITS
 A = readfits("image.fits")         # load the first HDU
 A[2,3]                             # get value of data at indices (2,3)
 A["BITPIX"]                        # get FITS bits per pixel
+A.BITPIX                           # idem
 getfitscomment(A, "BITPIX")        # get the associated comment
 A["STUFF"] = 1                     # set value of FITS keyword STUFF
+A.STUFF = 1                        # idem
 setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
 arr = getfitsdata(A)               # get the data part (a regular Julia array)
 hdr = getfitsheader(A)             # get the header part

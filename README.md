@@ -68,8 +68,10 @@ using EasyFITS
 A = readfits("image.fits")         # load the first HDU
 A[2,3]                             # get value of data at indices (2,3)
 A["BITPIX"]                        # get FITS bits per pixel
+A.BITPIX                           # idem
 getfitscomment(A, "BITPIX")        # get the associated comment
 A["STUFF"] = 1                     # set value of FITS keyword STUFF
+A.STUFF = 1                        # idem
 setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
 arr = getfitsdata(A)               # get the data part (a regular Julia array)
 hdr = getfitsheader(A)             # get the header part

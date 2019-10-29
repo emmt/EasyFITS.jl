@@ -87,8 +87,16 @@ end
     @test isa(A1["BU"],  String)  && A1["BU"] == "Shadok"
     @test isa(A1["ZO"],  Float64) && A1["ZO"] ≈ 3.1415
     @test isa(A1["MEU"], Bool)    && A1["MEU"] == true
+    @test A1.GA  == A1["GA"]
+    @test A1.BU  == A1["BU"]
+    @test A1.ZO  == A1["ZO"]
+    @test A1.MEU == A1["MEU"]
     A1["ZO"] = 15
     @test isa(A1["ZO"],  Int) && A1["ZO"] == 15
+    @test A1.ZO  == A1["ZO"]
+    A1.ZO = 172
+    @test isa(A1["ZO"],  Int) && A1["ZO"] == 172
+    @test A1.ZO  == A1["ZO"]
     @test getfitscomment(A1, "ZO") == "Some real keyword"
     setfitskey!(A1, "ZO", 21, "New comment")
     @test isa(A1["ZO"],  Int) && A1["ZO"] == 21
