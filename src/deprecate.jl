@@ -7,3 +7,4 @@
 @deprecate getdata(args...; kwds...) getfitsdata(args...; kwds...)
 @deprecate parent(A::FitsImage) getfitsdata(A)
 @deprecate Image FitsImage
+@deprecate header() FitsHeader()

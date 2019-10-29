@@ -98,6 +98,9 @@ readfits(FitsImage{T,N}, "data.fits") # yields N-dimensional pseudo-array with e
 readfits(Array{T,N}, "data.fits")     # yields N-dimensional regular array with elements of type T
 ```
 
+Note that the result of `readfits(FitsHeader,"data.fits")` can be indexed by
+strings to access FITS keywords and implements the `obj.key` syntax.
+
 
 ### Lower level methods
 

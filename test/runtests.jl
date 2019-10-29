@@ -25,7 +25,7 @@ function maxabsdif(A::AbstractArray, B::AbstractArray)
 end
 
 dat1 = rand(Float32, 3, 4, 5)
-hdr1 = EasyFITS.header()
+hdr1 = FitsHeader()
 setfitskey!(hdr1, "HDUNAME", "HDU-ONE", "First custom HDU")
 setfitskey!(hdr1, "GA",  42,       "Some integer keyword")
 setfitskey!(hdr1, "BU",  "Shadok", "Some string keyword")
@@ -33,7 +33,7 @@ setfitskey!(hdr1, "ZO",  3.1415,   "Some real keyword")
 setfitskey!(hdr1, "MEU", true,     "Some boolean keyword")
 
 dat2 = rand(Int32, 7, 8)
-hdr2 = EasyFITS.header()
+hdr2 = FitsHeader()
 setfitskey!(hdr2, "HDUNAME", "HDU-TWO", "Second custom HDU")
 setfitskey!(hdr2, "GA",  -42,       "Some integer keyword")
 setfitskey!(hdr2, "BU",  "Gibi",    "Some string keyword")
@@ -42,8 +42,8 @@ setfitskey!(hdr2, "MEU", false,     "Some boolean keyword")
 
 path = "test.fits"
 createfits!(path) do io
-    write(io, dat1; header=hdr1)
-    write(io, dat2; header=hdr2)
+    write(io, dat1, hdr1)
+    write(io, dat2, hdr2)
 end
 
 @testset "Low-level" begin
@@ -136,8 +136,24 @@ end
     # Read headers.
     H1 = readfits(FitsHeader, path, 1)
     @test isa(H1, FitsHeader)
-    H2 = readfits(FitsHeader, path, 2)
-    @test isa(H2, FitsHeader)
+    @test isa(H1["GA"],  Int)     && H1["GA"] == 42
+    @test isa(H1["BU"],  String)  && H1["BU"] == "Shadok"
+    @test isa(H1["ZO"],  Float64) && H1["ZO"] ≈ 3.1415
+    @test isa(H1["MEU"], Bool)    && H1["MEU"] == true
+    @test H1.GA  == H1["GA"]
+    @test H1.BU  == H1["BU"]
+    @test H1.ZO  == H1["ZO"]
+    @test H1.MEU == H1["MEU"]
+    H1["ZO"] = 15
+    @test isa(H1["ZO"],  Int) && H1["ZO"] == 15
+    @test H1.ZO  == H1["ZO"]
+    H1.ZO = 172
+    @test isa(H1["ZO"],  Int) && H1["ZO"] == 172
+    @test H1.ZO  == H1["ZO"]
+    @test getfitscomment(H1, "ZO") == "Some real keyword"
+    #
+    H2 = readfits(FITSHeader, path, 2)
+    @test isa(H2, FITSHeader)
     # Read array data with contraints.
     A3 = readfits(Array, path, 1)
     @test isa(A3, Array{eltype(dat1),ndims(dat1)})
