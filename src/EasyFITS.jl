@@ -114,6 +114,11 @@ end
 
 setindex!(dat::Image, val, key::AbstractString) =
     setindex!(getfitsheader(dat), val, key)
+setindex!(dat::Image, val::Tuple{<:Any}, key::AbstractString) =
+    setfitskey!(dat, key, val[1], nothing)
+setindex!(dat::Image, val::Tuple{<:Any,<:Union{AbstractString,Nothing}}, key::AbstractString) =
+    setfitskey!(dat, key, val[1], val[2])
+
 #setindex!(dat::Image, val, inds...) = setindex!(getfitsdata(dat), val, inds...)
 @inline @propagate_inbounds setindex!(A::Image, x, i::Int) = begin
     @boundscheck checkbounds(A, i)
@@ -148,9 +153,9 @@ propertyname(::Type{<:Image}, sym::Symbol) = String(sym)
 
 # Extend methods so that syntax `obj.field` can be used.
 @inline Base.getproperty(A::T, sym::Symbol) where {T<:Image} =
-    getindex(getfitsheader(A), propertyname(T, sym))
+    getindex(A, propertyname(T, sym))
 @inline Base.setproperty!(A::T, sym::Symbol, val) where {T<:Image} =
-    setindex!(getfitsheader(A), val, propertyname(T, sym))
+    setindex!(A, val, propertyname(T, sym))
 
 """
 
@@ -206,8 +211,9 @@ setfitskey!(dst, key, val[, com])
 ```
 
 set FITS keyword `key` in FITS header `dst` to the value `val`.  Argument `com`
-is an optional comment; if it is not specified and `ky` already exists in
-`dst`, its comment is preserved.
+is an optional comment; if it is not specified and `key` already exists in
+`dst`, its comment is preserved.  Argument `com` can also be `nothing` to erase
+the comment.
 
 Argument `dst` can be an instance of `FITSIO.FITSHeader` or of `EasyFITS.Image`.
 
@@ -219,6 +225,8 @@ setfitskey!(hdr::FITSHeader, key::AbstractString, val) = begin
     setindex!(hdr, val, key)
     return nothing
 end
+setfitskey!(hdr::FITSHeader, key::AbstractString, val, com::Nothing) =
+    setfitskey!(hdr, key, val, "")
 setfitskey!(hdr::FITSHeader, key::AbstractString, val, com::AbstractString) = begin
     setindex!(hdr, val, key)
     set_comment!(hdr, key, com)
@@ -365,6 +373,8 @@ getfitscomment(A, "BITPIX")        # get the associated comment
 A["STUFF"] = 1                     # set value of FITS keyword STUFF
 A.STUFF = 1                        # idem
 setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
+A["STUFF"] = (3, "Blah")           # idem with value-comment pair
+A.STUFF = (3, "Blah")              # idem
 arr = getfitsdata(A)               # get the data part (a regular Julia array)
 hdr = getfitsheader(A)             # get the header part
 EasyFITS.nkeys(A)                  # get the number of keywords

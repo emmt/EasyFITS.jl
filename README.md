@@ -73,6 +73,8 @@ getfitscomment(A, "BITPIX")        # get the associated comment
 A["STUFF"] = 1                     # set value of FITS keyword STUFF
 A.STUFF = 1                        # idem
 setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
+A["STUFF"] = (3, "Blah")           # idem with value-comment pair
+A.STUFF = (3, "Blah")              # idem
 arr = getfitsdata(A)               # get the data part (a regular Julia array)
 hdr = getfitsheader(A)             # get the header part
 EasyFITS.nkeys(A)                  # get the number of keywords
