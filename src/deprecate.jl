@@ -5,4 +5,5 @@
 @deprecate tryreadkeys(args...; kwds...) tryreadfitskeys(args...; kwds...)
 @deprecate getheader(args...; kwds...) getfitsheader(args...; kwds...)
 @deprecate getdata(args...; kwds...) getfitsdata(args...; kwds...)
-@deprecate parent(A::Image) getfitsdata(A)
+@deprecate parent(A::FitsImage) getfitsdata(A)
+@deprecate Image FitsImage

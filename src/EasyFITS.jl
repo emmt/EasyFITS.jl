@@ -14,6 +14,8 @@
 module EasyFITS
 
 export
+    FitsHeader,
+    FitsImage,
     createfits!,
     createfits,
     exists,
@@ -31,9 +33,12 @@ using FITSIO
 using FITSIO.Libcfitsio
 #import FITSIO.Libcfitsio: libcfitsio
 using FITSIO: fits_try_read_keys
+import FITSIO: FITSHeader
 
 using Base: elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
 import Base: getindex, setindex!, keys, haskey, getkey
+
+const FitsHeader = FITSHeader
 
 """
 
@@ -41,8 +46,8 @@ import Base: getindex, setindex!, keys, haskey, getkey
 exists(path) -> boolean
 ```
 
-yields whether file `path` exists.  Argument can be a file name or an instance
-of `Base.Filesystem.StatStruct` as returned by the `stat` method.
+yields whether file `path` exists.  Argument can be a file name or an
+instance of `Base.Filesystem.StatStruct` as returned by the `stat` method.
 
 """
 exists(st::Base.Filesystem.StatStruct) = (st.nlink != 0)
@@ -51,7 +56,7 @@ exists(path) = exists(stat(path))
 """
 
 ```julia
-EasyFITS.Image(arr, hdr)
+FitsImage(arr, hdr)
 ```
 
 yields a FITS Image that behaves like a Julia array when indexed by
@@ -60,80 +65,80 @@ indexed by strings.  Argument `arr` specifies the array contents of the
 object and `hdr` specifies the keywords.
 
 """
-struct Image{T,N} <: DenseArray{T,N}
+struct FitsImage{T,N} <: DenseArray{T,N}
     arr::Array{T,N}
     hdr::FITSHeader
 end
 
-Image(arr::AbstractArray) = Image(arr, header())
-Image(arr::AbstractArray{T,N}, hdr::FITSHeader) where {T,N} =
-    Image{T,N}(convert(Array{T,N}, arr), hdr)
-Image{T}(init, dims::Integer...) where {T} =
-    Image{T}(init, dims)
-Image{T}(init, dims::NTuple{N,Integer}) where {T,N} =
-    Image{T,N}(init, dims)
-Image{T,N}(init, dims::Integer...) where {T,N} =
-    Image{T,N}(init, dims)
-Image{T,N}(init, dims::NTuple{N,Integer}) where {T,N} =
-    Image{T,N}(Array{T,N}(init, dims), header())
+FitsImage(arr::AbstractArray) = FitsImage(arr, header())
+FitsImage(arr::AbstractArray{T,N}, hdr::FITSHeader) where {T,N} =
+    FitsImage{T,N}(convert(Array{T,N}, arr), hdr)
+FitsImage{T}(init, dims::Integer...) where {T} =
+    FitsImage{T}(init, dims)
+FitsImage{T}(init, dims::NTuple{N,Integer}) where {T,N} =
+    FitsImage{T,N}(init, dims)
+FitsImage{T,N}(init, dims::Integer...) where {T,N} =
+    FitsImage{T,N}(init, dims)
+FitsImage{T,N}(init, dims::NTuple{N,Integer}) where {T,N} =
+    FitsImage{T,N}(Array{T,N}(init, dims), header())
 
-# Make Image instances behave like arrays (indexing is considered later).
-#Base.eltype(::Image{T,N}) where {T,N} = T # FIXME: not needed
-#Base.ndims(::Image{T,N}) where {T,N} = N # FIXME: not needed
-Base.length(A::Image) = length(getfitsdata(A))
-Base.size(A::Image) = size(getfitsdata(A))
-Base.size(A::Image, d) = size(getfitsdata(A), d)
-Base.axes(A::Image) = axes(getfitsdata(A))
-Base.axes(A::Image, d) = axes(getfitsdata(A), d)
-@inline Base.axes1(A::Image) = axes1(getfitsdata(A))
-Base.IndexStyle(::Type{<:Image}) = IndexLinear()
-Base.similar(::Type{Image{T}}, dims::NTuple{N,Int}) where {T,N} =
-    Image{T,N}(undef, dims)
-Base.elsize(::Type{Image{T,N}}) where {T,N} = elsize(Array{T,N})
-Base.sizeof(A::Image) = sizeof(getfitsdata(A))
+# Make FitsImage instances behave like arrays (indexing is considered later).
+#Base.eltype(::FitsImage{T,N}) where {T,N} = T # FIXME: not needed
+#Base.ndims(::FitsImage{T,N}) where {T,N} = N # FIXME: not needed
+Base.length(A::FitsImage) = length(getfitsdata(A))
+Base.size(A::FitsImage) = size(getfitsdata(A))
+Base.size(A::FitsImage, d) = size(getfitsdata(A), d)
+Base.axes(A::FitsImage) = axes(getfitsdata(A))
+Base.axes(A::FitsImage, d) = axes(getfitsdata(A), d)
+@inline Base.axes1(A::FitsImage) = axes1(getfitsdata(A))
+Base.IndexStyle(::Type{<:FitsImage}) = IndexLinear()
+Base.similar(::Type{FitsImage{T}}, dims::NTuple{N,Int}) where {T,N} =
+    FitsImage{T,N}(undef, dims)
+Base.elsize(::Type{FitsImage{T,N}}) where {T,N} = elsize(Array{T,N})
+Base.sizeof(A::FitsImage) = sizeof(getfitsdata(A))
 
-# Make Image's efficient iterators.
-@inline Base.iterate(A::Image, i=1) =
+# Make FitsImage's efficient iterators.
+@inline Base.iterate(A::FitsImage, i=1) =
     ((i % UInt) - 1 < length(A) ? (@inbounds A[i], i + 1) : nothing)
 
 # FIXME: copyto!, convert, unsafe_convert, pointer, etc.
 
-getfitsdata(dat::Image) = Base.getfield(dat, :arr)
-getfitsheader(dat::Image) = Base.getfield(dat, :hdr)
-getfitscomment(dat::Image, k) = FITSIO.get_comment(getfitsheader(dat), k)
+getfitsdata(dat::FitsImage) = Base.getfield(dat, :arr)
+getfitsheader(dat::FitsImage) = Base.getfield(dat, :hdr)
+getfitscomment(dat::FitsImage, key) = FITSIO.get_comment(getfitsheader(dat), key)
 
-FITSIO.get_comment(dat::Image, k) = getfitscomment(dat, k)
+FITSIO.get_comment(dat::FitsImage, key) = getfitscomment(dat, key)
 
-getindex(dat::Image, key::AbstractString) = getindex(getfitsheader(dat), key)
-#getindex(dat::Image, inds...) = getindex(getfitsdata(dat), inds...)
-@inline @propagate_inbounds getindex(A::Image, i::Int) = begin
+getindex(dat::FitsImage, key::AbstractString) = getindex(getfitsheader(dat), key)
+#getindex(dat::FitsImage, inds...) = getindex(getfitsdata(dat), inds...)
+@inline @propagate_inbounds getindex(A::FitsImage, i::Int) = begin
     @boundscheck checkbounds(A, i)
     @inbounds r = getindex(getfitsdata(A), i)
     return r
 end
 
-setindex!(dat::Image, val, key::AbstractString) =
+setindex!(dat::FitsImage, val, key::AbstractString) =
     setindex!(getfitsheader(dat), val, key)
-setindex!(dat::Image, val::Tuple{<:Any}, key::AbstractString) =
+setindex!(dat::FitsImage, val::Tuple{<:Any}, key::AbstractString) =
     setfitskey!(dat, key, val[1], nothing)
-setindex!(dat::Image, val::Tuple{<:Any,<:Union{AbstractString,Nothing}}, key::AbstractString) =
+setindex!(dat::FitsImage, val::Tuple{<:Any,<:Union{AbstractString,Nothing}}, key::AbstractString) =
     setfitskey!(dat, key, val[1], val[2])
 
-#setindex!(dat::Image, val, inds...) = setindex!(getfitsdata(dat), val, inds...)
-@inline @propagate_inbounds setindex!(A::Image, x, i::Int) = begin
+#setindex!(dat::FitsImage, val, inds...) = setindex!(getfitsdata(dat), val, inds...)
+@inline @propagate_inbounds setindex!(A::FitsImage, x, i::Int) = begin
     @boundscheck checkbounds(A, i)
     @inbounds r = setindex!(getfitsdata(A), x, i)
     return r
 end
 
-@inline Base.checkbounds(A::Image, i::Int) =
+@inline Base.checkbounds(A::FitsImage, i::Int) =
     1 ≤ i ≤ length(A) || throw_boundserror(A, i)
 
-keys(dat::Image) = keys(getfitsheader(dat))
-nkeys(dat::Image) = nkeys(getfitsheader(dat))
+keys(dat::FitsImage) = keys(getfitsheader(dat))
+nkeys(dat::FitsImage) = nkeys(getfitsheader(dat))
 nkeys(hdr::FITSHeader) = length(hdr)
-haskey(dat::Image, key) = haskey(getfitsheader(dat), key)
-getkey(dat::Image, key, def) = getkey(getfitsheader(dat), key, def)
+haskey(dat::FitsImage, key) = haskey(getfitsheader(dat), key)
+getkey(dat::FitsImage, key, def) = getkey(getfitsheader(dat), key, def)
 
 """
 
@@ -145,16 +150,16 @@ converts symbol `sym` to a suitable key for object of type `T` throwing an
 error if this conversion is not supported.
 
 """
-propertyname(::Type{<:Image}, sym::Symbol) = String(sym)
+propertyname(::Type{<:FitsImage}, sym::Symbol) = String(sym)
 @noinline propertyname(::Type{T}, sym::Symbol) where {T} =
     error(string("Converting symbolic key for objects of type `", T, "` ",
                  "is not implemented. As a result, syntax `obj.key` is not ",
                  "supported for such objects."))
 
 # Extend methods so that syntax `obj.field` can be used.
-@inline Base.getproperty(A::T, sym::Symbol) where {T<:Image} =
+@inline Base.getproperty(A::T, sym::Symbol) where {T<:FitsImage} =
     getindex(A, propertyname(T, sym))
-@inline Base.setproperty!(A::T, sym::Symbol, val) where {T<:Image} =
+@inline Base.setproperty!(A::T, sym::Symbol, val) where {T<:FitsImage} =
     setindex!(A, val, propertyname(T, sym))
 
 """
@@ -164,17 +169,17 @@ getfitskey(T, obj, key[, def]) -> val :: T
 ```
 
 yields the value of FITS keyword `key` in `obj`.  Argument `obj` can be an
-instance of `EasyFITS.Image` or `FITSIO.FITSHeader`. The returned value has
-type `T`.  Optional argument `def` is to specify a default value if keyword
-`key` is not found in `hdr`.  An error is thrown if keyword `key` is not
-found in `hdr` and no default value is provided or if the value to be
-returned has not a type that can be converted to `T`.
+instance of `FitsImage` or `FITSHeader`. The returned value has type `T`.
+Optional argument `def` is to specify a default value if keyword `key` is
+not found in `hdr`.  An error is thrown if keyword `key` is not found in
+`hdr` and no default value is provided or if the value to be returned has
+not a type that can be converted to `T`.
 
 Call `getfistcomment` to retrieve the comment assiciated with a FITS
 keyword.
 
 """
-getfitskey(::Type{T}, dat::Image, args...) where {T} =
+getfitskey(::Type{T}, dat::FitsImage, args...) where {T} =
     getfitskey(T, getfitsheader(dat), args...)
 
 for S in (AbstractFloat, Integer, AbstractString, Bool)
@@ -210,17 +215,17 @@ end
 setfitskey!(dst, key, val[, com])
 ```
 
-set FITS keyword `key` in FITS header `dst` to the value `val`.  Argument `com`
-is an optional comment; if it is not specified and `key` already exists in
-`dst`, its comment is preserved.  Argument `com` can also be `nothing` to erase
-the comment.
+set FITS keyword `key` in FITS header `dst` to the value `val`.  Argument
+`com` is an optional comment; if it is not specified and `key` already
+exists in `dst`, its comment is preserved.  Argument `com` can also be
+`nothing` to erase the comment.
 
-Argument `dst` can be an instance of `FITSIO.FITSHeader` or of `EasyFITS.Image`.
+Argument `dst` can be an instance of `FITSHeader` or of `FitsImage`.
 
 See also: [`readfits`](@ref).
 
 """
-setfitskey!(dat::Image, args...) = setfitskey!(getfitsheader(dat), args...)
+setfitskey!(dat::FitsImage, args...) = setfitskey!(getfitsheader(dat), args...)
 setfitskey!(hdr::FITSHeader, key::AbstractString, val) = begin
     setindex!(hdr, val, key)
     return nothing
@@ -239,7 +244,7 @@ end
 EasyFITS.header()
 ```
 
-yields an empty `FITSIO.FITSHeader`.
+yields an empty `FITSHeader`.
 
 """
 header() = FITSHeader(String[], [], String[])
@@ -252,8 +257,8 @@ openfits(filename) -> fh
 ```
 
 yields a `FITS` handle to read the contents of the existing FITS file whose
-name is `filename`.  If `filename` does not exist but `filename` does not end
-with the `".gz"` extension and `"\$filename.gz"` does exist, then the
+name is `filename`.  If `filename` does not exist but `filename` does not
+end with the `".gz"` extension and `"\$filename.gz"` does exist, then the
 compressed file `"\$filename.gz"` is open instead.
 
 The do-block syntax is supported to automatically close the FITS file:
@@ -288,10 +293,11 @@ end
 createfits!(filename) -> fh
 ```
 
-creates a new FITS file named `fillename` and return its handle.  If the file
-already exists, it is (silently) overwritten.
+creates a new FITS file named `fillename` and return its handle.  If the
+file already exists, it is (silently) overwritten.
 
-The `createfits` method can be used instead to avoid that.  The syntax is identical:
+The `createfits` method can be used instead to avoid that.  The syntax is
+identical:
 
 ```julia
 createfits!(filename) -> fh
@@ -356,7 +362,7 @@ readfits([T,] arg, hdu=1) -> A
 If `T` is unspecified, the above statement yields a pseudo-array `A` with
 the contents of the FITS HDU (*header data unit*) `hdu` in `arg`.  Argument
 `arg` can be the name of a FITS file or a FITS handle.  The optional HDU
-number, the first one by default, must correspond to a FITS *Image*
+number, the first one by default, must correspond to a FITS *FitsImage*
 extension.  The result is indexable.  Using string index yields the value
 of the corresponding FITS keyword in the header part of the HDU.  Any other
 indices are used to access the contents of data part of the HDU (as a
@@ -365,10 +371,10 @@ regular Julia array).
 Argument `T` can be used to specify the type of the result. `T` can be
 `Array` or `Array{E}` or `Array{E,N}` to retrieve only the data part of the
 FITS HDU as a regular array with, if these parameters are specified,
-element type `E` and `N` dimensions.  `T` can also be `EasyFITS.Image` (the
-default if `T` is not specified) or `EasyFITS.Image{E}` or
-`EasyFITS.Image{E,N}` to retrieve a pseudo-array, possibly converted to
-suitable element type.
+element type `E` and `N` dimensions.  `T` can also be `FitsImage` (the
+default if `T` is not specified) or `FitsImage{E}` or `FitsImage{E,N}` to
+retrieve a pseudo-array, possibly converted to suitable element type.
+Finally, `T` can be `FITSHeader` to only retrieve the header part.
 
 Examples:
 
@@ -396,23 +402,26 @@ See also: [`openfits`](@ref).
 
 """
 readfits(filename::AbstractString, args...; kwds...) =
-    readfits(Image, filename, args...; kwds...)
+    readfits(FitsImage, filename, args...; kwds...)
 
 readfits(::Type{T}, filename::AbstractString, args...; kwds...) where {T} =
     openfits(filename) do io
         return readfits(T, io, args...; kwds...)
     end
 
-readfits(fh::FITS, args...; kwds...) = readfits(Image, fh, args...; kwds...)
+readfits(fh::FITS, args...; kwds...) = readfits(FitsImage, fh, args...; kwds...)
 readfits(::Type{T}, fh::FITS, hdu::Integer=1) where {T} = readfits(T, fh[hdu])
 
+# Read header from FITS ImageHDU.
+readfits(::Type{FITSHeader}, hdu::HDU) = read_header(hdu)
+
 # Read header and data from FITS ImageHDU.
-readfits(::Type{Image}, hdu::HDU) =
-    Image(readfits(Array, hdu), read_header(hdu))
-readfits(::Type{Image{T}}, hdu::HDU) where {T} =
-    Image(readfits(Array{T}, hdu), read_header(hdu))
-readfits(::Type{Image{T,N}}, hdu::HDU) where {T,N} =
-    Image(readfits(Array{T,N}, hdu), read_header(hdu))
+readfits(::Type{FitsImage}, hdu::HDU) =
+    FitsImage(readfits(Array, hdu), readfits(FITSHeader, hdu))
+readfits(::Type{FitsImage{T}}, hdu::HDU) where {T} =
+    FitsImage(readfits(Array{T}, hdu), readfits(FITSHeader, hdu))
+readfits(::Type{FitsImage{T,N}}, hdu::HDU) where {T,N} =
+    FitsImage(readfits(Array{T,N}, hdu), readfits(FITSHeader, hdu))
 
 # Read array from FITS ImageHDU.
 readfits(::Type{Array}, hdu::ImageHDU) =

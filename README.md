@@ -4,10 +4,10 @@
 |:--------------------------------|:----------------------------------------------------------------|:--------------------------------------------------------------------|
 | [![][license-img]][license-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
 
-This package is to facilitate the use of FITS files (widely used in
-Astronomy) in [Julia][julia-url].  EasyFITS uses the great
-[FITSIO][fitsio-url] package which provides a [Julia][julia-url] interface
-to the [CFITSIO][cfitsio-url] library.
+This package is to facilitate the use of FITS files (widely used in Astronomy)
+in [Julia][julia-url].  EasyFITS uses the great [FITSIO][fitsio-url] package
+which provides a [Julia][julia-url] interface to the [CFITSIO][cfitsio-url]
+library.
 
 
 ## Usage
@@ -20,46 +20,46 @@ using EasyFITS
 
 ### High level methods
 
-EasyFITS provides objects of type `EasyFITS.Image` that, like FITS Image,
-combine a data part which is a multi-dimensional array and a header part.
-Such objects can be indexed by integers or Cartesian indices to get/set
-array values of by strings to get/set keyword values.  Accessing these
-objects as arrays, they should be as fast as oridnary Julia arrays.
+EasyFITS provides objects of type `FitsImage` that, like FITS Image,
+combine a data part which is a multi-dimensional array and a header part.  Such
+objects can be indexed by integers or Cartesian indices to get/set array values
+of by strings to get/set keyword values.  Accessing these objects as arrays,
+they should be as fast as oridnary Julia arrays.
 
-To create an `EasyFITS.Image` from an existing array `arr`, call:
-
-```julia
-EasyFITS.Image(arr, hdr=EasyFITS.header()) -> A
-```
-
-where optional argument `hdr` is a FITS header.  By default, an empty
-header is used.  If array `arr` is an `Array` instance, its contents is
-shared by `A`; otherwise, `arr` is converted to an `Array` instance.  If a
-header is provided its contents is also shared by `A`.  If you do not want
-to share the contents of `arr`, just make a copy:
+To create an `FitsImage` from an existing array `arr`, call:
 
 ```julia
-A = EasyFITS.Image(copy(arr))
+FitsImage(arr, hdr=EasyFITS.header()) -> A
 ```
 
-It is also possible to create an `EasyFITS.Image` with a new data part of
-type `T`, dimensions `dims` and an, initially, empty header:
+where optional argument `hdr` is a FITS header.  By default, an empty header is
+used.  If array `arr` is an `Array` instance, its contents is shared by `A`;
+otherwise, `arr` is converted to an `Array` instance.  If a header is provided
+its contents is also shared by `A`.  If you do not want to share the contents
+of `arr`, just make a copy:
+
+```julia
+A = FitsImage(copy(arr))
+```
+
+It is also possible to create an `FitsImage` with a new data part of type
+`T`, dimensions `dims` and an, initially, empty header:
 
 
 ```julia
-A = EasyFITS.Image{T}(undef, dims)
+A = FitsImage{T}(undef, dims)
 ```
 
-To load a FITS Image extension as an instance of `EasyFITS.Image`, call:
+To load a FITS Image extension as an instance of `FitsImage`, call:
 
 ```julia
 readfits(arg, hdu=1) -> A
 ```
 
-which yields a pseudo-array `A` with the contents of the FITS HDU (*header
-data unit*) `hdu` in `arg`.  Argument `arg` can be the name of a FITS file
-or a FITS handle.  The optional HDU number, the first one by default, must
-correspond to a FITS *Image* extension.
+which yields a pseudo-array `A` with the contents of the FITS HDU (*header data
+unit*) `hdu` in `arg`.  Argument `arg` can be the name of a FITS file or a FITS
+handle.  The optional HDU number, the first one by default, must correspond to
+a FITS *Image* extension.
 
 Examples:
 
@@ -88,14 +88,14 @@ to constrain the type of the result.  For instance:
 
 ```julia
 using EasyFITS
-using EasyFITS: Image             # EasyFITS.Image is the pseudo-array type
-readfits("data.fits")             # load the first array and header
-readfits(Image, "data.fits")      # idem
-readfits(Array, "data.fits")      # only load the array part (as a regular array)
-readfits(Image{T}, "data.fits")   # yields pseudo-array with elements of type T
-readfits(Array{T}, "data.fits")   # yields regular array with elements of type T
-readfits(Image{T,N}, "data.fits") # yields N-dimensional pseudo-array with elements of type T
-readfits(Array{T,N}, "data.fits") # yields N-dimensional regular array with elements of type T
+readfits("data.fits")                 # load the first array and header
+readfits(FitsImage, "data.fits")      # idem
+readfits(FitsHeader, "data.fits")     # yields the header only
+readfits(Array, "data.fits")          # only load the array part (as a regular array)
+readfits(FitsImage{T}, "data.fits")   # yields pseudo-array with elements of type T
+readfits(Array{T}, "data.fits")       # yields regular array with elements of type T
+readfits(FitsImage{T,N}, "data.fits") # yields N-dimensional pseudo-array with elements of type T
+readfits(Array{T,N}, "data.fits")     # yields N-dimensional regular array with elements of type T
 ```
 
 
@@ -114,10 +114,10 @@ openfits(path) -> fh
 ```
 
 which yields a `FITSIO.FITS` handle `fh` to read/update the contents of the
-FITS file.  This is basically the same as calling `FITSIO.FITS(path)`
-except that if `path` does not exist but `path` does not end with the
-`".gz"` extension and `"$path.gz"` does exist, then the compressed file
-`"$path.gz"` is open instead.
+FITS file.  This is basically the same as calling `FITSIO.FITS(path)` except
+that if `path` does not exist but `path` does not end with the `".gz"`
+extension and `"$path.gz"` does exist, then the compressed file `"$path.gz"` is
+open instead.
 
 To create a new FITS file for writing, call:
 
@@ -126,17 +126,16 @@ createfits(path; overwrite=false) -> fh
 ```
 
 which yields a FITS handle `fh` to write the file contents.  If keyword
-`overwrite` is `true`, the file is (silently) overwritten if it already
-exists; otherwise (the default), an error is thrown if if the file already
-exists.  A shortcut for creating the file even though it may already exists is to
-call:
+`overwrite` is `true`, the file is (silently) overwritten if it already exists;
+otherwise (the default), an error is thrown if if the file already exists.  A
+shortcut for creating the file even though it may already exists is to call:
 
 ```julia
 createfits!(path) -> fh
 ```
 
-The do-block syntax is supported by `openfits`, `createfits` and
-`createfits!` to automatically close the FITS file.  For instance:
+The do-block syntax is supported by `openfits`, `createfits` and `createfits!`
+to automatically close the FITS file.  For instance:
 
 ```julia
 openfits(path) do io
