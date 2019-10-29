@@ -33,28 +33,37 @@ setfitskey!(hdr1, "ZO",  3.1415,   "Some real keyword")
 setfitskey!(hdr1, "MEU", true,     "Some boolean keyword")
 
 dat2 = rand(Int32, 7, 8)
-hdr2 = FitsHeader()
-setfitskey!(hdr2, "HDUNAME", "HDU-TWO", "Second custom HDU")
-setfitskey!(hdr2, "GA",  -42,       "Some integer keyword")
-setfitskey!(hdr2, "BU",  "Gibi",    "Some string keyword")
-setfitskey!(hdr2, "ZO",  sqrt(2),   "Some real keyword")
-setfitskey!(hdr2, "MEU", false,     "Some boolean keyword")
+hdr2 = FitsHeader(
+    "HDUNAME" => ("HDU-TWO", "Second custom HDU"),
+    "GA"      => (-42,       "Some integer keyword"),
+    "BU"      => ("Gibi",    "Some string keyword"),
+    "ZO"      => (sqrt(2),   "Some real keyword"),
+    "MEU"     => (false,     "Some boolean keyword"))
+
+dat3 = rand(Int32, 11)
+img3 = FitsImage(dat3,
+                 HDUNAME = ("HDU-THREE", "Third custom HDU"),
+                 GA      = (-42,         "Some integer keyword"),
+                 BU      = ("Gibi",      "Some string keyword"),
+                 ZO      = (sqrt(2),     "Some real keyword"),
+                 MEU     = (false,       "Some boolean keyword"))
 
 path = "test.fits"
 createfits!(path) do io
     write(io, dat1, hdr1)
     write(io, dat2, hdr2)
+    write(io, img3)
 end
 
 @testset "Low-level" begin
     @test_throws ErrorException close(createfits(path; overwrite=false))
 
     openfits(path) do io
-        @test EasyFITS.find(hdu -> EasyFITS.hduname(hdu) == "HDU-THREE", io) === nothing
-        @test EasyFITS.findfirst(hdu -> EasyFITS.hduname(hdu) == "HDU-THREE", io) === nothing
-        @test EasyFITS.findlast(hdu -> EasyFITS.hduname(hdu) == "HDU-THREE", io) === nothing
-        @test EasyFITS.findnext(hdu -> EasyFITS.hduname(hdu) == "HDU-THREE", io, 2) === nothing
-        @test EasyFITS.findprev(hdu -> EasyFITS.hduname(hdu) == "HDU-THREE", io, 2) === nothing
+        @test EasyFITS.find(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io) === nothing
+        @test EasyFITS.findfirst(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io) === nothing
+        @test EasyFITS.findlast(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io) === nothing
+        @test EasyFITS.findnext(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io, 2) === nothing
+        @test EasyFITS.findprev(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io, 2) === nothing
         @test EasyFITS.find(hdu -> EasyFITS.hduname(hdu) == "HDU-ONE", io) == 1
         @test EasyFITS.find(hdu -> EasyFITS.hduname(hdu) == "HDU-TWO", io) == 2
         @test EasyFITS.findfirst(hdu -> EasyFITS.hduname(hdu) == "HDU-ONE", io) == 1

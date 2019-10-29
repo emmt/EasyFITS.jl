@@ -76,6 +76,20 @@ FitsHeader()
 
 yields an empty instance of `FitsHeader`.
 
+```julia
+FitsHeader(; key1=val1, key2=val2, ...)
+```
+
+yields an instance of `FitsHeader` whose contents is set by keywords (values
+can be a tuple with a value and a comment).  This is can also be done by
+specifying key-value pairs
+
+```julia
+FitsHeader("key1" => val1, "key2" => val2, ...)
+```
+
+To avoid ambiguities the two styles cannot be mixed.
+
 """
 struct FitsHeader
     hdr::FITSHeader
@@ -84,7 +98,22 @@ end
 FitsHeader(hdu::HDU) = FitsHeader(read_header(hdu))
 FitsHeader(fh::FITS, ext::Union{Integer,AbstractString} = 1) =
     FitsHeader(fh[ext])
-FitsHeader() = FitsHeader(FITSHeader(String[], [], String[]))
+
+function FitsHeader(; kwds...)
+    hdr = FitsHeader(FITSHeader(String[], [], String[]))
+    for (key, val) in kwds
+        setproperty!(hdr, key, val)
+    end
+    return hdr
+end
+
+function FitsHeader(args::Pair{<:AbstractString}...)
+    hdr = FitsHeader(FITSHeader(String[], [], String[]))
+    for (key, val) in args
+        hdr[key] = val
+    end
+    return hdr
+end
 
 Base.convert(::Type{FitsHeader}, hdr::FITSHeader) = FitsHeader(hdr)
 Base.convert(::Type{FITSHeader}, hdr::FitsHeader) = get(FITSHeader, hdr)
@@ -108,8 +137,16 @@ Cartesian indices and like a dictionary of FITS keywords when indexed by
 strings.  Argument `arr` specifies the array contents of the object and `hdr`
 specifies the keywords both are shared by the returned object.
 
+The initial contents of the header may be specified by keywords.  For instance:
+
 ```julia
-FitsImage{T}(init, dims...)
+FitsImage(arr; KEY1 = val1, KEY2 = (val2, com2), ...)
+```
+
+The embedded array may be creted by the constructor:
+
+```julia
+FitsImage{T}(init, dims...; kwds...)
 ```
 
 yields a FITS Image with an empty header and array-like data of dimensions
@@ -117,7 +154,7 @@ yields a FITS Image with an empty header and array-like data of dimensions
 number of dimensions is also supported:
 
 ```julia
-FitsImage{T,N}(init, dims...)
+FitsImage{T,N}(init, dims...; kwds...)
 ```
 
 """
@@ -126,18 +163,19 @@ struct FitsImage{T,N} <: DenseArray{T,N}
     hdr::FitsHeader
 end
 
-FitsImage(arr::AbstractArray{T,N}, hdr::FitsHeader = FitsHeader()) where {T,N} =
+FitsImage(arr::AbstractArray; kwds...) = FitsImage(arr, FitsHeader(; kwds...))
+FitsImage(arr::AbstractArray{T,N}, hdr::FitsHeader) where {T,N} =
     FitsImage{T,N}(convert(Array{T,N}, arr), hdr)
 FitsImage(arr::AbstractArray, hdr::FITSHeader) =
     FitsImage(arr, FitsHeader(hdr))
-FitsImage{T}(init, dims::Integer...) where {T} =
-    FitsImage{T}(init, dims)
-FitsImage{T}(init, dims::NTuple{N,Integer}) where {T,N} =
-    FitsImage{T,N}(init, dims)
-FitsImage{T,N}(init, dims::Integer...) where {T,N} =
-    FitsImage{T,N}(init, dims)
-FitsImage{T,N}(init, dims::NTuple{N,Integer}) where {T,N} =
-    FitsImage{T,N}(Array{T,N}(init, dims), FitsHeader())
+FitsImage{T}(init, dims::Integer...; kwds...) where {T} =
+    FitsImage{T}(init, dims; kwds...)
+FitsImage{T}(init, dims::NTuple{N,Integer}; kwds...) where {T,N} =
+    FitsImage{T,N}(init, dims; kwds...)
+FitsImage{T,N}(init, dims::Integer...; kwds...) where {T,N} =
+    FitsImage{T,N}(init, dims; kwds...)
+FitsImage{T,N}(init, dims::NTuple{N,Integer}; kwds...) where {T,N} =
+    FitsImage{T,N}(Array{T,N}(init, dims), FitsHeader(; kwds...))
 
 # Make FitsImage instances behave like arrays (indexing is considered later).
 #Base.eltype(::FitsImage{T,N}) where {T,N} = T # FIXME: not needed
@@ -519,7 +557,7 @@ Base.write(io::FITS, arr::AbstractArray, hdr::FitsHeader) =
     write(io, arr, header = get(FITSHeader, hdr))
 
 Base.write(io::FITS, obj::FitsImage) =
-    write(io, get(Array, obj), get(FITSHeader, obj))
+    write(io, get(Array, obj), get(FitsHeader, obj))
 
 
 # FIXME: The following constitute *type piracy*.
