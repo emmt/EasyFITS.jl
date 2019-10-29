@@ -25,7 +25,9 @@ export
     readfits,
     setfitskey!,
     tryreadfitskey,
-    tryreadfitskeys
+    tryreadfitskeys,
+    writefits!,
+    writefits
 
 using FITSIO
 using FITSIO.Libcfitsio
@@ -552,6 +554,69 @@ readfits(::Type{Array{T}}, hdu::ImageHDU) where {T} =
 readfits(::Type{Array{T,N}}, hdu::ImageHDU) where {T,N} =
     convert(Array{T,N}, read(hdu))
 
+"""
+
+```julia
+writefits!(filename, args...; kwds...)
+```
+
+creates a new FITS file named `filename` with contents built from the provided
+arguments and keywords.  If the file already exists, it is silently
+overwritten.
+
+Examples:
+
+```julia
+writefits!(filename, arr; KEY1 = VAL1, KEY2 = (VAL2, COM2), ...)
+writefits!(filename, arr, hdr)
+writefits!(filename, obj)
+writefits!(filename, obj, (arr, hdr), ...)
+```
+
+"""
+writefits!(filename::AbstractString, args...; kwds...) =
+    createfits!(filename) do io
+        writefits(io, args...; kwds...)
+    end
+
+"""
+
+```julia
+writefits(filename, args...; overwrite=false, kwds...)
+```
+
+behaves like `writefits!` but throws an error if `filename` already exits and
+keyword `overwrite` is `false`.
+
+This method can also be used to append a new HDU to a FITS file openned
+for writing.  For instance:
+
+```julia
+writefits(fh, arr; KEY1 = VAL1, KEY2 = (VAL2, COM2), ...)
+writefits(fh, arr, hdr)
+writefits(fh, (arr, hdr))
+writefits(fh, obj)
+writefits(fh, obj, (arr, hdr), ...)
+```
+
+where `fh` is an instance of `FITSIO.FITS`.
+
+"""
+writefits(filename::AbstractString, args...; overwrite::Bool=false, kwds...) = begin
+    if !overwrite && exists(filename)
+        error("file \"$filename\" already exists (consider using `writefits!`)")
+    end
+    writefits!(filename, args...; kwds...)
+end
+
+writefits(io::FITS, arr::AbstractArray; kwds...) = write(io, arr, FitsHeader(; kwds...))
+writefits(io::FITS, arg::Tuple{<:AbstractArray,<:FitsHeader}) = write(io, arg...)
+writefits(io::FITS, arr::AbstractArray, hdr::FitsHeader) = write(io, arr, hdr)
+writefits(io::FITS, obj::FitsImage) = write(io, obj)
+writefits(io::FITS, args...) =
+    for arg in args
+        writefits(io, arg)
+    end
 
 Base.write(io::FITS, arr::AbstractArray, hdr::FitsHeader) =
     write(io, arr, header = get(FITSHeader, hdr))

@@ -49,11 +49,12 @@ img3 = FitsImage(dat3,
                  MEU     = (false,       "Some boolean keyword"))
 
 path = "test.fits"
-createfits!(path) do io
-    write(io, dat1, hdr1)
-    write(io, dat2, hdr2)
-    write(io, img3)
-end
+#createfits!(path) do io
+#    write(io, dat1, hdr1)
+#    write(io, dat2, hdr2)
+#    write(io, img3)
+#end
+writefits(path, (dat1, hdr1), (dat2, hdr2), img3; overwrite=true)
 
 @testset "Low-level" begin
     @test_throws ErrorException close(createfits(path; overwrite=false))
