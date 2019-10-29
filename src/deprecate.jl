@@ -8,3 +8,7 @@
 @deprecate parent(A::FitsImage) getfitsdata(A)
 @deprecate Image FitsImage
 @deprecate header() FitsHeader()
+@deprecate getheader(obj) get(FITSHeader, obj)
+@deprecate getfitsheader(obj) get(FitsHeader, obj)
+@deprecate getfitsdata(obj) get(Array, obj)
+@deprecate getfitscomment(obj) get(FitsComment, obj)

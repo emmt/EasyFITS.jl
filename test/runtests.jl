@@ -99,25 +99,25 @@ end
     A1.ZO = 172
     @test isa(A1["ZO"],  Int) && A1["ZO"] == 172
     @test A1.ZO  == A1["ZO"]
-    @test getfitscomment(A1, "ZO") == "Some real keyword"
+    @test get(FitsComment, A1, "ZO") == "Some real keyword"
     #
     setfitskey!(A1, "ZO", 21, "New comment")
     @test isa(A1["ZO"],  Int) && A1["ZO"] == 21
-    @test getfitscomment(A1, "ZO") == "New comment"
+    @test get(FitsComment, A1, "ZO") == "New comment"
     #
     A1["GA"] = 127, "Another comment"
-    @test A1["GA"] == 127 && getfitscomment(A1, "GA") == "Another comment"
+    @test A1["GA"] == 127 && get(FitsComment, A1, "GA") == "Another comment"
     A1["GA"] = 128, nothing
-    @test A1["GA"] == 128 && getfitscomment(A1, "GA") == ""
+    @test A1["GA"] == 128 && get(FitsComment, A1, "GA") == ""
     A1["GA"] = (129, )
-    @test A1["GA"] == 129 && getfitscomment(A1, "GA") == ""
+    @test A1["GA"] == 129 && get(FitsComment, A1, "GA") == ""
     #
     A1.ZO = 220.0, "Yet another comment"
-    @test A1.ZO == 220 && getfitscomment(A1, "ZO") == "Yet another comment"
+    @test A1.ZO == 220 && get(FitsComment, A1, "ZO") == "Yet another comment"
     A1.ZO = 221.0, nothing
-    @test A1.ZO == 221 && getfitscomment(A1, "ZO") == ""
+    @test A1.ZO == 221 && get(FitsComment, A1, "ZO") == ""
     A1.ZO = (223.0, )
-    @test A1.ZO == 223 && getfitscomment(A1, "ZO") == ""
+    @test A1.ZO == 223 && get(FitsComment, A1, "ZO") == ""
     #
     @test eltype(A1) == eltype(dat1)
     @test ndims(A1) == ndims(dat1)
@@ -150,7 +150,7 @@ end
     H1.ZO = 172
     @test isa(H1["ZO"],  Int) && H1["ZO"] == 172
     @test H1.ZO  == H1["ZO"]
-    @test getfitscomment(H1, "ZO") == "Some real keyword"
+    @test get(FitsComment, H1, "ZO") == "Some real keyword"
     #
     H2 = readfits(FITSHeader, path, 2)
     @test isa(H2, FITSHeader)

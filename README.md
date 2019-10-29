@@ -53,13 +53,13 @@ A = FitsImage{T}(undef, dims)
 To load a FITS Image extension as an instance of `FitsImage`, call:
 
 ```julia
-readfits(arg, hdu=1) -> A
+readfits(arg, ext=1) -> A
 ```
 
-which yields a pseudo-array `A` with the contents of the FITS HDU (*header data
-unit*) `hdu` in `arg`.  Argument `arg` can be the name of a FITS file or a FITS
-handle.  The optional HDU number, the first one by default, must correspond to
-a FITS *Image* extension.
+which yields a pseudo-array `A` with the contents of the FITS extension `ext`
+in `arg`.  Argument `arg` can be the name of a FITS file or a FITS handle.  The
+optional extension can be a HDU number (the first one by default), or an
+extension name.  It must correspond to a FITS *Image* extension.
 
 Examples:
 
@@ -69,14 +69,14 @@ A = readfits("image.fits")         # load the first HDU
 A[2,3]                             # get value of data at indices (2,3)
 A["BITPIX"]                        # get FITS bits per pixel
 A.BITPIX                           # idem
-getfitscomment(A, "BITPIX")        # get the associated comment
+get(FitsComment, A, "BITPIX")      # get the associated comment
 A["STUFF"] = 1                     # set value of FITS keyword STUFF
 A.STUFF = 1                        # idem
 setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
 A["STUFF"] = (3, "Blah")           # idem with value-comment pair
 A.STUFF = (3, "Blah")              # idem
-arr = getfitsdata(A)               # get the data part (a regular Julia array)
-hdr = getfitsheader(A)             # get the header part
+arr = get(Array, A)                # get the data part (a regular Julia array)
+hdr = get(FitsHeader, A)           # get the header part
 EasyFITS.nkeys(A)                  # get the number of keywords
 EasyFITS.nkeys(hdr)                # get the number of keywords
 keys(A)                            # get the list of keywords
@@ -90,7 +90,7 @@ to constrain the type of the result.  For instance:
 using EasyFITS
 readfits("data.fits")                 # load the first array and header
 readfits(FitsImage, "data.fits")      # idem
-readfits(FitsHeader, "data.fits")     # yields the header only
+readfits(FitsHeader, "data.fits")     # reads only the header part
 readfits(Array, "data.fits")          # only load the array part (as a regular array)
 readfits(FitsImage{T}, "data.fits")   # yields pseudo-array with elements of type T
 readfits(Array{T}, "data.fits")       # yields regular array with elements of type T

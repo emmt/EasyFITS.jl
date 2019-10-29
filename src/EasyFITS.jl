@@ -14,14 +14,12 @@
 module EasyFITS
 
 export
+    FitsComment,
     FitsHeader,
     FitsImage,
     createfits!,
     createfits,
     exists,
-    getfitscomment,
-    getfitsdata,
-    getfitsheader,
     getfitskey,
     openfits,
     readfits,
@@ -89,8 +87,15 @@ FitsHeader(fh::FITS, ext::Union{Integer,AbstractString} = 1) =
 FitsHeader() = FitsHeader(FITSHeader(String[], [], String[]))
 
 Base.convert(::Type{FitsHeader}, hdr::FITSHeader) = FitsHeader(hdr)
-Base.convert(::Type{FITSHeader}, hdr::FitsHeader) = getheader(hdr)
+Base.convert(::Type{FITSHeader}, hdr::FitsHeader) = get(FITSHeader, hdr)
 
+"""
+
+Type `FitsComment` is a singleton used as a marker to indicate that the coment
+of a FITS keyword is to be returned by the `get` method.
+
+"""
+struct FitsComment end
 
 """
 
@@ -137,18 +142,18 @@ FitsImage{T,N}(init, dims::NTuple{N,Integer}) where {T,N} =
 # Make FitsImage instances behave like arrays (indexing is considered later).
 #Base.eltype(::FitsImage{T,N}) where {T,N} = T # FIXME: not needed
 #Base.ndims(::FitsImage{T,N}) where {T,N} = N # FIXME: not needed
-Base.length(obj::FitsHeader) = length(getheader(obj))
-Base.length(A::FitsImage) = length(getfitsdata(A))
-Base.size(A::FitsImage) = size(getfitsdata(A))
-Base.size(A::FitsImage, d) = size(getfitsdata(A), d)
-Base.axes(A::FitsImage) = axes(getfitsdata(A))
-Base.axes(A::FitsImage, d) = axes(getfitsdata(A), d)
-@inline Base.axes1(A::FitsImage) = axes1(getfitsdata(A))
+Base.length(obj::FitsHeader) = length(get(FITSHeader, obj))
+Base.length(A::FitsImage) = length(get(Array, A))
+Base.size(A::FitsImage) = size(get(Array, A))
+Base.size(A::FitsImage, d) = size(get(Array, A), d)
+Base.axes(A::FitsImage) = axes(get(Array, A))
+Base.axes(A::FitsImage, d) = axes(get(Array, A), d)
+@inline Base.axes1(A::FitsImage) = axes1(get(Array, A))
 Base.IndexStyle(::Type{<:FitsImage}) = IndexLinear()
 Base.similar(::Type{FitsImage{T}}, dims::NTuple{N,Int}) where {T,N} =
     FitsImage{T,N}(undef, dims)
 Base.elsize(::Type{FitsImage{T,N}}) where {T,N} = elsize(Array{T,N})
-Base.sizeof(A::FitsImage) = sizeof(getfitsdata(A))
+Base.sizeof(A::FitsImage) = sizeof(get(Array, A))
 
 # Make FitsImage's efficient iterators.
 @inline Base.iterate(A::FitsImage, i=1) =
@@ -162,53 +167,23 @@ const Annotated = Union{FitsImage,FitsHeader}
 
 """
 
-```julia
-getfitsdata(obj)
-```
-
-yields the array associated with FITS object `obj`, e.g. an `Array` for a
-`FitsImage`.
-
-"""
-getfitsdata(obj::FitsImage) = Base.getfield(obj, :arr)
-getfitsdata(obj::FitsHeader) = nothing
-
-"""
+The syntax `get(T,obj)` is extended to retrieve various things from FITS object `obj`:
 
 ```julia
-getfitsheader(obj)
+get(Array, obj)            -> arr # get array associated a `FitsImage`
+get(FitsHeader, obj)       -> hdr # get FITS header of object `obj`
+get(FitsComment, obj, key) -> str # yields comment for FITS keyword `key` in object `obj`
 ```
 
-yields the header associated with FITS object `obj`.
-
 """
-getfitsheader(obj::FitsImage) = Base.getfield(obj, :hdr)
-getfitsheader(A::FitsHeader) = Base.getfield(A, :hdr)
-
-"""
-
-```julia
-getfitscomment(obj, key) -> str
-```
-
-yields the comment for FITS keyword `key` in object `obj`.
-
-"""
-getfitscomment(obj::Annotated, key) = getfitscomment(getheader(obj), key)
-getfitscomment(obj::FITSHeader, key) = FITSIO.get_comment(obj, key)
+@inline Base.get(::Type{Array}, obj::FitsImage) = Base.getfield(obj, :arr)
+@inline Base.get(::Type{Array}, obj::FitsHeader) = nothing
+@inline Base.get(::Type{FitsHeader}, obj::FitsImage) = Base.getfield(obj, :hdr)
+@inline Base.get(::Type{FITSHeader}, obj::FitsImage) = get(FITSHeader, get(FitsHeader, obj))
+@inline Base.get(::Type{FitsHeader}, obj::FitsHeader) = obj
+@inline Base.get(::Type{FITSHeader}, obj::FitsHeader) = Base.getfield(obj, :hdr)
+@inline Base.get(::Type{FitsComment}, obj::Annotated, key) = FITSIO.get_comment(get(FITSHeader, obj), key)
 FITSIO.get_comment(obj::Annotated, key) = getfitscomment(obj, key)
-
-"""
-
-```julia
-getheader(obj) -> hdr::FISTIO.FITSHeader
-```
-
-yields the `FISTIO.FITSHeader` object associated with `obj`.
-
-"""
-getheader(obj::FitsImage) = getheader(getfitsheader(obj))
-getheader(obj::FitsHeader) = Base.getfield(obj, :hdr)
 
 #
 # Override `getindex` and `setindex!` for indexation by array indices or by
@@ -217,13 +192,13 @@ getheader(obj::FitsHeader) = Base.getfield(obj, :hdr)
 #
 @inline @propagate_inbounds getindex(A::FitsImage, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds r = getindex(getfitsdata(A), i)
+    @inbounds r = getindex(get(Array, A), i)
     return r
 end
 
 @inline @propagate_inbounds setindex!(A::FitsImage, x, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds r = setindex!(getfitsdata(A), x, i)
+    @inbounds r = setindex!(get(Array, A), x, i)
     return r
 end
 
@@ -242,11 +217,11 @@ end
 @inline Base.checkbounds(A::FitsImage, i::Int) =
     1 ≤ i ≤ length(A) || throw_boundserror(A, i)
 
-keys(obj::Annotated) = keys(getheader(obj))
-nkeys(obj::Annotated) = nkeys(getheader(obj))
+keys(obj::Annotated) = keys(get(FITSHeader, obj))
+nkeys(obj::Annotated) = nkeys(get(FITSHeader, obj))
 nkeys(hdr::FITSHeader) = length(hdr)
-haskey(obj::Annotated, key) = haskey(getheader(obj), key)
-getkey(obj::Annotated, key, def) = getkey(getheader(obj), key, def)
+haskey(obj::Annotated, key) = haskey(get(FITSHeader, obj), key)
+getkey(obj::Annotated, key, def) = getkey(get(FITSHeader, obj), key, def)
 
 """
 
@@ -283,10 +258,10 @@ See also: [`setfitskey!`](@ref), [`getfitscomment`](@ref), [`readfits`](@ref).
 
 """
 getfitskey(obj::Annotated, key::AbstractString) =
-    getindex(getheader(obj), key)
+    getindex(get(FITSHeader, obj), key)
 
 getfitskey(::Type{T}, obj::Annotated, args...) where {T} =
-    getfitskey(T, getheader(obj), args...)
+    getfitskey(T, get(FITSHeader, obj), args...)
 
 for S in (AbstractFloat, Integer, AbstractString, Bool)
     @eval begin
@@ -333,7 +308,7 @@ See also: [`getfitskey`](@ref), [`readfits`](@ref).
 
 """
 setfitskey!(obj::Annotated, key::AbstractString, args...) =
-    setfitskey!(getheader(obj), key, args...)
+    setfitskey!(get(FITSHeader, obj), key, args...)
 
 setfitskey!(hdr::FITSHeader, key::AbstractString, val) = begin
     setindex!(hdr, val, key)
@@ -496,8 +471,8 @@ A.STUFF = 1                        # idem
 setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
 A["STUFF"] = (3, "Blah")           # idem with value-comment pair
 A.STUFF = (3, "Blah")              # idem
-arr = getfitsdata(A)               # get the data part (a regular Julia array)
-hdr = getfitsheader(A)             # get the header part
+arr = get(Array, A)               # get the data part (a regular Julia array)
+hdr = get(FitsHeader, A)           # get the header part
 EasyFITS.nkeys(A)                  # get the number of keywords
 EasyFITS.nkeys(hdr)                # get the number of keywords
 keys(A)                            # get the list of keywords
@@ -541,10 +516,10 @@ readfits(::Type{Array{T,N}}, hdu::ImageHDU) where {T,N} =
 
 
 Base.write(io::FITS, arr::AbstractArray, hdr::FitsHeader) =
-    write(io, arr, header = getheader(hdr))
+    write(io, arr, header = get(FITSHeader, hdr))
 
 Base.write(io::FITS, obj::FitsImage) =
-    write(io, getfitsdata(obj), getheader(obj))
+    write(io, get(Array, obj), get(FITSHeader, obj))
 
 
 # FIXME: The following constitute *type piracy*.
