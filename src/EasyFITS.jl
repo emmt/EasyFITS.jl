@@ -17,11 +17,15 @@ export
     createfits!,
     createfits,
     exists,
-    loadfits,
+    getfitscomment,
+    getfitsdata,
+    getfitsheader,
+    getfitskey,
     openfits,
-    setkey!,
-    tryreadkey,
-    tryreadkeys
+    readfits,
+    setfitskey!,
+    tryreadfitskey,
+    tryreadfitskeys
 
 using FITSIO
 using FITSIO.Libcfitsio
@@ -76,18 +80,17 @@ Image{T,N}(init, dims::NTuple{N,Integer}) where {T,N} =
 # Make Image instances behave like arrays (indexing is considered later).
 #Base.eltype(::Image{T,N}) where {T,N} = T # FIXME: not needed
 #Base.ndims(::Image{T,N}) where {T,N} = N # FIXME: not needed
-Base.length(A::Image) = length(parent(A))
-Base.size(A::Image) = size(parent(A))
-Base.size(A::Image, d) = size(parent(A), d)
-Base.axes(A::Image) = axes(parent(A))
-Base.axes(A::Image, d) = axes(parent(A), d)
-@inline Base.axes1(A::Image) = axes1(parent(A))
+Base.length(A::Image) = length(getfitsdata(A))
+Base.size(A::Image) = size(getfitsdata(A))
+Base.size(A::Image, d) = size(getfitsdata(A), d)
+Base.axes(A::Image) = axes(getfitsdata(A))
+Base.axes(A::Image, d) = axes(getfitsdata(A), d)
+@inline Base.axes1(A::Image) = axes1(getfitsdata(A))
 Base.IndexStyle(::Type{<:Image}) = IndexLinear()
-@inline Base.parent(A::Image) = A.arr
 Base.similar(::Type{Image{T}}, dims::NTuple{N,Int}) where {T,N} =
     Image{T,N}(undef, dims)
 Base.elsize(::Type{Image{T,N}}) where {T,N} = elsize(Array{T,N})
-Base.sizeof(A::Image) = sizeof(parent(A))
+Base.sizeof(A::Image) = sizeof(getfitsdata(A))
 
 # Make Image's efficient iterators.
 @inline Base.iterate(A::Image, i=1) =
@@ -95,92 +98,76 @@ Base.sizeof(A::Image) = sizeof(parent(A))
 
 # FIXME: copyto!, convert, unsafe_convert, pointer, etc.
 
-getheader(dat::Image) = dat.hdr
-getdata(dat::Image) = parent(dat)
-getcomment(dat::Image, k) = FITSIO.get_comment(getheader(dat), k)
+getfitsdata(A::Image) = A.arr
+getfitsheader(dat::Image) = dat.hdr
+getfitscomment(dat::Image, k) = FITSIO.get_comment(getfitsheader(dat), k)
 
-FITSIO.get_comment(dat::Image, k) = getcomment(dat, k)
+FITSIO.get_comment(dat::Image, k) = getfitscomment(dat, k)
 
-getindex(dat::Image, key::AbstractString) = getindex(getheader(dat), key)
-#getindex(dat::Image, inds...) = getindex(parent(dat), inds...)
+getindex(dat::Image, key::AbstractString) = getindex(getfitsheader(dat), key)
+#getindex(dat::Image, inds...) = getindex(getfitsdata(dat), inds...)
 @inline @propagate_inbounds getindex(A::Image, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds r = getindex(parent(A), i)
+    @inbounds r = getindex(getfitsdata(A), i)
     return r
 end
 
 setindex!(dat::Image, val, key::AbstractString) =
-    setkey!(getheader(dat), key, val)
-#setindex!(dat::Image, val, inds...) = setindex!(parent(dat), val, inds...)
+    setfitskey!(getfitsheader(dat), key, val)
+#setindex!(dat::Image, val, inds...) = setindex!(getfitsdata(dat), val, inds...)
 @inline @propagate_inbounds setindex!(A::Image, x, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds r = setindex!(parent(A), x, i)
+    @inbounds r = setindex!(getfitsdata(A), x, i)
     return r
 end
 
 @inline Base.checkbounds(A::Image, i::Int) =
     1 ≤ i ≤ length(A) || throw_boundserror(A, i)
 
-keys(dat::Image) = keys(getheader(dat))
-nkeys(dat::Image) = nkeys(getheader(dat))
+keys(dat::Image) = keys(getfitsheader(dat))
+nkeys(dat::Image) = nkeys(getfitsheader(dat))
 nkeys(hdr::FITSHeader) = length(hdr)
-haskey(dat::Image, key) = haskey(getheader(dat), key)
-getkey(dat::Image, key, def) = getkey(getheader(dat), key, def)
+haskey(dat::Image, key) = haskey(getfitsheader(dat), key)
+getkey(dat::Image, key, def) = getkey(getfitsheader(dat), key, def)
 
 """
 
 ```julia
-getkey(T, dat, key[, def]) -> val :: T
+getfitskey(T, obj, key[, def]) -> val :: T
 ```
 
-yields the value of keyword `key` in FITS data `dat`.  The returned value
-has type `T`.  Optional argument `def` is to specify a default value if
-keyword `key` is not found in `hdr`.  An error is thrown if keyword `key`
-is not found in `hdr` and no default value is provided or if the value to
-be returned has not a type that can be converted to `T`.
+yields the value of FITS keyword `key` in `obj`.  Argument `obj` can be an
+instance of `EasyFITS.Image` or `FITSIO.FITSHeader`. The returned value has
+type `T`.  Optional argument `def` is to specify a default value if keyword
+`key` is not found in `hdr`.  An error is thrown if keyword `key` is not
+found in `hdr` and no default value is provided or if the value to be
+returned has not a type that can be converted to `T`.
+
+Call `getfistcomment` to retrieve the comment assiciated with a FITS
+keyword.
 
 """
-getkey(::Type{T}, dat::Image, args...) where {T} =
-    _getkey(T, getheader(dat), args...)
-
-"""
-
-```julia
-_getkey(T, hdr, key[, def]) -> val :: T
-```
-
-yields the value of keyword `key` in FITS header `hdr`.  The returned value
-has type `T`.  Optional argument `def` is to specify a default value if
-keyword `key` is not found in `hdr`.  An error is thrown if keyword `key`
-is not found in `hdr` and no default value is provided or if the value to
-be returned has not a type that can be converted to `T`.
-
-
-!!! note
-    This method is named `_getkey` because extending `getkey` for a type
-    (`FITSHeader`) that is not defined in this package would be considered as
-    *type piracy*.
-
-""" _getkey
+getfitskey(::Type{T}, dat::Image, args...) where {T} =
+    getfitskey(T, getfitsheader(dat), args...)
 
 for S in (AbstractFloat, Integer, AbstractString, Bool)
     @eval begin
-        function _getkey(::Type{T}, hdr::FITSHeader,
+        function getfitskey(::Type{T}, hdr::FITSHeader,
                          key::AbstractString, def) where {T<:$S}
             val = haskey(hdr, key) ? getindex(hdr, key) : def
-            return _checkvalue(T, $S, val, key)
+            return checkvalue(T, $S, val, key)
         end
 
-        function _getkey(::Type{T}, hdr::FITSHeader,
+        function getfitskey(::Type{T}, hdr::FITSHeader,
                          key::AbstractString) where {T<:$S}
             haskey(hdr, key) || missing_keyword(key)
-            return _checkvalue(T, $S, getindex(hdr, key), key)
+            return checkvalue(T, $S, getindex(hdr, key), key)
         end
     end
 end
 
-function _checkvalue(::Type{T}, ::Type{S}, val,
-                     key::AbstractString)::T where {S,T}
+function checkvalue(::Type{T}, ::Type{S}, val,
+                    key::AbstractString)::T where {S,T}
     isa(val, S) || bad_type(key)
     return T(val)
 end
@@ -193,7 +180,7 @@ end
 """
 
 ```julia
-setkey!(dst, key, val[, com])
+setfitskey!(dst, key, val[, com])
 ```
 
 set FITS keyword `key` in FITS header `dst` to the value `val`.  Argument `com`
@@ -202,15 +189,15 @@ is an optional comment; if it is not specified and `ky` already exists in
 
 Argument `dst` can be an instance of `FITSIO.FITSHeader` or of `EasyFITS.Image`.
 
-See also: [`loadfits`](@ref).
+See also: [`readfits`](@ref).
 
 """
-setkey!(dat::Image, args...) = setkey!(getheader(dat), args...)
-setkey!(hdr::FITSHeader, key::AbstractString, val) = begin
+setfitskey!(dat::Image, args...) = setfitskey!(getfitsheader(dat), args...)
+setfitskey!(hdr::FITSHeader, key::AbstractString, val) = begin
     setindex!(hdr, val, key)
     return nothing
 end
-setkey!(hdr::FITSHeader, key::AbstractString, val, com::AbstractString) = begin
+setfitskey!(hdr::FITSHeader, key::AbstractString, val, com::AbstractString) = begin
     setindex!(hdr, val, key)
     set_comment!(hdr, key, com)
     return nothing
@@ -226,6 +213,7 @@ yields an empty `FITSIO.FITSHeader`.
 
 """
 header() = FITSHeader(String[], [], String[])
+# FIXME: should be Base.empty(::Type{FITSHeader}) = ...
 
 """
 
@@ -247,7 +235,7 @@ openfits(filename) do fh
 end
 ```
 
-See also: [`loadfits`](@ref), [`createfits`](@ref).
+See also: [`readfits`](@ref), [`createfits`](@ref).
 
 """
 openfits(filename::AbstractString) =
@@ -297,7 +285,7 @@ createfits(filename) do fh
 end
 ```
 
-See also: [`loadfits`](@ref), [`createfits`](@ref).
+See also: [`readfits`](@ref), [`createfits`](@ref).
 
 """
 createfits!(filename::AbstractString) = FITS(filename, "w")
@@ -332,7 +320,7 @@ end
 """
 
 ```julia
-loadfits(arg, hdu=1) -> A
+readfits(arg, hdu=1) -> A
 ```
 
 yields a pseudo-array `A` with the contents of the FITS HDU (*header data
@@ -347,30 +335,29 @@ Examples:
 
 ```julia
 using EasyFITS
-A = loadfits("image.fits")       # load the first HDU
-A[2,3]                           # get value of data at indices (2,3)
-A["BITPIX"]                      # get FITS bits per pixel
-EasyFITS.getcomment(A, "BITPIX") # get the associated comment
-A["STUFF"] = 1                   # set value of FITS keyword STUFF
-setkey!(A, "STUFF", 3, "Blah")   # idem with a comment
-arr = parent(A)                  # get the data part (a regular Julia array)
-arr = EasyFITS.getdata(A)        # idem
-hdr = EasyFITS.getheader(A)      # get the header part
-EasyFITS.nkeys(A)                # get the number of keywords
-EasyFITS.nkeys(hdr)              # get the number of keywords
-keys(A)                          # get the list of keywords
-keys(hdr)                        # get the list of keywords
+A = readfits("image.fits")         # load the first HDU
+A[2,3]                             # get value of data at indices (2,3)
+A["BITPIX"]                        # get FITS bits per pixel
+getfitscomment(A, "BITPIX")        # get the associated comment
+A["STUFF"] = 1                     # set value of FITS keyword STUFF
+setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
+arr = getfitsdata(A)               # get the data part (a regular Julia array)
+hdr = getfitsheader(A)             # get the header part
+EasyFITS.nkeys(A)                  # get the number of keywords
+EasyFITS.nkeys(hdr)                # get the number of keywords
+keys(A)                            # get the list of keywords
+keys(hdr)                          # get the list of keywords
 ```
 
 See also: [`openfits`](@ref).
 
 """
-loadfits(filename::AbstractString, hdu::Integer=1) =
+readfits(filename::AbstractString, hdu::Integer=1) =
     openfits(filename) do io
-        return loadfits(io, hdu)
+        return readfits(io, hdu)
     end
 
-loadfits(fh::FITS, hdu::Integer=1) =
+readfits(fh::FITS, hdu::Integer=1) =
     Image(read(fh[hdu]), read_header(fh[hdu]))
 
 # FIXME: The following constitute *type piracy*.
@@ -436,7 +423,7 @@ Argument `arg` can be an instance of `FITSIO.FITS`, `FITSIO.HDU` or
 
 This method is considered as *low-level* and is not exported.
 
-See also: [`EasyFITS.tryreadkeys`](@ref).
+See also: [`EasyFITS.tryreadfitskeys`](@ref).
 
 """
 function getfile(file::FITSFile)
@@ -457,43 +444,43 @@ getfile(hdu::HDU) = getfile(hdu.fitsfile, hdu.ext)
 """
 
 ```julia
-tryreadkey(src, T, key) -> val :: Union{T,Nothing}
+tryreadfitskey(src, T, key) -> val :: Union{T,Nothing}
 ```
 
 attempts to read the value of FITS keywrod `key` keys in source `src` and
 returns a value of type `T` or `nothing` if keyword is not found or if
 parsing its value is unsuccessful.
 
-See also: [`tryreadkeys`](@ref).
+See also: [`tryreadfitskeys`](@ref).
 
 """
-tryreadkey(src::Union{FITSFile,FITS,HDU}, ::Type{T}, key::AbstractString) where T =
-    tryreadkeys(src, T, (key,))
+tryreadfitskey(src::Union{FITSFile,FITS,HDU}, ::Type{T}, key::AbstractString) where T =
+    tryreadfitskeys(src, T, (key,))
 
 """
 
 ```julia
-tryreadkeys(src, T, keys) -> val :: Union{T,Nothing}
+tryreadfitskeys(src, T, keys) -> val :: Union{T,Nothing}
 ```
 
 attempts to read the raw FITS keywords `keys` in given order in source
 `src` and returns a value of type `T` or `nothing` if no keywords are found
 or if parsing the value of the first matching keyword is unsuccessful.
 
-See also: [`tryreadkey`](@ref).
+See also: [`tryreadfitskey`](@ref).
 
 """
-function tryreadkeys(src::Union{FITSFile,FITS,HDU}, ::Type{T},
-                     keys::Union{AbstractArray{<:AbstractString},
-                                 Tuple{Vararg{AbstractString}}}) where T
+function tryreadfitskeys(src::Union{FITSFile,FITS,HDU}, ::Type{T},
+                         keys::Union{AbstractArray{<:AbstractString},
+                                     Tuple{Vararg{AbstractString}}}) where T
     return fits_try_read_keys(getfile(src), T, keys)
 end
 
 extname(hdu::HDU) =
-    tryreadkey(getfile(hdu), String, "EXTNAME")
+    tryreadfitskey(getfile(hdu), String, "EXTNAME")
 
 extversion(hdu::HDU) :: Int = begin
-    version = tryreadkey(getfile(hdu), Int, "EXTVER")
+    version = tryreadfitskey(getfile(hdu), Int, "EXTVER")
     if version === nothing
         return 1
     end
@@ -501,14 +488,16 @@ extversion(hdu::HDU) :: Int = begin
 end
 
 hduname(hdu::HDU) =
-    tryreadkey(getfile(hdu), String, "HDUNAME")
+    tryreadfitskey(getfile(hdu), String, "HDUNAME")
 
 hduversion(hdu::HDU) :: Int = begin
-    version = tryreadkey(getfile(hdu), Int, "HDUVER")
+    version = tryreadfitskey(getfile(hdu), Int, "HDUVER")
     if version === nothing
         return 1
     end
     return version
 end
+
+include("deprecate.jl")
 
 end # module

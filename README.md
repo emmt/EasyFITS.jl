@@ -35,8 +35,8 @@ EasyFITS.Image(arr, hdr=EasyFITS.header()) -> A
 where optional argument `hdr` is a FITS header.  By default, an empty
 header is used.  If array `arr` is an `Array` instance, its contents is
 shared by `A`; otherwise, `arr` is converted to an `Array` instance.  If a
-header is provided its contents is also shared by `A`.  If you do not want to
-share the contents of `arr`, just make a copy:
+header is provided its contents is also shared by `A`.  If you do not want
+to share the contents of `arr`, just make a copy:
 
 ```julia
 A = EasyFITS.Image(copy(arr))
@@ -53,7 +53,7 @@ A = EasyFITS.Image{T}(undef, dims)
 To load a FITS Image extension as an instance of `EasyFITS.Image`, call:
 
 ```julia
-loadfits(arg, hdu=1) -> A
+readfits(arg, hdu=1) -> A
 ```
 
 which yields a pseudo-array `A` with the contents of the FITS HDU (*header
@@ -65,19 +65,18 @@ Examples:
 
 ```julia
 using EasyFITS
-A = loadfits("image.fits")       # load the first HDU
-A[2,3]                           # get value of data at indices (2,3)
-A["BITPIX"]                      # get FITS bits per pixel
-EasyFITS.getcomment(A, "BITPIX") # get the associated comment
-A["STUFF"] = 1                   # set value of FITS keyword STUFF
-setkey!(A, "STUFF", 3, "Blah")   # idem with a comment
-arr = parent(A)                  # get the data part (a regular Julia array)
-arr = EasyFITS.getdata(A)        # idem
-hdr = EasyFITS.getheader(A)      # get the header part
-EasyFITS.nkeys(A)                # get the number of keywords
-EasyFITS.nkeys(hdr)              # get the number of keywords
-keys(A)                          # get the list of keywords
-keys(hdr)                        # get the list of keywords
+A = readfits("image.fits")         # load the first HDU
+A[2,3]                             # get value of data at indices (2,3)
+A["BITPIX"]                        # get FITS bits per pixel
+getfitscomment(A, "BITPIX")        # get the associated comment
+A["STUFF"] = 1                     # set value of FITS keyword STUFF
+setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
+arr = getfitsdata(A)               # get the data part (a regular Julia array)
+hdr = getfitsheader(A)             # get the header part
+EasyFITS.nkeys(A)                  # get the number of keywords
+EasyFITS.nkeys(hdr)                # get the number of keywords
+keys(A)                            # get the list of keywords
+keys(hdr)                          # get the list of keywords
 ```
 
 
@@ -130,16 +129,20 @@ end
 Also:
 
 ```julia
-setkey!(dst, key, val[, com])
-getkey(T, dat, key[, def]) -> val :: T
+setfitskey!(dst, key, val[, com])
+getfitskey(T, dat, key[, def]) -> val :: T
 
-tryreadkey(src, T, key)
-tryreadkeys(src, T, keys)
+tryreadfitskey(src, T, key)
+tryreadfitskeys(src, T, keys)
 
 EasyFITS.getfile(arg [, ext])
 EasyFITS.find(pred, )
-
 ```
+
+## Naming conventions
+
+To avoid conflicts such as *type piracy*, all exported methods but `exists`
+have the word **fits** embedded in their name.
 
 [doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [doc-dev-url]: https://emmt.github.io/EasyFITS.jl/dev
