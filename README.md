@@ -156,11 +156,11 @@ have the word **fits** embedded in their name.
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/EasyFITS.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/EasyFITS-jl/branch/master
 
-[coveralls-img]: https://coveralls.io/repos/emmt/EasyFITS.jl/badge.svg?branch=master&service=github
+[coveralls-img]: https://coveralls.io/repos/github/emmt/EasyFITS.jl/badge.svg?branch=master
 [coveralls-url]: https://coveralls.io/github/emmt/EasyFITS.jl?branch=master
 
-[codecov-img]: http://codecov.io/github/emmt/EasyFITS.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/emmt/EasyFITS.jl?branch=master
+[codecov-img]: https://codecov.io/gh/emmt/EasyFITS.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/emmt/EasyFITS.jl
 
 [fitsio-url]: https://github.com/JuliaAstro/FITSIO.jl
 [julia-url]: http://julialang.org/
