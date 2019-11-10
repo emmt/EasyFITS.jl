@@ -3,6 +3,7 @@ module EasyFITSTests
 using Test
 using FITSIO
 using EasyFITS
+using EasyFITS: find
 
 function samevalues(A::AbstractArray, B::AbstractArray)
     @assert !Base.has_offset_axes(A, B)
@@ -24,13 +25,10 @@ function maxabsdif(A::AbstractArray, B::AbstractArray)
     return res
 end
 
+path = joinpath(@__DIR__, "test.fits")
+
 dat1 = rand(Float32, 3, 4, 5)
 hdr1 = FitsHeader()
-setfitskey!(hdr1, "HDUNAME", "HDU-ONE", "First custom HDU")
-setfitskey!(hdr1, "GA",  42,       "Some integer keyword")
-setfitskey!(hdr1, "BU",  "Shadok", "Some string keyword")
-setfitskey!(hdr1, "ZO",  3.1415,   "Some real keyword")
-setfitskey!(hdr1, "MEU", true,     "Some boolean keyword")
 
 dat2 = rand(Int32, 7, 8)
 hdr2 = FitsHeader(
@@ -48,49 +46,63 @@ img3 = FitsImage(dat3,
                  ZO      = (sqrt(2),     "Some real keyword"),
                  MEU     = (false,       "Some boolean keyword"))
 
-path = "test.fits"
-#createfits!(path) do io
-#    write(io, dat1, hdr1)
-#    write(io, dat2, hdr2)
-#    write(io, img3)
-#end
-writefits(path, (dat1, hdr1), (dat2, hdr2), img3; overwrite=true)
+@testset "Create FITS File" begin
+    @test length(hdr1) == 0
+    hdr1["HDUNAME"] = ("HDU-ONE", "First custom HDU")
+    hdr1["GA"]      = (42,        "Some integer keyword")
+    hdr1["BU"]      = ("Shadok",  "Some string keyword")
+    hdr1["ZO"]      = (3.1415,    "Some real keyword")
+    hdr1["MEU"]     = (true,      "Some boolean keyword")
+
+    #FitsIO(path, "w!") do io
+    #    write(io, dat1, hdr1)
+    #    write(io, dat2, hdr2)
+    #    write(io, img3)
+    #end
+    write(FitsFile, path, (dat1, hdr1), (dat2, hdr2), img3; overwrite=true)
+
+    # Check overwrite is forbidden.
+    @test_throws ErrorException close(FitsIO(path, "w"))
+end
+
+
+hduname(obj::Union{FitsHDU,FitsIO}) =
+    read(String, obj, "HDUNAME", nothing)
 
 @testset "Low-level" begin
-    @test_throws ErrorException close(createfits(path; overwrite=false))
-
-    openfits(path) do io
-        @test EasyFITS.find(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io) === nothing
-        @test EasyFITS.findfirst(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io) === nothing
-        @test EasyFITS.findlast(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io) === nothing
-        @test EasyFITS.findnext(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io, 2) === nothing
-        @test EasyFITS.findprev(hdu -> EasyFITS.hduname(hdu) == "HDU-MISSING", io, 2) === nothing
-        @test EasyFITS.find(hdu -> EasyFITS.hduname(hdu) == "HDU-ONE", io) == 1
-        @test EasyFITS.find(hdu -> EasyFITS.hduname(hdu) == "HDU-TWO", io) == 2
-        @test EasyFITS.findfirst(hdu -> EasyFITS.hduname(hdu) == "HDU-ONE", io) == 1
-        @test EasyFITS.findlast(hdu -> EasyFITS.hduname(hdu) == "HDU-ONE", io) == 1
-        @test EasyFITS.findnext(hdu -> EasyFITS.hduname(hdu) == "HDU-ONE", io, 2) === nothing
-        @test EasyFITS.findprev(hdu -> EasyFITS.hduname(hdu) == "HDU-ONE", io, 2) === 1
+    FitsIO(path) do io
+        @test find(hdu -> hduname(hdu) == "HDU-MISSING", io) === nothing
+        @test findfirst(hdu -> hduname(hdu) == "HDU-MISSING", io) === nothing
+        @test findlast(hdu -> hduname(hdu) == "HDU-MISSING", io) === nothing
+        @test findnext(hdu -> hduname(hdu) == "HDU-MISSING", io, 2) === nothing
+        @test findprev(hdu -> hduname(hdu) == "HDU-MISSING", io, 2) === nothing
+        @test find(hdu -> hduname(hdu) == "HDU-ONE", io) == 1
+        @test find(hdu -> hduname(hdu) == "HDU-TWO", io) == 2
+        @test findfirst(hdu -> hduname(hdu) == "HDU-ONE", io) == 1
+        @test findlast(hdu -> hduname(hdu) == "HDU-ONE", io) == 1
+        @test findnext(hdu -> hduname(hdu) == "HDU-ONE", io, 2) === nothing
+        @test findprev(hdu -> hduname(hdu) == "HDU-ONE", io, 2) === 1
         hdu = io[1]
-        @test tryreadfitskey(hdu, Int,     "GA") == 42
-        @test tryreadfitskey(hdu, String,  "BU") == "Shadok"
-        @test tryreadfitskey(hdu, Float64, "ZO") ≈ 3.1415
-        @test tryreadfitskey(hdu, Bool,    "MEU") == true
+        @test read(Int,     hdu, "GA") == 42
+        @test read(String,  hdu, "BU") == "Shadok"
+        @test read(Float64, hdu, "ZO") ≈ 3.1415
+        @test read(Bool,    hdu, "MEU") == true
         dat = read(hdu)
         @test eltype(dat) == eltype(dat1)
         @test size(dat) == size(dat1)
         @test samevalues(dat, dat1)
         hdu = io[2]
-        @test tryreadfitskey(hdu, Int,     "GA") == -42
-        @test tryreadfitskey(hdu, String,  "BU") == "Gibi"
-        @test tryreadfitskey(hdu, Float64, "ZO") ≈ sqrt(2)
-        @test tryreadfitskey(hdu, Bool,    "MEU") == false
+        @test read(Int,     hdu, "GA") == -42
+        @test read(String,  hdu, "BU") == "Gibi"
+        @test read(Float64, hdu, "ZO") ≈ sqrt(2)
+        @test read(Bool,    hdu, "MEU") == false
         dat = read(hdu)
         @test eltype(dat) == eltype(dat2)
         @test size(dat) == size(dat2)
         @test samevalues(dat, dat2)
     end
 end
+
 @testset "High-level" begin
     # Read array+header data and check indexing of array and header.
     A1 = readfits(path)
@@ -111,7 +123,7 @@ end
     @test A1.ZO  == A1["ZO"]
     @test get(FitsComment, A1, "ZO") == "Some real keyword"
     #
-    setfitskey!(A1, "ZO", 21, "New comment")
+    A1["ZO"] = (21, "New comment")
     @test isa(A1["ZO"],  Int) && A1["ZO"] == 21
     @test get(FitsComment, A1, "ZO") == "New comment"
     #
@@ -133,7 +145,7 @@ end
     @test ndims(A1) == ndims(dat1)
     @test size(A1) == size(dat1)
     @test samevalues(A1, dat1)
-    A2 = readfits(path, 2)
+    A2 = read(FitsImage, path, 2)
     @test isa(A2, FitsImage)
     @test isa(A2["GA"],  Int)     && A2["GA"] == -42
     @test isa(A2["BU"],  String)  && A2["BU"] == "Gibi"
@@ -144,7 +156,7 @@ end
     @test size(A2) == size(dat2)
     @test samevalues(A2, dat2)
     # Read headers.
-    H1 = readfits(FitsHeader, path, 1)
+    H1 = read(FitsHeader, path, 1)
     @test isa(H1, FitsHeader)
     @test isa(H1["GA"],  Int)     && H1["GA"] == 42
     @test isa(H1["BU"],  String)  && H1["BU"] == "Shadok"
@@ -162,8 +174,8 @@ end
     @test H1.ZO  == H1["ZO"]
     @test get(FitsComment, H1, "ZO") == "Some real keyword"
     #
-    H2 = readfits(FITSHeader, path, 2)
-    @test isa(H2, FITSHeader)
+    H2 = read(FitsHeader, path, 2)
+    @test isa(H2, FitsHeader)
     # Read array data with contraints.
     A3 = readfits(Array, path, 1)
     @test isa(A3, Array{eltype(dat1),ndims(dat1)})
@@ -179,7 +191,7 @@ end
     @test size(A5) == size(dat2)
     @test samevalues(A5, dat2)
     # Read array+header data with contraints.
-    A6 = readfits(FitsImage, path, 1)
+    A6 = read(FitsImage, path, 1)
     @test isa(A6, FitsImage{eltype(dat1),ndims(dat1)})
     @test size(A6) == size(dat1)
     @test samevalues(A6, dat1)

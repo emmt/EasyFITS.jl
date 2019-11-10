@@ -4,12 +4,13 @@
 * Provide `comment!` to set the comment part.
 * HDU can be specified by name ("EXTNAME" or "HDUNAME") when loading a FITS
   Image.
-* `loadfits(...)` can be `read(EasyFITS.Image, ...)` and should perhaps be
+* `readfits(...)` can also be `read(FitsImage, ...)` and should perhaps be
   renamed as `loadfitsimage` or `readfitsimage` (to prepare for
   `readfitstable`).
-* Provide means to write an `EasyFITS.Image`.
 * Provide `FitsTable` for FITS Table extensions.
 * When an "IMAGE" (resp. "TABLE") extension is expected without other
   constraint, find the first one.
-* Make `FitsHeader` not an alias to `FITSIO.FITSHeader` but an object indexable
-  as the `FitsImage`.
+* Filter keyword values (e.g., `Irrational`) to prevent problems.
+* Deprecate `exists(path)` in favor of `isfile(path)`.
+* `"r+"` mode.
+* Implement `eltype(hdu)`.
