@@ -743,28 +743,27 @@ file with 3 (or more) HDU's is created.
 function write!(::Type{FitsFile}, path::AbstractString, args...; kwds...)
     FitsIO(path, "w!") do io
         write(io, args...; kwds...)
-        nothing
     end
+    nothing
 end
 
 function write(::Type{FitsFile}, path::AbstractString, args...;
                overwrite::Bool=false, kwds...)
-    overwrite == false && exists(path) &&
+    (overwrite == false && exists(path)) &&
         throw_file_already_exists(path, "try with `overwrite=true`")
     FitsIO(path, (overwrite ? "w!" : "w")) do io
         write(io, args...; kwds...)
-        nothing
     end
+    nothing
 end
 
-write(io::FitsIO, arr::AbstractArray; kwds...) =
+write(io::FitsIO, arr::AbstractArray{<:Real}; kwds...) =
     write(io, FitsHeader(; kwds...), arr)
 
-# FIXME: no needs for <: below
-write(io::FitsIO, arg::Tuple{<:FitsHeader,<:AbstractArray}) = write(io, arg...)
-write(io::FitsIO, arg::Tuple{<:AbstractArray,<:FitsHeader}) = write(io, arg...)
-write(io::FitsIO, arr::AbstractArray, hdr::FitsHeader) = write(io, hdr, arr)
-write(io::FitsIO, hdr::FitsHeader, arr::AbstractArray) =
+write(io::FitsIO, arg::Tuple{FitsHeader,AbstractArray{<:Real}}) = write(io, arg...)
+write(io::FitsIO, arg::Tuple{AbstractArray{<:Real},FitsHeader}) = write(io, arg...)
+write(io::FitsIO, arr::AbstractArray{<:Real}, hdr::FitsHeader) = write(io, hdr, arr)
+write(io::FitsIO, hdr::FitsHeader, arr::AbstractArray{<:Real}) =
     write(get(FITS, io), arr, header = get(FITSHeader, hdr))
 write(io::FitsIO, obj::FitsImage) =
     write(io, get(FitsHeader, obj), get(Array, obj))
