@@ -14,6 +14,7 @@
 module EasyFITS
 
 export
+    FitsArray,
     FitsComment,
     FitsFile,
     FitsHDU,
@@ -70,6 +71,9 @@ end
 # Singleton type for writing a FITS file.
 struct FitsFile end
 
+# Abstract type for retrieving the array part of an Image HDU in a FITS file.
+abstract type FitsArray{T,N} <: AbstractArray{T,N} end
+
 # Singleton type for retrieving a keyword comment.
 struct FitsComment end
 
@@ -79,6 +83,9 @@ struct Missing end
 # Annotated objects have a FITS header and implements indexation by keywords,
 # they can also be directly read from a FITS file.
 const Annotated = Union{FitsImage,FitsHeader}
+
+# Readable objects are those which can be directly read from a FITS file.
+const Readable = Union{Annotated,FitsArray}
 
 # Allowed types for keywords values.
 const KeywordValues = Union{Bool,Int,Float64,String}
@@ -668,13 +675,13 @@ keys(hdr)                          # get the list of keywords
 See also: [`FitsIO`](@ref).
 
 """
-read(::Type{T}, path::AbstractString, args...; kwds...) where {T<:Annotated} =
+read(::Type{T}, path::AbstractString, args...; kwds...) where {T<:Readable} =
     FitsIO(path, "r") do io
         return read(T, io, args...; kwds...)
     end
 
 function read(::Type{T}, io::FitsIO,
-              ext::Extension = 1) where {T<:Union{Annotated,Array}}
+              ext::Extension = 1) where {T<:Union{Readable,Array}}
     read(T, io[ext])
 end
 
@@ -698,16 +705,12 @@ read(::Type{Array{T}}, hdu::FitsImageHDU) where {T} =
 read(::Type{Array{T,N}}, hdu::FitsImageHDU) where {T,N} =
     convert(Array{T,N}, read(hdu))
 
-readfits(T::Type{<:Annotated}, path::AbstractString, args...; kwds...) =
-    read(T, path, args...; kwds...)
-
-readfits(path::AbstractString, args...; kwds...) =
-    readfits(FitsImage, path, args...; kwds...)
-
-readfits(T::Type{<:Array}, path::AbstractString, args...; kwds...) =
-    FitsIO(path, "r") do io
-        return read(T, io, args...; kwds...)
-    end
+read(::Type{FitsArray}, hdu::FitsHDU, args...) =
+    read(Array, hdu, args...)
+read(::Type{FitsArray{T}}, hdu::FitsHDU, args...) where {T} =
+    read(Array{T}, hdu, args...)
+read(::Type{FitsArray{T,N}}, hdu::FitsHDU, args...) where {T,N} =
+    read(Array{T,N}, hdu, args...)
 
 """
 

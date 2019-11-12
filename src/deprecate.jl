@@ -93,3 +93,9 @@
            write(FitsFile, path, args...; kwds...))
 @deprecate(writefits!(path::AbstractString, args...; kwds...),
            write(FitsFile, path, args...; overwrite=true, kwds...))
+@deprecate(readfits(T::Type{<:Annotated}, path::AbstractString, args...; kwds...),
+           read(T, path, args...; kwds...))
+@deprecate(readfits(path::AbstractString, args...; kwds...),
+           readfits(FitsImage, path, args...; kwds...))
+@deprecate(readfits(T::Type{<:Array}, path::AbstractString, args...; kwds...),
+           FitsIO(path, "r") do io; read(T, io, args...; kwds...); end)

@@ -65,16 +65,15 @@ Examples:
 
 ```julia
 using EasyFITS
-A = readfits("image.fits")         # load the first HDU
+A = read(FitsImage, "image.fits")  # load the first HDU
 A[2,3]                             # get value of data at indices (2,3)
 A["BITPIX"]                        # get FITS bits per pixel
 A.BITPIX                           # idem
 get(FitsComment, A, "BITPIX")      # get the associated comment
 A["STUFF"] = 1                     # set value of FITS keyword STUFF
-A.STUFF = 1                        # idem
-setfitskey!(A, "STUFF", 3, "Blah") # idem with a comment
-A["STUFF"] = (3, "Blah")           # idem with value-comment pair
-A.STUFF = (3, "Blah")              # idem
+A["STUFF"] = (1, "Some value")     # idem with value-comment pair
+A.STUFF = 3                        # set value
+A.STUFF = (3, "Some other value")  # idem
 arr = get(Array, A)                # get the data part (a regular Julia array)
 hdr = get(FitsHeader, A)           # get the header part
 EasyFITS.nkeys(A)                  # get the number of keywords
@@ -88,14 +87,13 @@ to constrain the type of the result.  For instance:
 
 ```julia
 using EasyFITS
-readfits("data.fits")                 # load the first array and header
-readfits(FitsImage, "data.fits")      # idem
-readfits(FitsHeader, "data.fits")     # reads only the header part
-readfits(Array, "data.fits")          # only load the array part (as a regular array)
-readfits(FitsImage{T}, "data.fits")   # yields pseudo-array with elements of type T
-readfits(Array{T}, "data.fits")       # yields regular array with elements of type T
-readfits(FitsImage{T,N}, "data.fits") # yields N-dimensional pseudo-array with elements of type T
-readfits(Array{T,N}, "data.fits")     # yields N-dimensional regular array with elements of type T
+read(FitsImage, "data.fits")          # load the first array and header
+read(FitsHeader, "data.fits")         # reads only the header part
+read(FitsImage{T}, "data.fits")       # yields pseudo-array with elements of type T
+read(FitsImage{T,N}, "data.fits")     # yields N-dimensional pseudo-array with elements of type T
+read(FitsArray, "data.fits")          # only load the array part (as a regular array)
+read(FitsArray{T}, "data.fits")       # yields regular array with elements of type T
+read(FitsArray{T,N}, "data.fits")     # yields N-dimensional regular array with elements of type T
 ```
 
 Note that the result of `readfits(FitsHeader,"data.fits")` can be indexed by

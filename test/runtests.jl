@@ -105,7 +105,7 @@ end
 
 @testset "High-level" begin
     # Read array+header data and check indexing of array and header.
-    A1 = readfits(path)
+    A1 = read(FitsImage, path)
     @test isa(A1, FitsImage)
     @test isa(A1["GA"],  Int)     && A1["GA"] == 42
     @test isa(A1["BU"],  String)  && A1["BU"] == "Shadok"
@@ -177,16 +177,16 @@ end
     H2 = read(FitsHeader, path, 2)
     @test isa(H2, FitsHeader)
     # Read array data with contraints.
-    A3 = readfits(Array, path, 1)
+    A3 = read(FitsArray, path, 1)
     @test isa(A3, Array{eltype(dat1),ndims(dat1)})
     @test size(A3) == size(dat1)
     @test samevalues(A3, dat1)
-    A4 = readfits(Array{Int}, path, 2)
+    A4 = read(FitsArray{Int}, path, 2)
     @test isa(A4, Array{Int,ndims(dat2)})
     @test size(A4) == size(dat2)
     @test samevalues(A4, dat2)
-    @test_throws MethodError readfits(Array{Int,ndims(dat2)+1}, path, 2)
-    A5 = readfits(Array{Int,ndims(dat2)}, path, 2)
+    @test_throws MethodError read(FitsArray{Int,ndims(dat2)+1}, path, 2)
+    A5 = read(FitsArray{Int,ndims(dat2)}, path, 2)
     @test isa(A5, Array{Int,ndims(dat2)})
     @test size(A5) == size(dat2)
     @test samevalues(A5, dat2)
@@ -195,12 +195,12 @@ end
     @test isa(A6, FitsImage{eltype(dat1),ndims(dat1)})
     @test size(A6) == size(dat1)
     @test samevalues(A6, dat1)
-    A7 = readfits(FitsImage{Float64}, path, 1)
+    A7 = read(FitsImage{Float64}, path, 1)
     @test isa(A7, FitsImage{Float64,ndims(dat1)})
     @test size(A7) == size(dat1)
     @test samevalues(A7, dat1)
-    @test_throws MethodError readfits(FitsImage{Int,ndims(dat2)+1}, path, 2)
-    A8 = readfits(FitsImage{Int,ndims(dat2)}, path, 2)
+    @test_throws MethodError read(FitsImage{Int,ndims(dat2)+1}, path, 2)
+    A8 = read(FitsImage{Int,ndims(dat2)}, path, 2)
     @test isa(A8, FitsImage{Int,ndims(dat2)})
     @test size(A8) == size(dat2)
     @test samevalues(A8, dat2)
