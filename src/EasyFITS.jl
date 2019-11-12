@@ -27,12 +27,13 @@ export
     exists,
     getfitskey,      # FIXME: deprecated
     openfits,        # FIXME: deprecated
-    readfits,
+    readfits,        # FIXME: deprecated
     setfitskey!,     # FIXME: deprecated
     tryreadfitskey,  # FIXME: deprecated
     tryreadfitskeys, # FIXME: deprecated
-    writefits,
-    writefits!
+    write!,
+    writefits!,      # FIXME: deprecated
+    writefits        # FIXME: deprecated
 
 using FITSIO
 using FITSIO.Libcfitsio
@@ -688,7 +689,7 @@ readfits(T::Type{<:Array}, path::AbstractString, args...; kwds...) =
 """
 
 ```julia
-writefits(path, args...; overwrite=false, kwds...)
+write(FitsFile, path, args...; overwrite=false, kwds...)
 ```
 
 creates a new FITS file `path` with contents built from the provided arguments
@@ -696,23 +697,17 @@ creates a new FITS file `path` with contents built from the provided arguments
 not already exist.  Instead of setting the `overwrite` keyword, simply call:
 
 ```julia
-writefits!(path, args...; kwds...)
+write!(FitsFile, path, args...; kwds...)
 ```
 
-to silently overwrites file `path` if it already exits.  The two methods are
-respective shortcuts to:
-
-```julia
-write(FitsFile, path, args...; kwds...)
-write(FitsFile, path, args...; overwrite=true, kwds...)
-```
+to silently overwrites file `path` if it already exits.
 
 Typical examples are:
 
 ```julia
-writefits(path, arr; KEY1 = val1, KEY2 = (val2, com2), ...)
-writefits(path, hdr, arr)
-writefits(path, (hdr1, arr1), arr2, (hdr3, arr3), ...)
+write(FitsFile, path, arr; KEY1 = val1, KEY2 = (val2, com2), ...)
+write(FitsFile, path, hdr, arr)
+write(FitsFile, path, (hdr1, arr1), arr2, (hdr3, arr3), ...)
 ```
 
 with `arr*` arrays, `KEY*` keywords, `val*` keyword values, `com*` keyword
@@ -720,13 +715,12 @@ comments and `hdr*` objects of type `FitsHeader`.  In the last example, a FITS
 file with 3 (or more) HDU's is created.
 
 """
-writefits(path::AbstractString, args...; kwds...) =
-    write(FitsFile, path, args...; kwds...)
-
-writefits!(path::AbstractString, args...; kwds...) =
-    write(FitsFile, path, args...; overwrite=true, kwds...)
-
-@doc @doc(writefits) writefits!
+function write!(::Type{FitsFile}, path::AbstractString, args...; kwds...)
+    FitsIO(path, "w!") do io
+        write(io, args...; kwds...)
+        nothing
+    end
+end
 
 function write(::Type{FitsFile}, path::AbstractString, args...;
                overwrite::Bool=false, kwds...)
