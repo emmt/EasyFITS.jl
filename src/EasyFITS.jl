@@ -102,6 +102,29 @@ exists(path) = exists(stat(path))
 """
 
 ```julia
+EasyFITS.hduname(T) -> name, vers=1
+```
+
+yields the name and revision number of FITS Header Data Unit for storing data
+of type `T`.  Other packages are encouraged to extend this method with their
+types.
+
+""" hduname
+hduname(::T) where {T} = hduname(T)
+@noinline hduname(::Type{T}) where {T} =
+    error(string("method `EasyFITS.hduname` has not been specialized ",
+                 "for type `", T, "`"))
+
+# Make sure that a (name, vers) tuple is returned.
+fixhduname(x) = _fixhduname(hduname(x))
+_fixhduname(str::AbstractString) = _fixhduname(str, 1)
+_fixhduname(arg::Tuple{AbstractString,Integer}) = _fixhduname(arg[1], Int(arg[2]))
+_fixhduname(arg::Tuple{AbstractString,Int}) = _fixhduname(String(arg[1]), arg[2])
+_fixhduname(arg::Tuple{String,Int}) = arg
+
+"""
+
+```julia
 FitsIO(path, mode="r") -> io
 ```
 
