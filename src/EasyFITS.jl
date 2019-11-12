@@ -653,8 +653,7 @@ Examples:
 
 ```julia
 using EasyFITS
-A = readfits("image.fits")         # load the first HDU
-A = read(FitsImage, "image.fits")  # preferred method
+A = read(FitsImage, "image.fits")  # load the first HDU
 A[2,3]                             # get value of data at indices (2,3)
 A["BITPIX"]                        # get FITS bits per pixel
 A.BITPIX                           # idem
