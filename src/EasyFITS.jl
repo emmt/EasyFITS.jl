@@ -246,7 +246,7 @@ returns `false` for all `i ∈ I`.
 For instance:
 
 ```julia
-i = find(hdu -> read(String,hdu,"EXTNAME","") == "CALIBRATION", io)
+i = find(hdu -> get(String,hdu,"EXTNAME","") == "CALIBRATION", io)
 if i === nothing
     # not found
     ...
