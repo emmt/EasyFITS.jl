@@ -67,7 +67,7 @@ end
 
 
 hduname(obj::Union{FitsHDU,FitsIO}) =
-    read(String, obj, "HDUNAME", nothing)
+    get(String, obj, "HDUNAME", nothing)
 
 @testset "Low-level" begin
     FitsIO(path) do io
@@ -83,19 +83,19 @@ hduname(obj::Union{FitsHDU,FitsIO}) =
         @test findnext(hdu -> hduname(hdu) == "HDU-ONE", io, 2) === nothing
         @test findprev(hdu -> hduname(hdu) == "HDU-ONE", io, 2) === 1
         hdu = io[1]
-        @test read(Int,     hdu, "GA") == 42
-        @test read(String,  hdu, "BU") == "Shadok"
-        @test read(Float64, hdu, "ZO") ≈ 3.1415
-        @test read(Bool,    hdu, "MEU") == true
+        @test get(Int,     hdu, "GA") == 42
+        @test get(String,  hdu, "BU") == "Shadok"
+        @test get(Float64, hdu, "ZO") ≈ 3.1415
+        @test get(Bool,    hdu, "MEU") == true
         dat = read(hdu)
         @test eltype(dat) == eltype(dat1)
         @test size(dat) == size(dat1)
         @test samevalues(dat, dat1)
         hdu = io[2]
-        @test read(Int,     hdu, "GA") == -42
-        @test read(String,  hdu, "BU") == "Gibi"
-        @test read(Float64, hdu, "ZO") ≈ sqrt(2)
-        @test read(Bool,    hdu, "MEU") == false
+        @test get(Int,     hdu, "GA") == -42
+        @test get(String,  hdu, "BU") == "Gibi"
+        @test get(Float64, hdu, "ZO") ≈ sqrt(2)
+        @test get(Bool,    hdu, "MEU") == false
         dat = read(hdu)
         @test eltype(dat) == eltype(dat2)
         @test size(dat) == size(dat2)

@@ -99,3 +99,9 @@
            readfits(FitsImage, path, args...; kwds...))
 @deprecate(readfits(T::Type{<:Array}, path::AbstractString, args...; kwds...),
            FitsIO(path, "r") do io; read(T, io, args...; kwds...); end)
+@deprecate(read(T::Type{<:KeywordValues}, obj::Union{FitsIO,FitsHDU}, key::AbstractString, def),
+           get(T, obj, key, def))
+@deprecate(read(T::Type{<:KeywordValues}, obj::Union{FitsIO,FitsHDU}, key::AbstractString),
+            get(T, obj, key))
+@deprecate(read(T::Type{<:KeywordValues}, obj::Union{FitsIO,FitsHDU}, keys::Tuple{Vararg{AbstractString}}, def),
+           get(T, obj, keys, def))

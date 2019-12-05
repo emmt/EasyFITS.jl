@@ -466,43 +466,56 @@ Base.sizeof(A::FitsImage) = sizeof(get(Array, A))
 """
 
 ```julia
-get(T, obj, key) -> val::T
+get([T,] obj, key[, def])
 ```
 
-yields the value of the FITS keyword `key` in object `obj` converted to type
-`T`.  Specify `T = FitsComment` to retrieve the comment associated with a FITS
-keyword.  An error is thrown if keyword is not found or if its value cannot be
-converted to `T`.
+yields the value of the FITS keyword `key` in object `obj`.  Argument `T` may
+be used to specify the type of the result (i.e. `Int`, `Bool`, `Float64` or
+`String`) or `FitsComment` to retrieve the comment associated with the FITS
+keyword `key`.  Argument `def` may be used to specify the value to return when
+the keyword is not found (`def` is not converted to type `T` if this argument
+is specified).  A `KeyError` exception is thrown if the keyword is not found
+and no default value `def` is specifed.  An error is thrown if the keyword is
+found but its value cannot be converted to `T` if it is specifed.
+
+Multiple keywords can be specified if `obj` is a FITS HDU:
 
 ```julia
-get(T, obj, key, def)
+get(T, obj, keys, def)
 ```
 
-yields the value of the FITS keyword `key` in object `obj` converted to type
-`T` if found and `def` otherwise.  An error is thrown if keyword `key` is found
-but its value cannot be converted to `T`.
+yields the value of the first FITS keyword out of `keys` found in object `obj`
+with type `T` or `def` if none of the keywords is found.  Argument `keys` can
+be a single keyword or a tuple of keywords.  An `ErrorException` is thrown if
+the value of the first matching keyword cannot be converted to type `T`.
 
-The syntax `get(T,obj)` is alos extended to retrieve various things from object
+The syntax `get(T,obj)` is also extended to retrieve various things from object
 `obj` of type `FitsHeader`, `FitsHDU` or `FitsImage`.  Examples:
 
 ```julia
-get(Array, obj)            -> arr # get array associated a `FitsImage`
+get(Array, obj)            -> arr # get array associated to a `FitsImage`
 get(FitsHeader, obj)       -> hdr # get FITS header of object `obj`
 get(FitsComment, obj, key) -> str # yields comment for FITS keyword `key` in object `obj`
 ```
 
 """
-Base.get(obj::Annotated, key::AbstractString, def) = begin
+get(obj::Annotated, key::AbstractString, def) = begin
     hdr = get(FITSHeader, obj)
     return (haskey(hdr, key) ? getindex(hdr, key) : def)
 end
 
-Base.get(::Type{FitsComment}, obj::Annotated, key::AbstractString, def) = begin
+get(obj::Annotated, key::AbstractString) = begin
+    hdr = get(FITSHeader, obj)
+    haskey(hdr, key) || missing_keyword(key)
+    return getindex(hdr, key)
+end
+
+get(::Type{FitsComment}, obj::Annotated, key::AbstractString, def) = begin
     hdr = get(FITSHeader, obj)
     return (haskey(hdr, key) ? FITSIO.get_comment(hdr, key) : def)
 end
 
-Base.get(::Type{FitsComment}, obj::Annotated, key::AbstractString) = begin
+get(::Type{FitsComment}, obj::Annotated, key::AbstractString) = begin
     hdr = get(FITSHeader, obj)
     haskey(hdr, key) || missing_keyword(key)
     return get_comment(hdr, key)
@@ -510,20 +523,61 @@ end
 
 for S in (AbstractFloat, Integer, AbstractString, Bool)
     @eval begin
-        function Base.get(::Type{T}, obj::Annotated,
+        function get(::Type{T}, obj::Annotated,
                           key::AbstractString, def) where {T<:$S}
             hdr = get(FITSHeader, obj)
             return (haskey(hdr, key) ?
                     checkvalue(T, $S, getindex(hdr, key), key) : def)
         end
 
-        function Base.get(::Type{T}, obj::Annotated,
+        function get(::Type{T}, obj::Annotated,
                           key::AbstractString) where {T<:$S}
             hdr = get(FITSHeader, obj)
             haskey(hdr, key) || missing_keyword(key)
             return checkvalue(T, $S, getindex(hdr, key), key)
         end
     end
+end
+
+function get(::Type{T}, obj::Union{FitsIO,FitsHDU},
+             key::AbstractString, def) where {T<:KeywordValues}
+    return get(T, obj, (key,), def)
+end
+
+function get(::Type{T}, obj::Union{FitsIO,FitsHDU},
+             key::AbstractString) :: T where {T<:KeywordValues}
+    value = get(T, obj, key, Missing())
+    isa(value, T) || missing_keyword(key)
+    return value
+end
+
+function get(::Type{T}, obj::Union{FitsIO,FitsHDU},
+             keys::Tuple{Vararg{AbstractString}},
+             def) where {T<:KeywordValues}
+    # FIXME: This is a modified version of `FITSIO.fits_try_read_keys`.
+    file = getfile(obj)
+    status = Ref{Cint}()
+    value = Vector{UInt8}(undef, 71)
+    for key in keys
+        status[] = 0
+        ccall((:ffgkey, libcfitsio), Cint,
+              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+              file.ptr, key, value, C_NULL, status)
+
+        # If the key is found, return it. If there was some other error
+        # besides key not found, throw an error.
+        if status[] == 0
+            value = FITSIO.try_parse_hdrval(T, unsafe_string(pointer(value)))
+            if isa(value, T)
+                return value
+            end
+            error(string("value of FITS keyword \"", key,
+                         "\" cannot be converted to type `", T, "`"))
+        elseif status[] != 202
+            error(FITSIO.fits_get_errstatus(status[1]))
+        end
+    end
+    return def
 end
 
 #
@@ -533,18 +587,16 @@ end
 
 @inline @propagate_inbounds getindex(A::FitsImage, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds r = getindex(get(Array, A), i)
-    return r
+    @inbounds getindex(get(Array, A), i)
 end
 
 @inline @propagate_inbounds setindex!(A::FitsImage, x, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds r = setindex!(get(Array, A), x, i)
-    return r
+    @inbounds setindex!(get(Array, A), x, i)
 end
 
-@inline Base.checkbounds(A::FitsImage, i::Int) =
-    1 ≤ i ≤ length(A) || throw_boundserror(A, i)
+@inline Base.checkbounds(::Type{Bool}, A::FitsImage, i::Int) =
+    1 ≤ i ≤ length(A)
 
 #
 # Override `getindex` and `setindex!` to implement `obj[key]`, `obj[key] = val`
@@ -771,73 +823,6 @@ write(io::FitsIO, args...) =
     for arg in args
         write(io, arg)
     end
-
-#
-# To retrieve keywords from other types of objects, override the `read`
-# method instead of the `get` method.
-#
-
-"""
-
-```julia
-read(T, obj, key)
-```
-
-yields the value of FITS keyword `key` in object `obj` with type `T`. If the
-keyword is not found, a `KeyError` exception is thrown.  If the keyword is
-found but its value cannot be converted to type `T`, an `ErrorException` is
-thrown.
-
-```julia
-read(T, obj, keys, def)
-```
-
-yields the value of the first FITS keyword out of `keys` found in object `obj`
-with type `T` or `def` if none of the keywords is found.  Argument `keys` can
-be a single keyword or a tuple of keywords.  An `ErrorException` is thrown if
-the value of the first matching keyword cannot be converted to type `T`.
-
-"""
-function read(::Type{T}, obj::Union{FitsIO,FitsHDU},
-              key::AbstractString, def) where {T<:KeywordValues}
-    return read(T, obj, (key,), def)
-end
-
-function read(::Type{T}, obj::Union{FitsIO,FitsHDU},
-              key::AbstractString) :: T where {T<:KeywordValues}
-    value = read(T, obj, key, Missing())
-    isa(value, T) || missing_keyword(key)
-    return value
-end
-
-function read(::Type{T}, obj::Union{FitsIO,FitsHDU},
-              keys::Tuple{Vararg{AbstractString}},
-              def::D) :: Union{T,D} where {T<:KeywordValues,D}
-    # FIXME: This is a modified version of `FITSIO.fits_try_read_keys`.
-    file = getfile(obj)
-    status = Ref{Cint}()
-    value = Vector{UInt8}(undef, 71)
-    for key in keys
-        status[] = 0
-        ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
-              file.ptr, key, value, C_NULL, status)
-
-        # If the key is found, return it. If there was some other error
-        # besides key not found, throw an error.
-        if status[] == 0
-            value = FITSIO.try_parse_hdrval(T, unsafe_string(pointer(value)))
-            if isa(value, T)
-                return value
-            end
-            error(string("value of FITS keyword \"", key,
-                         "\" cannot be converted to type `", T, "`"))
-        elseif status[] != 202
-            error(FITSIO.fits_get_errstatus(status[1]))
-        end
-    end
-    return def
-end
 
 """
 
