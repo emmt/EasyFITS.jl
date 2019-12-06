@@ -654,9 +654,10 @@ function Base.tryparse(::Type{String}, val::FitsUnparsedValue)
     end
 
     # Replace pairs of quotes by a single quote and discard trailing spaces.
-    buf = IOBuffer(sizehint=sizeof(str))
+    buf = Vector{UInt8}(undef, length(str) + 1)
     spaces = 0  # number of unwritten trailing spaces
     esc = false # previous character was a quote?
+    n = 0
     for k in (i+1):(j-1)
         c = str[k]
         if esc
@@ -674,15 +675,18 @@ function Base.tryparse(::Type{String}, val::FitsUnparsedValue)
             # Write any unwritten spaces and then the new non-space character.
             while spaces > 0
                 spaces -= 1
-                write(buf, ' ')
+                n += 1
+                buf[n] = ' '
             end
-            write(buf, c)
+            n += 1
+            buf[n] = c
         end
     end
     if esc
         return nothing
     end
-    return String(take!(buf))
+    buf[n+1] = 0
+    return unsafe_string(pointer(buf))
 end
 
 
