@@ -70,6 +70,10 @@ hduname(obj::Union{FitsHDU,FitsIO}) =
     get(String, obj, "HDUNAME", nothing)
 
 @testset "Low-level" begin
+    str = "\'\'\' hello \'\'you   \'"
+    @test tryparse(String, EasyFITS.FitsUnparsedValue(str)) == "\' hello \'you"
+    @test tryparse(String, EasyFITS.FitsUnparsedValue(str[2:end])) === nothing
+    @test tryparse(String, EasyFITS.FitsUnparsedValue(str[1:end-1])) === nothing
     FitsIO(path) do io
         @test find(hdu -> hduname(hdu) == "HDU-MISSING", io) === nothing
         @test findfirst(hdu -> hduname(hdu) == "HDU-MISSING", io) === nothing
