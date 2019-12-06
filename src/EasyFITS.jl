@@ -80,6 +80,11 @@ struct FitsComment end
 # Singleton type for marking a missing keyword.
 struct Missing end
 
+# This decoration is used to specialize `tryparse` for FITS keyword values.
+struct FitsUnparsedValue
+    str::String
+end
+
 # Annotated objects have a FITS header and implements indexation by keywords,
 # they can also be directly read from a FITS file.
 const Annotated = Union{FitsImage,FitsHeader}
@@ -463,6 +468,47 @@ Base.sizeof(A::FitsImage) = sizeof(get(Array, A))
 # FIXME: copyto!, convert, unsafe_convert, pointer, etc.
 
 
+# Maximum size of the value field including the final '\0'.
+const VALUE_SIZE = 72
+
+"""
+```julia
+findkeys(obj, keys [, buf])
+```
+
+finds a FITS card in `obj` with one of the keywords in `keys` and returns a
+string with the unparsed value of the keyword if found and `nothing` otherwise.
+
+Optional argument `buf` is a small scratch buffer of bytes (`UInt8`) used to
+temporarily store the unparsed value before it is converted into a Julia
+string, its size is augmented if it is smaller than `VALUE_SIZE`.
+
+"""
+function findkeys(obj::Union{FitsIO,FitsHDU},
+                  keys::NTuple{N,AbstractString},
+                  buf::Vector{UInt8}=Vector{UInt8}(undef, VALUE_SIZE)) where {N}
+    file = getfile(obj)
+    status = Ref{Cint}()
+    length(buf) ≥ VALUE_SIZE || resize!(buf, VALUE_SIZE)
+    for key in keys
+        status[] = 0
+        ccall((:ffgkey, libcfitsio), Cint,
+              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+              file.ptr, key, buf, C_NULL, status)
+
+        # If the key is found, return it. If there was some other error
+        # besides key not found, throw an error.
+        if status[] == 0
+            return unsafe_string(pointer(buf))
+        elseif status[] != 202
+            error(FITSIO.fits_get_errstatus(status[1]))
+        end
+    end
+    return nothing
+end
+
+@doc @doc(trygetkeys) VALUE_SIZE
+
 """
 
 ```julia
@@ -477,17 +523,6 @@ the keyword is not found (`def` is not converted to type `T` if this argument
 is specified).  A `KeyError` exception is thrown if the keyword is not found
 and no default value `def` is specifed.  An error is thrown if the keyword is
 found but its value cannot be converted to `T` if it is specifed.
-
-Multiple keywords can be specified if `obj` is a FITS HDU:
-
-```julia
-get(T, obj, keys, def)
-```
-
-yields the value of the first FITS keyword out of `keys` found in object `obj`
-with type `T` or `def` if none of the keywords is found.  Argument `keys` can
-be a single keyword or a tuple of keywords.  An `ErrorException` is thrown if
-the value of the first matching keyword cannot be converted to type `T`.
 
 The syntax `get(T,obj)` is also extended to retrieve various things from object
 `obj` of type `FitsHeader`, `FitsHDU` or `FitsImage`.  Examples:
@@ -539,46 +574,129 @@ for S in (AbstractFloat, Integer, AbstractString, Bool)
     end
 end
 
-function get(::Type{T}, obj::Union{FitsIO,FitsHDU},
-             key::AbstractString, def) where {T<:KeywordValues}
-    return get(T, obj, (key,), def)
-end
-
-function get(::Type{T}, obj::Union{FitsIO,FitsHDU},
-             key::AbstractString) :: T where {T<:KeywordValues}
-    value = get(T, obj, key, Missing())
-    isa(value, T) || missing_keyword(key)
-    return value
-end
-
-function get(::Type{T}, obj::Union{FitsIO,FitsHDU},
-             keys::Tuple{Vararg{AbstractString}},
-             def) where {T<:KeywordValues}
-    # FIXME: This is a modified version of `FITSIO.fits_try_read_keys`.
-    file = getfile(obj)
-    status = Ref{Cint}()
-    value = Vector{UInt8}(undef, 71)
-    for key in keys
-        status[] = 0
-        ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
-              file.ptr, key, value, C_NULL, status)
-
-        # If the key is found, return it. If there was some other error
-        # besides key not found, throw an error.
-        if status[] == 0
-            value = FITSIO.try_parse_hdrval(T, unsafe_string(pointer(value)))
-            if isa(value, T)
-                return value
-            end
-            error(string("value of FITS keyword \"", key,
-                         "\" cannot be converted to type `", T, "`"))
-        elseif status[] != 202
-            error(FITSIO.fits_get_errstatus(status[1]))
+function get(::Type{T}, obj::Union{FitsIO,FitsHDU}, key::AbstractString,
+             def = Missing()) where {T<:KeywordValues}
+    raw = findkeys(obj, (key,))
+    if raw === nothing
+        def === Missing() && missing_keyword(key)
+        return def
+    end
+    if iscomment(key)
+        if T == String
+            return raw
+        end
+    else
+        val = tryparse(T, FitsUnparsedValue(raw))
+        if isa(val, T)
+            return val
         end
     end
-    return def
+    failure("value of FITS keyword \"", key,
+            "\" cannot be converted to type `", T, "`")
 end
+
+function get(obj::Union{FitsIO,FitsHDU}, key::AbstractString, def = Missing())
+    raw = findkeys(obj, (key,))
+    if raw === nothing
+        def === Missing() && missing_keyword(key)
+        return def
+    end
+    if iscomment(key)
+        return raw
+    end
+    c = first(raw)
+    if c == 'T' || c == 'F'
+        if length(raw) == 1
+            return (c == 'T')
+        end
+    elseif c == '\''
+        sval = tryparse(String, FitsUnparsedValue(raw))
+        if isa(sval, String)
+            return sval
+        end
+    else
+        ival = tryparse(Int, FitsUnparsedValue(raw))
+        if isa(ival, Int)
+            return ival
+        end
+        rval = tryparse(Float64, FitsUnparsedValue(raw))
+        if isa(rval, Float64)
+            return rval
+        end
+    end
+    failure("unknown type of value for FITS keyword \"", key, "\"")
+end
+
+iscomment(key::AbstractString) =
+    (key == "HISTORY" || key == "COMMENT")
+
+Base.tryparse(::Type{T}, val::FitsUnparsedValue) where {T<:Real} =
+    tryparse(T, val.str)
+
+function Base.tryparse(::Type{Bool}, val::FitsUnparsedValue)
+    if length(val.str) == 1
+        if val.str[1] == 'T'
+            return true
+        elseif val.str[1] == 'F'
+            return false
+        end
+    end
+    return nothing
+end
+
+function Base.tryparse(::Type{String}, val::FitsUnparsedValue)
+    # Check that the string in enclosed by single quotes.
+    str = val.str
+    i = firstindex(str)
+    j = lastindex(str)
+    if length(str) < 2 || str[i] != '\'' || str[j] != '\''
+        return nothing
+    end
+
+    # Replace pairs of quotes by a single quote and discard trailing spaces.
+    buf = IOBuffer(sizehint=sizeof(str))
+    spaces = 0  # number of unwritten trailing spaces
+    esc = false # previous character was a quote?
+    for k in (i+1):(j-1)
+        c = str[k]
+        if esc
+            if c != '\''
+                return nothing
+            end
+            esc = false
+        elseif c == '\''
+            esc = true
+            continue
+        end
+        if c == ' ' # FIXME: use `isspace`?
+            spaces += 1
+        else
+            # Write any unwritten spaces and then the new non-space character.
+            while spaces > 0
+                spaces -= 1
+                write(buf, ' ')
+            end
+            write(buf, c)
+        end
+    end
+    if esc
+        return nothing
+    end
+    return String(take!(buf))
+end
+
+
+"""
+
+```julia
+failure(args...)
+```
+
+throws an `ErrorException` with an error message built from the given
+arguments.
+
+"""
+@noinline failure(args...) = error(string(args...))
 
 #
 # Override `getindex` and `setindex!` for efficient indexation by array
