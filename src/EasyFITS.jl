@@ -301,6 +301,18 @@ Base.lastindex(obj::FitsImageHDU) = lastindex(get(HDU, obj))
 
 """
 
+```julia
+iprimary(hdu)
+```
+
+yields whetehr `hdu` is a primary FIT header data units (HDU).
+
+"""
+isprimary(obj::FitsHDU) = isprimary(get(HDU, obj))
+isprimary(obj::HDU) = (getfield(obj, :ext) == 1)
+
+"""
+
 An object of type `FitsHeader` stores the header part of a FITS *Header Data
 Unit* (HDU).  There are several ways to build an instance of `FitsHeader`.
 
