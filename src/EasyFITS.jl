@@ -8,7 +8,7 @@
 # This file if part of EasyFITS software (https://github.com/emmt/EasyFITS.jl)
 # licensed under the MIT license.
 #
-# Copyright (C) 2018-2019, Éric Thiébaut.
+# Copyright (C) 2018-2020, Éric Thiébaut.
 #
 
 module EasyFITS
@@ -23,22 +23,12 @@ export
     FitsImage,
     FitsImageHDU,
     FitsTableHDU,
-    createfits!,     # FIXME: deprecated
-    createfits,      # FIXME: deprecated
     exists,
-    getfitskey,      # FIXME: deprecated
-    openfits,        # FIXME: deprecated
-    readfits,        # FIXME: deprecated
-    setfitskey!,     # FIXME: deprecated
-    tryreadfitskey,  # FIXME: deprecated
-    tryreadfitskeys, # FIXME: deprecated
-    write!,
-    writefits!,      # FIXME: deprecated
-    writefits        # FIXME: deprecated
+    write!
 
 using FITSIO
-using FITSIO.Libcfitsio
-using FITSIO.Libcfitsio: libcfitsio
+using CFITSIO
+using CFITSIO: libcfitsio
 
 using Base: getfield, elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
 import Base: get, getindex, setindex!, keys, haskey, getkey,
@@ -621,7 +611,7 @@ function get(obj::Union{FitsIO,FitsHDU}, key::AbstractString, def = Missing())
         if length(raw) == 1
             return (c == 'T')
         end
-    elseif c == '\''
+    elseif c == Char(39) # single quote, using '\'' break Emacs fontify
         sval = tryparse(String, FitsUnparsedValue(raw))
         if isa(sval, String)
             return sval
@@ -806,11 +796,9 @@ end
 
 """
 
-FIXME:
+FIXME: update doc.
 
-```julia
-read(T::Union{FitsImage,FitsHeader}, src, ext=1) -> A
-```
+    read(T::Union{FitsImage,FitsHeader}, src, ext=1) -> A
 
 read an object of type `T` from FITS extension `ext` in source `src`.  Argument
 `src` can be the name of a FITS file or an object of type `FitsIO` or
@@ -819,8 +807,8 @@ read an object of type `T` from FITS extension `ext` in source `src`.  Argument
 If `T` is `FitsImage`, the returned value is a pseudo-array `A` with the
 contents of the FITS extension `ext` in `src`.
 
-The optional HDU number, the first one by
-default, must correspond to a FITS *Image* extension.
+The optional HDU number, the first one by default, must correspond to a FITS
+*Image* extension.
 
 The result is indexable.  Using string index yields the value of the
 corresponding FITS keyword in the header part of the HDU.  Any other indices
@@ -945,10 +933,12 @@ end
 
 write(io::FitsIO, arr::AbstractArray{<:Real}; kwds...) =
     write(io, FitsHeader(; kwds...), arr)
-
-write(io::FitsIO, arg::Tuple{FitsHeader,AbstractArray{<:Real}}) = write(io, arg...)
-write(io::FitsIO, arg::Tuple{AbstractArray{<:Real},FitsHeader}) = write(io, arg...)
-write(io::FitsIO, arr::AbstractArray{<:Real}, hdr::FitsHeader) = write(io, hdr, arr)
+write(io::FitsIO, arg::Tuple{FitsHeader,AbstractArray{<:Real}}) =
+    write(io, arg...)
+write(io::FitsIO, arg::Tuple{AbstractArray{<:Real},FitsHeader}) =
+    write(io, arg...)
+write(io::FitsIO, arr::AbstractArray{<:Real}, hdr::FitsHeader) =
+    write(io, hdr, arr)
 write(io::FitsIO, hdr::FitsHeader, arr::AbstractArray{<:Real}) =
     write(get(FITS, io), arr, header = get(FITSHeader, hdr))
 write(io::FitsIO, obj::FitsImage) =
@@ -1009,7 +999,5 @@ file_already_exists(path::AbstractString) =
 
 file_already_exists(path::AbstractString, usage::AbstractString) =
     string(file_already_exists(path), ", ", usage)
-
-include("deprecate.jl")
 
 end # module
