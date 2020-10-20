@@ -392,10 +392,16 @@ FitsBitpix(::Type{T}) where {T} = FitsBitpix(bitpix_from_type(T))
 FitsBitpix(A::AbstractArray) = FitsBitpix(typeof(A))
 FitsBitpix(::Type{<:AbstractArray{T}}) where {T} = FitsBitpix(T)
 FitsBitpix(hdr::Union{<:FitsHeader,<:FITSHeader}) = FitsBitpix(hdr["BITPIX"])
-FitsBitpix(hdu::Union{<:FitsHDU,<:HDU}) =
+FitsBitpix(hdu::Union{FitsImageHDU,ImageHDU}) =
     FitsBitpix(fits_get_img_equivtype(getfile(hdu)))
 
 Base.eltype(::FitsBitpix{N}) where {N} = type_from_bitpix(Val(Cint(N)))
+
+# FIXME: Base.eltype could also be extended to FITSHeader and ImageHDU.
+Base.eltype(hdr::FitsHeader) =
+    type_from_bitpix(Val(Cint(hdr["BITPIX"])))
+Base.eltype(hdu::FitsImageHDU) =
+    type_from_bitpix(Val(Cint(fits_get_img_equivtype(getfile(hdu)))))
 
 """
     FitsImage(arr, hdr)

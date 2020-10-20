@@ -115,6 +115,9 @@ hduname(obj::Union{FitsHDU,FitsIO}) =
         @test FitsBitpix(hdu) === FitsBitpix(dat1)
         @test FitsBitpix(io[2]) === FitsBitpix(dat2)
         @test FitsBitpix(io[3]) === FitsBitpix(img3)
+        @test eltype(hdu) === eltype(dat1)
+        @test eltype(io[2]) === eltype(dat2)
+        @test eltype(io[3]) === eltype(dat3)
         dat = read(hdu)
         @test eltype(dat) == eltype(dat1)
         @test size(dat) == size(dat1)
@@ -195,6 +198,7 @@ end
     @test H1.ZO  == H1["ZO"]
     @test H1.MEU == H1["MEU"]
     @test FitsBitpix(H1) === FitsBitpix(dat1)
+    @test eltype(H1) === eltype(dat1)
     H1["ZO"] = 15
     @test isa(H1["ZO"],  Int) && H1["ZO"] == 15
     @test H1.ZO  == H1["ZO"]
@@ -206,6 +210,7 @@ end
     H2 = read(FitsHeader, path, 2)
     @test isa(H2, FitsHeader)
     @test FitsBitpix(H2) === FitsBitpix(dat2)
+    @test eltype(H2) === eltype(dat2)
     # Read array data with contraints.
     A3 = read(FitsArray, path, 1)
     @test isa(A3, Array{eltype(dat1),ndims(dat1)})
