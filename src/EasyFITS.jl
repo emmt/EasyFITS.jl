@@ -34,6 +34,9 @@ using Base: getfield, elsize, tail, OneTo, throw_boundserror, @propagate_inbound
 import Base: get, getindex, setindex!, keys, haskey, getkey,
     read, write, open, close
 
+# Apply patches.
+include("patches.jl")
+
 #
 # Predefine all types.
 #
@@ -89,10 +92,7 @@ const KeywordValues = Union{Bool,Int,Float64,String}
 const Extension = Union{Integer,AbstractString}
 
 """
-
-```julia
-exists(path) -> boolean
-```
+    exists(path) -> boolean
 
 yields whether file `path` exists.  Argument can be a file name or an instance
 of `Base.Filesystem.StatStruct` as returned by the `stat` method.
@@ -102,16 +102,13 @@ exists(st::Base.Filesystem.StatStruct) = (st.nlink != 0)
 exists(path) = exists(stat(path))
 
 """
-
-```julia
-EasyFITS.hduname(T) -> name, vers=1
-```
+    EasyFITS.hduname(T) -> name, vers=1
 
 yields the name and revision number of FITS Header Data Unit for storing data
 of type `T`.  Other packages are encouraged to extend this method with their
 types.
 
-""" hduname
+"""
 hduname(::T) where {T} = hduname(T)
 @noinline hduname(::Type{T}) where {T} =
     error(string("method `EasyFITS.hduname` has not been specialized ",
@@ -125,10 +122,7 @@ _fixhduname(arg::Tuple{AbstractString,Int}) = _fixhduname(String(arg[1]), arg[2]
 _fixhduname(arg::Tuple{String,Int}) = arg
 
 """
-
-```julia
-FitsIO(path, mode="r") -> io
-```
+    FitsIO(path, mode="r") -> io
 
 opens of creates a FITS file whose name is `path` and returns an instance of
 `FitsIO` which is an opaque handle to a FITS file.  Argument `mode` can be:
@@ -146,17 +140,24 @@ opens of creates a FITS file whose name is `path` and returns an instance of
 
 The do-block syntax is supported to automatically close the FITS file:
 
-```julia
-FitsIO(filename, mode="r") do io
-    # use FITS handle io
-    ...
-end
-```
+    FitsIO(filename, mode="r") do io
+        # use FITS handle io
+        ...
+    end
+
+Call `close(io)` to close the FITS file associated with the `FitsIO` instance
+`io`.  This is automatically done, if needed, when the instance is garbage
+collected.
+
+Call `isopen(io)` to check whether the FITS file associated with the `FitsIO`
+instance `io` is open.
 
 An instance of `FitsIO` is a collection of *Header Data Units* (HDU) and
 implements indexation and iteration.  Assuming `io` is a `FitsIO` object, then:
 
 - `io[i]` yields the `i`-th HDU.
+
+- `length(io)` yields the number of HDUs.
 
 - `io[name]` or `io[name,vers]` yields the HDU whose `EXTNAME` (or `HDUNAME`)
   keyword is equal to `name` (a string) and, optionally, whose `EXTVER` (or
@@ -209,6 +210,7 @@ Base.convert(::Type{FitsIO}, obj::FITS) = FitsIO(obj)
 Base.convert(::Type{FITS}, obj::FitsIO) = get(FITS, obj)
 
 Base.close(io::FitsIO) = close(get(FITS, io))
+Base.isopen(io::FitsIO) = isopen(get(FITS, io))
 Base.length(io::FitsIO) = length(get(FITS, io))
 Base.getindex(io::FitsIO, args...) = FitsHDU(getindex(get(FITS, io), args...))
 Base.iterate(io::FitsIO, args...) = begin
@@ -229,10 +231,7 @@ Base.findprev(pred::Function, io::FitsIO, i::Integer) = findprev(pred, io, Int(i
 Base.findprev(pred::Function, io::FitsIO, i::Int=1) = find(pred, io, i:-1:1)
 
 """
-
-```julia
-find(pred, io, I=1:length(io))
-```
+    find(pred, io, I=1:length(io))
 
 yields the HDU first index `i ∈ I` of FITS instance `io` for which the
 predicate `pred(io[i])` returns `true`, or [`nothing`](@ref) if `pred(io[i])`
@@ -240,16 +239,14 @@ returns `false` for all `i ∈ I`.
 
 For instance:
 
-```julia
-i = find(hdu -> get(String,hdu,"EXTNAME","") == "CALIBRATION", io)
-if i === nothing
-    # not found
-    ...
-else
-    # found at index i
-    hdu = io[i]
-end
-```
+    i = find(hdu -> get(String,hdu,"EXTNAME","") == "CALIBRATION", io)
+    if i === nothing
+        # not found
+        ...
+    else
+        # found at index i
+        hdu = io[i]
+    end
 
 """
 function find(pred::Function, io::FitsIO,
@@ -290,12 +287,9 @@ Base.length(obj::FitsImageHDU) = length(get(HDU, obj))
 Base.lastindex(obj::FitsImageHDU) = lastindex(get(HDU, obj))
 
 """
+    isprimary(hdu)
 
-```julia
-iprimary(hdu)
-```
-
-yields whetehr `hdu` is a primary FIT header data units (HDU).
+yields whether `hdu` is a primary FIT header data units (HDU).
 
 """
 isprimary(obj::FitsHDU) = isprimary(get(HDU, obj))
@@ -306,30 +300,22 @@ isprimary(obj::HDU) = (getfield(obj, :ext) == 1)
 An object of type `FitsHeader` stores the header part of a FITS *Header Data
 Unit* (HDU).  There are several ways to build an instance of `FitsHeader`.
 
-```julia
-FitsHeader()
-```
+    FitsHeader()
 
 yields an empty instance of `FitsHeader`.
 
-```julia
-FitsHeader(io, ext=1)
-```
+    FitsHeader(io, ext=1)
 
 yields an instance of `FitsHeader` built over FITS header read from extension
 `ext` in FITS file `io`.
 
-```julia
-FitsHeader(; key1=val1, key2=val2, ...)
-```
+    FitsHeader(; key1=val1, key2=val2, ...)
 
 yields an instance of `FitsHeader` whose contents is set by keywords (values
 can be a tuple with a value and a comment).  This is can also be done by
 specifying key-value pairs:
 
-```julia
-FitsHeader("key1" => val1, "key2" => val2, ...)
-```
+    FitsHeader("key1" => val1, "key2" => val2, ...)
 
 To avoid ambiguities the two styles cannot be mixed.
 
@@ -346,9 +332,7 @@ interface over the existing `FITSIO.FITSHeader` would constitute a *type
 piracy*.  An instance of `FitsHeader` can be simply built over an object `hdr`
 of type `FITSIO.FITSHeader` by calling:
 
-```julia
-FitsHeader(hdr)
-```
+    FitsHeader(hdr)
 
 """ FitsHeader
 
@@ -390,10 +374,7 @@ of a FITS keyword is to be returned by the `get` method.
 """ FitsComment
 
 """
-
-```julia
-FitsImage(arr, hdr)
-```
+    FitsImage(arr, hdr)
 
 yields a FITS Image that behaves like a Julia array when indexed by integers of
 Cartesian indices and like a dictionary of FITS keywords when indexed by
@@ -402,23 +383,17 @@ specifies the keywords both are shared by the returned object.
 
 The initial contents of the header may be specified by keywords.  For instance:
 
-```julia
-FitsImage(arr; KEY1 = val1, KEY2 = (val2, com2), ...)
-```
+    FitsImage(arr; KEY1 = val1, KEY2 = (val2, com2), ...)
 
 The embedded array may be creted by the constructor:
 
-```julia
-FitsImage{T}(init, dims...; kwds...)
-```
+    FitsImage{T}(init, dims...; kwds...)
 
 yields a FITS Image with an empty header and array-like data of dimensions
 `dims` and with elements of type `T` initially set by `init`.  Specifying the
 number of dimensions is also supported:
 
-```julia
-FitsImage{T,N}(init, dims...; kwds...)
-```
+    FitsImage{T,N}(init, dims...; kwds...)
 
 """ FitsImage
 
@@ -474,9 +449,7 @@ Base.sizeof(A::FitsImage) = sizeof(get(Array, A))
 const VALUE_SIZE = 72
 
 """
-```julia
-findkeys(obj, keys [, buf])
-```
+    findkeys(obj, keys [, buf])
 
 finds a FITS card in `obj` with one of the keywords in `keys` and returns a
 string with the unparsed value of the keyword if found and `nothing` otherwise.
@@ -512,10 +485,7 @@ end
 @doc @doc(trygetkeys) VALUE_SIZE
 
 """
-
-```julia
-get([T,] obj, key[, def])
-```
+    get([T,] obj, key[, def])
 
 yields the value of the FITS keyword `key` in object `obj`.  Argument `T` may
 be used to specify the type of the result (i.e. `Int`, `Bool`, `Float64` or
@@ -693,10 +663,7 @@ end
 
 
 """
-
-```julia
-failure(args...)
-```
+    failure(args...)
 
 throws an `ErrorException` with an error message built from the given
 arguments.
@@ -762,10 +729,7 @@ setindex!(obj::Annotated, val::Tuple, key::AbstractString) =
     setindex!(obj, val, propertyname(T, sym))
 
 """
-
-```julia
-EasyFITS.propertyname(T, sym)
-```
+    EasyFITS.propertyname(T, sym)
 
 converts symbol `sym` to a suitable key for object of type `T` throwing an
 error if this conversion is not supported.
@@ -798,11 +762,11 @@ end
 
 FIXME: update doc.
 
-    read(T::Union{FitsImage,FitsHeader}, src, ext=1) -> A
+    read(::Type{T}, src, ext=1) -> A
 
-read an object of type `T` from FITS extension `ext` in source `src`.  Argument
-`src` can be the name of a FITS file or an object of type `FitsIO` or
-`FitsHDU`.
+read an object of type `T::Union{FitsImage,FitsHeader,FitsArray}` from FITS
+extension `ext` in source `src` which can be the name of a FITS file or an
+instance of `FitsIO` or `FitsHDU`.
 
 If `T` is `FitsImage`, the returned value is a pseudo-array `A` with the
 contents of the FITS extension `ext` in `src`.
@@ -886,28 +850,21 @@ read(::Type{FitsArray{T,N}}, hdu::FitsHDU, args...) where {T,N} =
     read(Array{T,N}, hdu, args...)
 
 """
-
-```julia
-write(FitsFile, path, args...; overwrite=false, kwds...)
-```
+    write(FitsFile, path, args...; overwrite=false, kwds...)
 
 creates a new FITS file `path` with contents built from the provided arguments
 `args...` and keywords `kwds...`.  Unless `overwrite` is `true`, the file must
 not already exist.  Instead of setting the `overwrite` keyword, simply call:
 
-```julia
-write!(FitsFile, path, args...; kwds...)
-```
+    write!(FitsFile, path, args...; kwds...)
 
 to silently overwrites file `path` if it already exits.
 
 Typical examples are:
 
-```julia
-write(FitsFile, path, arr; KEY1 = val1, KEY2 = (val2, com2), ...)
-write(FitsFile, path, hdr, arr)
-write(FitsFile, path, (hdr1, arr1), arr2, (hdr3, arr3), ...)
-```
+    write(FitsFile, path, arr; KEY1 = val1, KEY2 = (val2, com2), ...)
+    write(FitsFile, path, hdr, arr)
+    write(FitsFile, path, (hdr1, arr1), arr2, (hdr3, arr3), ...)
 
 with `arr*` arrays, `KEY*` keywords, `val*` keyword values, `com*` keyword
 comments and `hdr*` objects of type `FitsHeader`.  In the last example, a FITS
@@ -931,6 +888,14 @@ function write(::Type{FitsFile}, path::AbstractString, args...;
     nothing
 end
 
+"""
+    write(io::FitsIO, args...; kwds...)
+
+writes data `args...` in FITS output `io` with keywords `kwds...`.  This method
+can be specialized by foreign packages based on the types of the arguments
+`args...`.
+
+"""
 write(io::FitsIO, arr::AbstractArray{<:Real}; kwds...) =
     write(io, FitsHeader(; kwds...), arr)
 write(io::FitsIO, arg::Tuple{FitsHeader,AbstractArray{<:Real}}) =
@@ -949,18 +914,13 @@ write(io::FitsIO, args...) =
     end
 
 """
+    EasyFITS.getfile(obj) -> file
 
-```julia
-EasyFITS.getfile(obj) -> file
-```
-
-yeilds the FITS file associated with object `obj` if it is open; otherwise
+yields the FITS file associated with object `obj` if it is open; otherwise
 throws an error.  Object `obj` can be an instance of `FitsIO`, `FitsHDU`,
 `FITSIO.FITS`, `FITSIO.HDU` or `FITSIO.FITSFile`.
 
-```julia
-EasyFITS.getfile(obj, ext) -> file
-```
+    EasyFITS.getfile(obj, ext) -> file
 
 throws an error if the FITS file associated with `obj` is not open; otherwise
 moves to HDU number `ext` and returns the FITS file.  Object `obj` can be an
@@ -989,7 +949,6 @@ getfile(io::FitsIO) = getfile(get(FITS, io))
 getfile(io::FitsIO, ext::Integer) = getfile(get(FITS, io), ext)
 
 getfile(hdu::FitsHDU) = getfile(get(HDU, hdu))
-
 
 @noinline throw_file_already_exists(args::AbstractString...) =
     error(file_already_exists(args...))
