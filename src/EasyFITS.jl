@@ -212,8 +212,6 @@ Base.get(::Type{FitsIO}, obj::FitsIO) = obj
 Base.convert(::Type{FitsIO}, obj::FITS) = FitsIO(obj)
 Base.convert(::Type{FITS}, obj::FitsIO) = get(FITS, obj)
 
-Base.close(io::FitsIO) = close(get(FITS, io))
-Base.isopen(io::FitsIO) = isopen(get(FITS, io))
 Base.length(io::FitsIO) = length(get(FITS, io))
 Base.getindex(io::FitsIO, args...) = FitsHDU(getindex(get(FITS, io), args...))
 Base.iterate(io::FitsIO, args...) = begin
@@ -779,33 +777,31 @@ end
     error("bad type for FITS keyword \"$key\"")
 
 """
-
-FIXME: update doc.
-
     read(::Type{T}, src, ext=1) -> A
 
-read an object of type `T::Union{FitsImage,FitsHeader,FitsArray}` from FITS
+read an object of type `T<:Union{FitsImage,FitsHeader,FitsArray}` from FITS
 extension `ext` in source `src` which can be the name of a FITS file or an
 instance of `FitsIO` or `FitsHDU`.
 
-If `T` is `FitsImage`, the returned value is a pseudo-array `A` with the
-contents of the FITS extension `ext` in `src`.
+If `src` is an instance of `FitsIO` or the name of a FITS file, optional
+argument `ext` is to specify the number or the name of the HDU number to read
+(the first one by default).
 
-The optional HDU number, the first one by default, must correspond to a FITS
-*Image* extension.
+Argument `T` specifies the type of the result.  Use `T<:Array` or
+`T<:FitsArray` to retrieve the data part of the FITS HDU as a regular array.
+Use `T<:FitsImage` to get a pseudo-array combining the header and data parts of
+the FITS HDU.  Finally, use `T<:FitsHeader` to only retrieve the header part.
 
-The result is indexable.  Using string index yields the value of the
-corresponding FITS keyword in the header part of the HDU.  Any other indices
-are used to access the contents of data part of the HDU (as a regular Julia
-array).
+For `T<:Array` `T<:FitsArray`, or `T<:FitsImage`, the element type and number
+of dimensions of the result can be specified, e.g. with `FitsImage{Float32,2}`
 
-Argument `T` can be used to specify the type of the result. `T` can be `Array`
-or `Array{E}` or `Array{E,N}` to retrieve only the data part of the FITS HDU as
-a regular array with, if these parameters are specified, element type `E` and
-`N` dimensions.  `T` can also be `FitsImage` (the default if `T` is not
-specified) or `FitsImage{E}` or `FitsImage{E,N}` to retrieve a pseudo-array,
-possibly converted to suitable element type.  Finally, `T` can be `FitsHeader`
-to only retrieve the header part.
+To avoid *type-piracy*, `T<:FitsArray` must be used instead of `T<:Array` when
+`src` is a file name.
+
+The result is indexable.  For `T<:FitsImage` and `T<:FitsHeader`, using a
+string index yields the value of the corresponding FITS keyword in the header
+part of the HDU.  Any other indices are used to access the contents of data
+part of the HDU (as a regular Julia array).
 
 Examples:
 
@@ -868,6 +864,11 @@ read(::Type{FitsArray{T}}, hdu::FitsHDU, args...) where {T} =
     read(Array{T}, hdu, args...)
 read(::Type{FitsArray{T,N}}, hdu::FitsHDU, args...) where {T,N} =
     read(Array{T,N}, hdu, args...)
+
+function Base.read!(hdu::FitsHDU, dst, args...)
+    read!(get(HDU, hdu), dst, args...)
+    return dst
+end
 
 """
     write(FitsFile, path, args...; overwrite=false, kwds...)
@@ -959,6 +960,11 @@ function getfile(file::FITSFile, ext::Integer)
     fits_movabs_hdu(file, ext)
     return file
 end
+
+get(::Type{FITSFile}, io::FitsIO) = getfield(get(FITS, io), :fitsfile)
+get(::Type{FITSFile}, hdu::FitsHDU) = getfield(get(HDU, hdu), :fitsfile)
+Base.isopen(obj::Union{FitsIO,<:FitsHDU}) = isopen(get(FITSFile, obj))
+Base.close(obj::Union{FitsIO,<:FitsHDU}) = close(get(FITSFile, obj))
 
 getfile(fh::FITS) = getfile(fh.fitsfile)
 getfile(fh::FITS, ext::Integer) = getfile(fh.fitsfile, ext)
