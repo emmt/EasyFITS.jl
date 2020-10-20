@@ -46,6 +46,9 @@ img3 = FitsImage(dat3,
                  ZO      = (sqrt(2),     "Some real keyword"),
                  MEU     = (false,       "Some boolean keyword"))
 
+compute_bitpix(::Type{T}) where {T<:Integer} = 8*sizeof(T)
+compute_bitpix(::Type{T}) where {T<:AbstractFloat} = -8*sizeof(T)
+
 @testset "AbstractArray interface" begin
     @test typeof(similar(img3)) === typeof(img3)
     let dims = (21, 8, 7), T = Float32
@@ -59,6 +62,10 @@ img3 = FitsImage(dat3,
         @test typeof(similar(img3, T, dims)) === FitsImage{T,length(dims)}
         @test size(similar(img3, T, dims)) === dims
     end
+    @test FitsBitpix(img3) === FitsBitpix(compute_bitpix(eltype(img3)))
+    @test FitsBitpix(img3) === FitsBitpix(eltype(img3))
+    @test FitsBitpix(img3) === FitsBitpix(typeof(img3))
+    @test eltype(FitsBitpix(img3)) === eltype(img3)
 end
 
 @testset "Create FITS File" begin
@@ -105,6 +112,9 @@ hduname(obj::Union{FitsHDU,FitsIO}) =
         @test get(String,  hdu, "BU") == "Shadok"
         @test get(Float64, hdu, "ZO") ≈ 3.1415
         @test get(Bool,    hdu, "MEU") == true
+        @test FitsBitpix(hdu) === FitsBitpix(dat1)
+        @test FitsBitpix(io[2]) === FitsBitpix(dat2)
+        @test FitsBitpix(io[3]) === FitsBitpix(img3)
         dat = read(hdu)
         @test eltype(dat) == eltype(dat1)
         @test size(dat) == size(dat1)
@@ -184,6 +194,7 @@ end
     @test H1.BU  == H1["BU"]
     @test H1.ZO  == H1["ZO"]
     @test H1.MEU == H1["MEU"]
+    @test FitsBitpix(H1) === FitsBitpix(dat1)
     H1["ZO"] = 15
     @test isa(H1["ZO"],  Int) && H1["ZO"] == 15
     @test H1.ZO  == H1["ZO"]
@@ -194,6 +205,7 @@ end
     #
     H2 = read(FitsHeader, path, 2)
     @test isa(H2, FitsHeader)
+    @test FitsBitpix(H2) === FitsBitpix(dat2)
     # Read array data with contraints.
     A3 = read(FitsArray, path, 1)
     @test isa(A3, Array{eltype(dat1),ndims(dat1)})

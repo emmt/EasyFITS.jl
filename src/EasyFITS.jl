@@ -15,6 +15,7 @@ module EasyFITS
 
 export
     FitsArray,
+    FitsBitpix,
     FitsComment,
     FitsFile,
     FitsHDU,
@@ -44,6 +45,8 @@ include("patches.jl")
 struct FitsIO
     fh::FITS
 end
+
+struct FitsBitpix{N} end
 
 struct FitsHDU{T<:HDU}
     hdu::T
@@ -372,6 +375,27 @@ Type `FitsComment` is a singleton used as a marker to indicate that the comment
 of a FITS keyword is to be returned by the `get` method.
 
 """ FitsComment
+
+"""
+    FitsBitpix(arg)
+
+yields a singleton type which encapsulates the FITS *bitpix* (for
+*bits-per-pixel*) code identifying array element type according to `arg`.
+Argument `arg` can be a Julia type, an integer (interpreted as a FITS bitpix
+code), an array, a FITS HDU/image/header.
+
+Call `eltype(bpx)` to convert FITS bitpix `bpx` into a Julia type.
+
+"""
+FitsBitpix(n::Integer) = FitsBitpix{Int(n)}()
+FitsBitpix(::Type{T}) where {T} = FitsBitpix(bitpix_from_type(T))
+FitsBitpix(A::AbstractArray) = FitsBitpix(typeof(A))
+FitsBitpix(::Type{<:AbstractArray{T}}) where {T} = FitsBitpix(T)
+FitsBitpix(hdr::Union{<:FitsHeader,<:FITSHeader}) = FitsBitpix(hdr["BITPIX"])
+FitsBitpix(hdu::Union{<:FitsHDU,<:HDU}) =
+    FitsBitpix(fits_get_img_equivtype(getfile(hdu)))
+
+Base.eltype(::FitsBitpix{N}) where {N} = type_from_bitpix(Val(Cint(N)))
 
 """
     FitsImage(arr, hdr)
