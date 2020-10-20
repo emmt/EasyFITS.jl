@@ -94,6 +94,10 @@ const KeywordValues = Union{Bool,Int,Float64,String}
 # Valid types to specify a FITS extension.
 const Extension = Union{Integer,AbstractString}
 
+# Valid types to specify a FITS header.
+const HeaderLike = Union{FitsHeader,NamedTuple,
+                         Tuple{Vararg{Pair{<:AbstractString}}}}
+
 """
     exists(path) -> boolean
 
@@ -141,19 +145,17 @@ opens of creates a FITS file whose name is `path` and returns an instance of
 - `"w!"` to open FITS file named `path` for writing.  If the file already
   exists, it is (silently) overwritten.
 
+Call `close(io)` to close the FITS file associated with the `FitsIO` instance
+`io`.  Call `isopen(io)` to check whether the FITS file associated with the
+`FitsIO` instance `io` is open.  Closing the FITS file is automatically done,
+if needed, when the instance is garbage collected.
+
 The do-block syntax is supported to automatically close the FITS file:
 
     FitsIO(filename, mode="r") do io
         # use FITS handle io
         ...
     end
-
-Call `close(io)` to close the FITS file associated with the `FitsIO` instance
-`io`.  This is automatically done, if needed, when the instance is garbage
-collected.
-
-Call `isopen(io)` to check whether the FITS file associated with the `FitsIO`
-instance `io` is open.
 
 An instance of `FitsIO` is a collection of *Header Data Units* (HDU) and
 implements indexation and iteration.  Assuming `io` is a `FitsIO` object, then:
@@ -232,15 +234,15 @@ Base.findprev(pred::Function, io::FitsIO, i::Integer) = findprev(pred, io, Int(i
 Base.findprev(pred::Function, io::FitsIO, i::Int=1) = find(pred, io, i:-1:1)
 
 """
-    find(pred, io, I=1:length(io))
+    EasyFITS.find(pred, io, I=1:length(io))
 
-yields the HDU first index `i ∈ I` of FITS instance `io` for which the
+yields the first index HDU `i ∈ I` of FITS instance `io` for which the
 predicate `pred(io[i])` returns `true`, or [`nothing`](@ref) if `pred(io[i])`
 returns `false` for all `i ∈ I`.
 
 For instance:
 
-    i = find(hdu -> get(String,hdu,"EXTNAME","") == "CALIBRATION", io)
+    i = EasyFITS.find(hdu -> get(String,hdu,"EXTNAME","") == "CALIBRATION", io)
     if i === nothing
         # not found
         ...
@@ -466,6 +468,13 @@ Base.similar(A::FitsImage, T::Type=eltype(A), dims::NTuple{N,Int}=size(A)) where
 Base.elsize(::Type{FitsImage{T,N}}) where {T,N} = elsize(Array{T,N})
 Base.sizeof(A::FitsImage) = sizeof(get(Array, A))
 
+# For AbstractArray types, a more specific version of `Base.show` must be extended.
+Base.show(io::IO, ::MIME"text/plain", A::FitsImage) = show(io, A)
+function Base.show(io::IO, A::FitsImage{T,N}) where {T,N}
+    println(io, "FitsImage{$T,$N} of size $(size(A)) and keywords:")
+    show(io, FitsHeader(A))
+end
+
 # Make FitsImage's efficient iterators.
 @inline Base.iterate(A::FitsImage, i=1) =
     ((i % UInt) - 1 < length(A) ? (@inbounds A[i], i + 1) : nothing)
@@ -646,10 +655,11 @@ end
 
 function Base.tryparse(::Type{String}, val::FitsUnparsedValue)
     # Check that the string in enclosed by single quotes.
+    QUOTE = Char(39) # a single quote, avoing breaking Emacs' indentation
     str = val.str
     i = firstindex(str)
     j = lastindex(str)
-    if length(str) < 2 || str[i] != '\'' || str[j] != '\''
+    if length(str) < 2 || str[i] != QUOTE || str[j] != QUOTE
         return nothing
     end
 
@@ -661,11 +671,11 @@ function Base.tryparse(::Type{String}, val::FitsUnparsedValue)
     for k in (i+1):(j-1)
         c = str[k]
         if esc
-            if c != '\''
+            if c != QUOTE
                 return nothing
             end
             esc = false
-        elseif c == '\''
+        elseif c == QUOTE
             esc = true
             continue
         end
@@ -919,12 +929,8 @@ can be specialized by foreign packages based on the types of the arguments
 """
 write(io::FitsIO, arr::AbstractArray{<:Real}; kwds...) =
     write(io, FitsHeader(; kwds...), arr)
-write(io::FitsIO, arg::Tuple{FitsHeader,AbstractArray{<:Real}}) =
-    write(io, arg...)
-write(io::FitsIO, arg::Tuple{AbstractArray{<:Real},FitsHeader}) =
-    write(io, arg...)
-write(io::FitsIO, arr::AbstractArray{<:Real}, hdr::FitsHeader) =
-    write(io, hdr, arr)
+write(io::FitsIO, arr::AbstractArray{<:Real}, args::Pair{<:AbstractString}...) =
+    write(io, FitsHeader(args...), arr)
 write(io::FitsIO, hdr::FitsHeader, arr::AbstractArray{<:Real}) =
     write(get(FITS, io), arr, header = get(FITSHeader, hdr))
 write(io::FitsIO, obj::FitsImage) =
@@ -933,6 +939,24 @@ write(io::FitsIO, args...) =
     for arg in args
         write(io, arg)
     end
+
+# The following versions can build the header on the fly.
+write(io::FitsIO, arg::Tuple{HeaderLike,AbstractArray{<:Real}}) =
+        write(io, arg...)
+write(io::FitsIO, arg::Tuple{AbstractArray{<:Real},HeaderLike}) =
+    write(io, arg...)
+write(io::FitsIO, arr::AbstractArray{<:Real}, hdr::HeaderLike) =
+    write(io, hdr, arr)
+function write(io::FitsIO,
+               hdr::Tuple{Vararg{Pair{<:AbstractString}}},
+               arr::AbstractArray)
+    write(io::FitsIO, FitsHeader(hdr...), arr)
+end
+function write(io::FitsIO,
+               hdr::NamedTuple,
+               arr::AbstractArray)
+    write(io::FitsIO, FitsHeader(; hdr...), arr)
+end
 
 """
     EasyFITS.getfile(obj) -> file
