@@ -433,7 +433,7 @@ Base.axes(A::FitsImage) = axes(get(Array, A))
 Base.axes(A::FitsImage, d) = axes(get(Array, A), d)
 @inline Base.axes1(A::FitsImage) = axes1(get(Array, A))
 Base.IndexStyle(::Type{<:FitsImage}) = IndexLinear()
-Base.similar(::Type{FitsImage{T}}, dims::NTuple{N,Int}) where {T,N} =
+Base.similar(A::FitsImage, T::Type=eltype(A), dims::NTuple{N,Int}=size(A)) where {N} =
     FitsImage{T,N}(undef, dims)
 Base.elsize(::Type{FitsImage{T,N}}) where {T,N} = elsize(Array{T,N})
 Base.sizeof(A::FitsImage) = sizeof(get(Array, A))

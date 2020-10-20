@@ -46,6 +46,21 @@ img3 = FitsImage(dat3,
                  ZO      = (sqrt(2),     "Some real keyword"),
                  MEU     = (false,       "Some boolean keyword"))
 
+@testset "AbstractArray interface" begin
+    @test typeof(similar(img3)) === typeof(img3)
+    let dims = (21, 8, 7), T = Float32
+        @test typeof(similar(img3, T)) === FitsImage{T,ndims(img3)}
+        @test typeof(similar(img3, dims...)) === FitsImage{eltype(img3),length(dims)}
+        @test size(similar(img3, dims...)) === dims
+        @test typeof(similar(img3, dims)) === FitsImage{eltype(img3),length(dims)}
+        @test size(similar(img3, dims)) === dims
+        @test typeof(similar(img3, T, dims...)) === FitsImage{T,length(dims)}
+        @test size(similar(img3, T, dims...)) === dims
+        @test typeof(similar(img3, T, dims)) === FitsImage{T,length(dims)}
+        @test size(similar(img3, T, dims)) === dims
+    end
+end
+
 @testset "Create FITS File" begin
     @test length(hdr1) == 0
     hdr1["HDUNAME"] = ("HDU-ONE", "First custom HDU")
@@ -64,7 +79,6 @@ img3 = FitsImage(dat3,
     # Check overwrite is forbidden.
     @test_throws ErrorException close(FitsIO(path, "w"))
 end
-
 
 hduname(obj::Union{FitsHDU,FitsIO}) =
     get(String, obj, "HDUNAME", nothing)
@@ -208,7 +222,6 @@ end
     @test isa(A8, FitsImage{Int,ndims(dat2)})
     @test size(A8) == size(dat2)
     @test samevalues(A8, dat2)
-
 end
 
 #rm(path)
