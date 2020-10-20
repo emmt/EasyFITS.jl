@@ -176,7 +176,7 @@ end
     @test ndims(A1) == ndims(dat1)
     @test size(A1) == size(dat1)
     @test samevalues(A1, dat1)
-    A2 = read(FitsImage, path, 2)
+    A2 = read(FitsImage, path, ext=2)
     @test isa(A2, FitsImage)
     @test isa(A2["GA"],  Int)     && A2["GA"] == -42
     @test isa(A2["BU"],  String)  && A2["BU"] == "Gibi"
@@ -187,7 +187,7 @@ end
     @test size(A2) == size(dat2)
     @test samevalues(A2, dat2)
     # Read headers.
-    H1 = read(FitsHeader, path, 1)
+    H1 = read(FitsHeader, path, ext=1)
     @test isa(H1, FitsHeader)
     @test isa(H1["GA"],  Int)     && H1["GA"] == 42
     @test isa(H1["BU"],  String)  && H1["BU"] == "Shadok"
@@ -207,38 +207,39 @@ end
     @test H1.ZO  == H1["ZO"]
     @test get(FitsComment, H1, "ZO") == "Some real keyword"
     #
-    H2 = read(FitsHeader, path, 2)
+    H2 = read(FitsHeader, path, ext=2)
     @test isa(H2, FitsHeader)
     @test FitsBitpix(H2) === FitsBitpix(dat2)
     @test eltype(H2) === eltype(dat2)
     # Read array data with contraints.
-    A3 = read(FitsArray, path, 1)
+    A3 = read(FitsArray, path, ext=1)
     @test isa(A3, Array{eltype(dat1),ndims(dat1)})
     @test size(A3) == size(dat1)
     @test samevalues(A3, dat1)
-    A4 = read(FitsArray{Int}, path, 2)
+    A4 = read(FitsArray{Int}, path, ext=2)
     @test isa(A4, Array{Int,ndims(dat2)})
     @test size(A4) == size(dat2)
     @test samevalues(A4, dat2)
-    @test_throws MethodError read(FitsArray{Int,ndims(dat2)+1}, path, 2)
-    A5 = read(FitsArray{Int,ndims(dat2)}, path, 2)
+    @test_throws MethodError read(FitsArray{Int,ndims(dat2)+1}, path, ext=2)
+    A5 = read(FitsArray{Int,ndims(dat2)}, path, ext=2)
     @test isa(A5, Array{Int,ndims(dat2)})
     @test size(A5) == size(dat2)
     @test samevalues(A5, dat2)
     # Read array+header data with contraints.
-    A6 = read(FitsImage, path, 1)
+    A6 = read(FitsImage, path, ext=1)
     @test isa(A6, FitsImage{eltype(dat1),ndims(dat1)})
     @test size(A6) == size(dat1)
     @test samevalues(A6, dat1)
-    A7 = read(FitsImage{Float64}, path, 1)
+    A7 = read(FitsImage{Float64}, path, ext=1)
     @test isa(A7, FitsImage{Float64,ndims(dat1)})
     @test size(A7) == size(dat1)
     @test samevalues(A7, dat1)
-    @test_throws MethodError read(FitsImage{Int,ndims(dat2)+1}, path, 2)
-    A8 = read(FitsImage{Int,ndims(dat2)}, path, 2)
+    @test_throws MethodError read(FitsImage{Int,ndims(dat2)+1}, path, ext=2)
+    A8 = read(FitsImage{Int,ndims(dat2)}, path, ext=2)
     @test isa(A8, FitsImage{Int,ndims(dat2)})
     @test size(A8) == size(dat2)
     @test samevalues(A8, dat2)
+    @test read(FitsArray, path, :, 2, 2:3, ext=1) ≈ dat1[:, 2, 2:3]
 end
 
 #rm(path)

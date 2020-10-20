@@ -777,15 +777,15 @@ end
     error("bad type for FITS keyword \"$key\"")
 
 """
-    read(::Type{T}, src, ext=1) -> A
+    read(::Type{T}, src) -> A
 
 read an object of type `T<:Union{FitsImage,FitsHeader,FitsArray}` from FITS
 extension `ext` in source `src` which can be the name of a FITS file or an
 instance of `FitsIO` or `FitsHDU`.
 
-If `src` is an instance of `FitsIO` or the name of a FITS file, optional
-argument `ext` is to specify the number or the name of the HDU number to read
-(the first one by default).
+If `src` is an instance of `FitsIO` or the name of a FITS file, keyword `ext`
+may be used to specify the number or the name of the HDU number to read (the
+first one by default).
 
 Argument `T` specifies the type of the result.  Use `T<:Array` or
 `T<:FitsArray` to retrieve the data part of the FITS HDU as a regular array.
@@ -833,9 +833,9 @@ read(::Type{T}, path::AbstractString, args...; kwds...) where {T<:Readable} =
         return read(T, io, args...; kwds...)
     end
 
-function read(::Type{T}, io::FitsIO,
+function read(::Type{T}, io::FitsIO, args...;
               ext::Extension = 1) where {T<:Union{Readable,Array}}
-    read(T, io[ext])
+    read(T, io[ext], args...)
 end
 
 # Read header from FITS ImageHDU.
@@ -853,10 +853,10 @@ read(::Type{FitsImage{T}}, hdu::FitsHDU) where {T} =
 # Read array from FITS Image HDU.
 read(hdu::FitsImageHDU, args...) = read(get(HDU, hdu), args...)
 read(::Type{Array}, hdu::FitsImageHDU, args...) = read(hdu, args...)
-read(::Type{Array{T}}, hdu::FitsImageHDU) where {T} =
-    convert(Array{T}, read(hdu))
-read(::Type{Array{T,N}}, hdu::FitsImageHDU) where {T,N} =
-    convert(Array{T,N}, read(hdu))
+read(::Type{Array{T}}, hdu::FitsImageHDU, args...) where {T} =
+    convert(Array{T}, read(hdu, args...))
+read(::Type{Array{T,N}}, hdu::FitsImageHDU, args...) where {T,N} =
+    convert(Array{T,N}, read(hdu, args...))
 
 read(::Type{FitsArray}, hdu::FitsHDU, args...) =
     read(Array, hdu, args...)
