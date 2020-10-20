@@ -563,8 +563,8 @@ function get(::Type{T}, obj::Union{FitsIO,FitsHDU}, key::AbstractString,
             return val
         end
     end
-    failure("value of FITS keyword \"", key,
-            "\" cannot be converted to type `", T, "`")
+    error("value of FITS keyword \"", key,
+          "\" cannot be converted to type `", T, "`")
 end
 
 function get(obj::Union{FitsIO,FitsHDU}, key::AbstractString, def = Missing())
@@ -596,7 +596,7 @@ function get(obj::Union{FitsIO,FitsHDU}, key::AbstractString, def = Missing())
             return rval
         end
     end
-    failure("unknown type of value for FITS keyword \"", key, "\"")
+    error("unknown type of value for FITS keyword \"", key, "\"")
 end
 
 iscomment(key::AbstractString) =
@@ -660,16 +660,6 @@ function Base.tryparse(::Type{String}, val::FitsUnparsedValue)
     buf[n+1] = 0
     return unsafe_string(pointer(buf))
 end
-
-
-"""
-    failure(args...)
-
-throws an `ErrorException` with an error message built from the given
-arguments.
-
-"""
-@noinline failure(args...) = error(string(args...))
 
 #
 # Override `getindex` and `setindex!` for efficient indexation by array
