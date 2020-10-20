@@ -18,7 +18,7 @@ To use the EasyFITS package:
 using EasyFITS
 ```
 
-This imports several data types (all prefixed with `Fits`) and a few methods
+This imports several data types (all prefixed by `Fits...`) and a few methods
 (`exists` and `write!`).  In principle, with EasyFITS, you do not need to
 import `FITSIO` (except to deal with FITS tables).
 
@@ -66,17 +66,22 @@ hdr = FitsHeader(; key1=val1, key2=val2, ...)
 hdr = FitsHeader("key1" => val1, "key2" => val2, ...)
 ```
 
-showing that the initial header contents can be specified by keywords or
-key-value pairs.  To avoid ambiguities the two styles cannot be mixed.  Using
-either of the above syntax is a matter of taste.  Julia keyword syntax is
+depending whether the initial header contents is specified by keywords or by
+key-value pairs.  Using either of the above syntax is a matter of taste but, to
+avoid ambiguities, the two styles cannot be mixed.  Julia keyword syntax is
 lighter, but FITS keywords with spaces (like the `"HIERARCH ..."` ones) are
 easier to specify with key-value pairs.  Remember that, by convention, FITS
 keywords are in uppercase letters.  Values `val2`, `val1` etc. can be 2-tuples
-providing the value and the comment of the FITS keyword.
+providing the value and the comment of the FITS keyword.  For instance:
 
-An instance of `FitsHeader`, say `hdr`, implements indexation by keywords, as
-with `hdr[key]`, and `hdr.key` syntax.  The two styles are usable to retrieve
-or to set the value of a keyword.  To retrieve just the comment part:
+```julia
+hdr = FitsHeader(; VERSION = (2, "2nd revision of the format"), ...)
+hdr = FitsHeader("VERSION" => (2, "2nd revision of the format"), ...)
+```
+
+An instance `hdr` of `FitsHeader` implements indexation by keywords, as with
+`hdr[key]`, and the `hdr.key` syntax.  The two styles are usable to retrieve or
+to set the value of a keyword.  To retrieve only the comment part:
 
 ```julia
 get(FitsComment, hdr, key)
@@ -89,6 +94,8 @@ To retrieve the whole header from a given HDU of a `FitsIO` instance:
 ```julia
 FitsHeader(io, ext=1)
 ```
+
+with `ext` to specify the name or the number of the HDU.
 
 
 ### FITS Input/Output object
@@ -353,7 +360,7 @@ automatically open.  When creating a FITS file, the file is automatically
 compressed if its name ends with `.gz`.
 
 
-## Lower level methods
+## Lower level methods, types
 
 To check whether a file `path` already exists in the file system, call:
 
@@ -361,60 +368,33 @@ To check whether a file `path` already exists in the file system, call:
 exists(path) -> bool
 ```
 
-To open an existing FITS file for reading (or updating), call:
-
-```julia
-openfits(path) -> fh
-```
-
-which yields a `FITSIO.FITS` handle `fh` to read/update the contents of the
-FITS file.  This is basically the same as calling `FITSIO.FITS(path)` except
-that if `path` does not exist but `path` does not end with the `".gz"`
-extension and `"$path.gz"` does exist, then the compressed file `"$path.gz"` is
-open instead.
-
-To create a new FITS file for writing, call:
-
-```julia
-createfits(path; overwrite=false) -> fh
-```
-
-which yields a FITS handle `fh` to write the file contents.  If keyword
-`overwrite` is `true`, the file is (silently) overwritten if it already exists;
-otherwise (the default), an error is thrown if if the file already exists.  A
-shortcut for creating the file even though it may already exists is to call:
-
-```julia
-createfits!(path) -> fh
-```
-
-The do-block syntax is supported by `openfits`, `createfits` and `createfits!`
-to automatically close the FITS file.  For instance:
-
-```julia
-openfits(path) do io
-    # Read data from FITS handle io
-    ...
-end
-```
-
 Also:
 
 ```julia
-setfitskey!(dst, key, val[, com])
-getfitskey(T, dat, key[, def]) -> val :: T
-
-tryreadfitskey(src, T, key)
-tryreadfitskeys(src, T, keys)
-
 EasyFITS.getfile(arg [, ext])
 EasyFITS.find(pred, )
 ```
 
+### FITS bits per pixel (BITPIX)
+
+Call
+
+```julia
+FitsBitpix(arg)
+```
+
+to get a singleton type which encapsulates the FITS *bitpix* (for
+*bits-per-pixel*) code identifying the array element type relevant for `arg`.
+Argument `arg` can be a Julia type, an integer (interpreted as a FITS bitpix
+code), an array, a FITS HDU/image/header.
+
+Conversely call `eltype(bpx)` to convert FITS bitpix `bpx` into a Julia type.
+
+
 ## Naming conventions
 
-To avoid conflicts such as *type piracy*, all exported methods but `exists`
-have the word **fits** embedded in their name.
+To avoid conflicts such as *type piracy*, all exported methods but `exists` and
+`write!` have their names prefixed by `Fits*`.
 
 [doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [doc-dev-url]: https://emmt.github.io/EasyFITS.jl/dev

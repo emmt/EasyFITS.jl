@@ -3,6 +3,7 @@
 * Provide `FitsTable` for FITS Table extensions.
 
 * Use only low-level `CFITSIO` module.
+* When slicing, update header `NAXIS*` keywords.
 * Cleanup `get(...)` extensions.
 * Extend `Array(...)` to yield the array contents of a FITS image.
 * Provide `comment!` to set the comment part.
