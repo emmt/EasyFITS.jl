@@ -31,7 +31,8 @@ using FITSIO
 using CFITSIO
 using CFITSIO: libcfitsio
 
-using Base: getfield, elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
+using Base: getfield, elsize, tail, OneTo,
+    throw_boundserror, @propagate_inbounds
 import Base: get, getindex, setindex!, keys, haskey, getkey,
     read, write, open, close
 
