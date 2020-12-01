@@ -776,33 +776,75 @@ nkeys(obj::Union{FITSHeader,AbstractDict}) = length(obj)
 haskey(obj::Annotated, key) = haskey(get(FITSHeader, obj), key)
 getkey(obj::Annotated, key, def) = getkey(get(FITSHeader, obj), key, def)
 
-# FIXME: Deleting an entry is expensive.
 Base.delete!(obj::Annotated, i::Integer) = delete!(obj, Int(i))
-Base.delete!(obj::Annotated, key::String) =
-    delete!(obj, get(FITSHeader, obj).map[key])
-Base.delete!(obj::Annotated, i::Int) = begin
+Base.delete!(obj::Annotated, key::String) = delete!(obj, first_card(obj, key))
+Base.delete!(obj::Annotated, idx::Int) = begin
+    delete_card!(get(FITSHeader, obj), idx)
+    return obj
+end
+
+Base.pop!(obj::Annotated, idx::Integer) = pop!(obj, Int(idx))
+Base.pop!(obj::Annotated, idx::Integer, def) = pop!(obj, Int(idx), def)
+Base.pop!(obj::Annotated, key::String) = pop!(obj, first_card(obj, key))
+Base.pop!(obj::Annotated, key::String, def) = begin
+    idx = first_card(obj, key, -1)
+    return (idx == 0 ? def : pop!(obj, idx))
+end
+Base.pop!(obj::Annotated, idx::Int) = begin
+    1 ≤ idx ≤ nkeys(obj) || error("out of bound FITS card index $idx")
+    return unsafe_pop!(obj, idx)
+end
+Base.pop!(obj::Annotated, idx::Int, def) = begin
+    1 ≤ idx ≤ nkeys(obj) || return def
+    return unsafe_pop!(obj, idx)
+end
+
+unsafe_pop!(obj::Annotated, idx::Int) = begin
     hdr = get(FITSHeader, obj)
-    n = length(hdr)
-    if 1 ≤ i ≤ n
-        # Remove the entry from hdr.keys, hdr.values and hdr.comments.
-        for j in i:n-1
-            hdr.keys[    j] = hdr.keys[    j+1]
-            hdr.values[  j] = hdr.values[  j+1]
-            hdr.comments[j] = hdr.comments[j+1]
-        end
-        resize!(hdr.keys,     n - 1)
-        resize!(hdr.values,   n - 1)
-        resize!(hdr.comments, n - 1)
-        # Rebuild the keyword map.
+    val = hdr.values[idx]
+    delete_card!(hdr, idx)
+    return val
+end
+
+# Delete FITS card in header.  NOTE: Do not extend `delete!` to avoid
+# type-piracy.  FIXME: Deleting a FITS card is expensive.
+delete_card!(hdr::FITSHeader, i::Int) = begin
+    if 1 ≤ i ≤ length(hdr)
+        # Remove the entry from hdr.keys, hdr.values and hdr.comments and
+        # rebuild the keyword map.
+        delete_entry!(hdr.keys,     i)
+        delete_entry!(hdr.values,   i)
+        delete_entry!(hdr.comments, i)
         empty!(hdr.map)
-        for j in 1:n-1
+        for j in 1:length(hdr.keys)
             key = hdr.keys[j]
             if !haskey(hdr.map, key)
-                hdr.map[key] = i
+                hdr.map[key] = j
             end
         end
     end
-    return obj
+    nothing
+end
+
+# Delete an entry in a vector.
+delete_entry!(A::Vector, i::Int) = begin
+    n = length(A)
+    if 1 ≤ i ≤ n
+        for j in i:n-1
+            A[j] = A[j+1]
+        end
+        resize!(A, n - 1)
+    end
+    nothing
+end
+
+# Yields index of first FITS card with given keyword.
+first_card(obj::Annotated, key::String, def) =
+    get(get(FITSHeader, obj).map, key, def)
+first_card(obj::Annotated, key::String) = begin
+    idx = first_card(obj, key, 0)
+    idx == 0 && throw(KeyError(key))
+    return idx
 end
 
 function checkvalue(::Type{T}, ::Type{S}, val,

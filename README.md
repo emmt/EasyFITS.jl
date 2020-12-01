@@ -190,10 +190,14 @@ EasyFITS.nkeys(A)                  # get the number of keywords
 EasyFITS.nkeys(hdr)                # get the number of keywords
 keys(A)                            # get the list of keywords
 keys(hdr)                          # get the list of keywords
+delete!(hdr, key)                  # delete FITS keyword from header
+delete!(A, key)                    # delete FITS keyword from annotated array
+pop!(hdr, key[, def])              # pop FITS keyword out of header
+pop!(A, key[, def])                # pop FITS keyword out of annotated array
 ```
 
-It is also possible to specify other `Fits*` types as the first argument of `read`
-to constrain the type of the result.  For instance:
+It is also possible to specify other `Fits*` types as the first argument of
+`read` to constrain the type of the result.  For instance:
 
 ```julia
 using EasyFITS

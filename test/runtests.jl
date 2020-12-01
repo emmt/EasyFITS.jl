@@ -171,10 +171,15 @@ end
     @test A1.ZO == 221 && get(FitsComment, A1, "ZO") == ""
     A1.ZO = (223.0, )
     @test A1.ZO == 223 && get(FitsComment, A1, "ZO") == ""
-    A1.DUMMY = (1, "Dummy keyword")
-    @test haskey(A1, "DUMMY") == true
-    delete!(A1, "DUMMY")
-    @test haskey(A1, "DUMMY") == false
+    A1.DUMMY1 = (1, "Dummy keyword")
+    A1.DUMMY2 = (2, "Other dummy keyword")
+    A1.DUMMY3 = (3, "Yet another dummy keyword")
+    @test haskey(A1, "DUMMY1") == true
+    delete!(A1, "DUMMY1")
+    @test haskey(A1, "DUMMY1") == false
+    @test haskey(A1, "DUMMY2") == true
+    @test pop!(A1, "DUMMY2") === 2
+    @test haskey(A1, "DUMMY2") == false
     #
     @test eltype(A1) == eltype(dat1)
     @test ndims(A1) == ndims(dat1)
