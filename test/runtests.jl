@@ -171,6 +171,10 @@ end
     @test A1.ZO == 221 && get(FitsComment, A1, "ZO") == ""
     A1.ZO = (223.0, )
     @test A1.ZO == 223 && get(FitsComment, A1, "ZO") == ""
+    A1.DUMMY = (1, "Dummy keyword")
+    @test haskey(A1, "DUMMY") == true
+    delete!(A1, "DUMMY")
+    @test haskey(A1, "DUMMY") == false
     #
     @test eltype(A1) == eltype(dat1)
     @test ndims(A1) == ndims(dat1)

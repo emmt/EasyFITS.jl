@@ -771,10 +771,39 @@ error if this conversion is not supported.
                  "supported for such objects."))
 
 keys(obj::Annotated) = keys(get(FITSHeader, obj))
-nkeys(obj::Annotated) = nkeys(get(FITSHeader, obj))
+nkeys(obj::Annotated) = length(get(FITSHeader, obj))
 nkeys(obj::Union{FITSHeader,AbstractDict}) = length(obj)
 haskey(obj::Annotated, key) = haskey(get(FITSHeader, obj), key)
 getkey(obj::Annotated, key, def) = getkey(get(FITSHeader, obj), key, def)
+
+# FIXME: Deleting an entry is expensive.
+Base.delete!(obj::Annotated, i::Integer) = delete!(obj, Int(i))
+Base.delete!(obj::Annotated, key::String) =
+    delete!(obj, get(FITSHeader, obj).map[key])
+Base.delete!(obj::Annotated, i::Int) = begin
+    hdr = get(FITSHeader, obj)
+    n = length(hdr)
+    if 1 ≤ i ≤ n
+        # Remove the entry from hdr.keys, hdr.values and hdr.comments.
+        for j in i:n-1
+            hdr.keys[    j] = hdr.keys[    j+1]
+            hdr.values[  j] = hdr.values[  j+1]
+            hdr.comments[j] = hdr.comments[j+1]
+        end
+        resize!(hdr.keys,     n - 1)
+        resize!(hdr.values,   n - 1)
+        resize!(hdr.comments, n - 1)
+        # Rebuild the keyword map.
+        empty!(hdr.map)
+        for j in 1:n-1
+            key = hdr.keys[j]
+            if !haskey(hdr.map, key)
+                hdr.map[key] = i
+            end
+        end
+    end
+    return obj
+end
 
 function checkvalue(::Type{T}, ::Type{S}, val,
                     key::AbstractString)::T where {S,T}
