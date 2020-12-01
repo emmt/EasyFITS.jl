@@ -229,6 +229,24 @@ strings to access FITS keywords and implements the `obj.key` syntax.
 With **EasyFITS**, you can write rather complex FITS files in very lines of
 code.
 
+### Writing a FITS Image
+
+If `A` is an instance of `FitsImage` (see above), then saving its contents
+(data and header parts) as a FITS file is as easy as:
+
+```julia
+write(path, A)
+```
+
+with `path` the name of the output file.  Keyword `overwrite` may be used to
+specify whether overwriting an existing file is allowed.  Another possibility
+to force overwritting is to call:
+
+```julia
+write!(path, A)
+```
+
+
 ### Concise writing of FITS files
 
 The `do ... end` construction is supported for instances of `FitsIO`.  For
