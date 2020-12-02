@@ -981,13 +981,6 @@ function write!(::Type{FitsFile}, path::AbstractString, args...; kwds...)
     nothing
 end
 
-function write(path::AbstractString, A::FitsImage; overwrite::Bool=false)
-    FitsIO(path, "w!") do io
-        write(io, args...; kwds...)
-    end
-    nothing
-end
-
 function write(::Type{FitsFile}, path::AbstractString, args...;
                overwrite::Bool=false, kwds...)
     (overwrite == false && exists(path)) &&
