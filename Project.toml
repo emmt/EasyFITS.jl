@@ -1,6 +1,6 @@
 name = "EasyFITS"
 uuid = "a977f4a2-36a7-4172-89e7-19c2726f82e5"
-authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>"]
+authors = ["Éric Thiébaut <https://github.com/emmt>"]
 version = "0.2.0"
 
 [deps]
