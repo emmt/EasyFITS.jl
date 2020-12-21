@@ -25,6 +25,9 @@ export
     FitsImageHDU,
     FitsTableHDU,
     exists,
+    readfits,
+    writefits,
+    writefits!,
     write!
 
 using FITSIO
@@ -98,6 +101,15 @@ const Extension = Union{Integer,AbstractString}
 # Valid types to specify a FITS header.
 const HeaderLike = Union{FitsHeader,NamedTuple,
                          Tuple{Vararg{Pair{<:AbstractString}}}}
+
+readfits(filename::AbstractString; ext::Extension = 1) =
+    read(FitsImage, filename; ext=ext)
+
+writefits(filename::AbstractString, args...; kwds...) =
+    write(FitsFile, filename, args...; kwds...)
+
+writefits!(filename::AbstractString, args...; kwds...) =
+    write(FitsFile, filename, args...; kwds...)
 
 """
     exists(path) -> boolean
@@ -200,8 +212,8 @@ FitsIO(path::AbstractString, mode::AbstractString="r") = begin
     return FitsIO(handle)
 end
 
-FitsIO(func::Function, args::AbstractString...) = begin
-    io = FitsIO(args...)
+FitsIO(func::Function, path::AbstractString, mode::AbstractString="r") = begin
+    io = FitsIO(path, mode)
     try
         func(io)
     finally
