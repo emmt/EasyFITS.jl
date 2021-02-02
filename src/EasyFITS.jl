@@ -56,7 +56,7 @@ struct FitsHDU{T<:HDU}
     hdu::T
 end
 
-const FitsImageHDU = FitsHDU{ImageHDU}
+const FitsImageHDU{T<:ImageHDU} = FitsHDU{T}
 const FitsTableHDU = FitsHDU{TableHDU}
 
 struct FitsHeader
@@ -104,6 +104,19 @@ const HeaderLike = Union{FitsHeader,NamedTuple,
 
 readfits(filename::AbstractString; ext::Extension = 1) =
     read(FitsImage, filename; ext=ext)
+
+readfits(::Type{Array}, filename::AbstractString; ext::Extension = 1) =
+    read(FitsArray, filename; ext=ext)
+
+function readfits(::Type{Array{T}}, filename::AbstractString;
+                  ext::Extension = 1) where {T}
+    read(FitsArray{T}, filename; ext=ext)
+end
+
+function readfits(::Type{Array{T,N}}, filename::AbstractString;
+                  ext::Extension = 1) where {T,N}
+    read(FitsArray{T,N}, filename; ext=ext)
+end
 
 writefits(filename::AbstractString, args...; kwds...) =
     write(FitsFile, filename, args...; kwds...)
@@ -405,7 +418,7 @@ FitsBitpix(::Type{T}) where {T} = FitsBitpix(bitpix_from_type(T))
 FitsBitpix(A::AbstractArray) = FitsBitpix(typeof(A))
 FitsBitpix(::Type{<:AbstractArray{T}}) where {T} = FitsBitpix(T)
 FitsBitpix(hdr::Union{<:FitsHeader,<:FITSHeader}) = FitsBitpix(hdr["BITPIX"])
-FitsBitpix(hdu::Union{FitsImageHDU,ImageHDU}) =
+FitsBitpix(hdu::Union{<:FitsImageHDU,<:ImageHDU}) =
     FitsBitpix(fits_get_img_equivtype(getfile(hdu)))
 
 Base.eltype(::FitsBitpix{N}) where {N} = type_from_bitpix(Val(Cint(N)))
