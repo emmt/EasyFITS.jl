@@ -730,14 +730,16 @@ end
 # indices.
 #
 
-@inline @propagate_inbounds getindex(A::FitsImage, i::Int) = begin
+@inline getindex(A::FitsImage, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds getindex(get(Array, A), i)
+    @inbounds val = get(Array, A)[i]
+    return val
 end
 
-@inline @propagate_inbounds setindex!(A::FitsImage, x, i::Int) = begin
+@inline setindex!(A::FitsImage, val, i::Int) = begin
     @boundscheck checkbounds(A, i)
-    @inbounds setindex!(get(Array, A), x, i)
+    @inbounds get(Array, A)[i] = val
+    return A
 end
 
 @inline Base.checkbounds(::Type{Bool}, A::FitsImage, i::Int) =
@@ -751,14 +753,16 @@ end
 @inline getindex(obj::Annotated, key::AbstractString) =
    getindex(get(FITSHeader, obj), key)
 
-setindex!(obj::Annotated, val, key::AbstractString) =
+setindex!(obj::Annotated, val, key::AbstractString) = begin
     setindex!(get(FITSHeader, obj), val, key)
+    return obj
+end
 
 setindex!(obj::Annotated, val::Tuple{Any,AbstractString}, key::AbstractString) = begin
     hdr = get(FITSHeader, obj)
-    result = setindex!(hdr, val[1], key)
+    setindex!(hdr, val[1], key)
     set_comment!(hdr, key, val[2])
-    return result
+    return obj
 end
 
 setindex!(obj::Annotated, val::Tuple{Any,Nothing}, key::AbstractString) =
