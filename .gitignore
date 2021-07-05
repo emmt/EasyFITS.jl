@@ -9,3 +9,4 @@ devel.jl
 work.jl
 temp.jl
 test*.fits*
+Manifest.toml
