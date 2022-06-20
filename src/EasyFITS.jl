@@ -417,8 +417,8 @@ FitsBitpix(n::Integer) = FitsBitpix{Int(n)}()
 FitsBitpix(::Type{T}) where {T} = FitsBitpix(bitpix_from_type(T))
 FitsBitpix(A::AbstractArray) = FitsBitpix(typeof(A))
 FitsBitpix(::Type{<:AbstractArray{T}}) where {T} = FitsBitpix(T)
-FitsBitpix(hdr::Union{<:FitsHeader,<:FITSHeader}) = FitsBitpix(hdr["BITPIX"])
-FitsBitpix(hdu::Union{<:FitsImageHDU,<:ImageHDU}) =
+FitsBitpix(hdr::Union{FitsHeader,FITSHeader}) = FitsBitpix(hdr["BITPIX"])
+FitsBitpix(hdu::Union{FitsImageHDU,ImageHDU}) =
     FitsBitpix(fits_get_img_equivtype(getfile(hdu)))
 
 Base.eltype(::FitsBitpix{N}) where {N} = type_from_bitpix(Val(Cint(N)))
@@ -1065,6 +1065,10 @@ function write(io::FitsIO,
     write(io::FitsIO, FitsHeader(; hdr...), arr)
 end
 
+# Overwrite HDU.
+write(hdu::FitsHDU, arr::AbstractArray{<:Real}) = write(get(HDU, hdu), arr,)
+
+
 """
     EasyFITS.getfile(obj) -> file
 
@@ -1094,8 +1098,8 @@ end
 
 get(::Type{FITSFile}, io::FitsIO) = getfield(get(FITS, io), :fitsfile)
 get(::Type{FITSFile}, hdu::FitsHDU) = getfield(get(HDU, hdu), :fitsfile)
-Base.isopen(obj::Union{FitsIO,<:FitsHDU}) = isopen(get(FITSFile, obj))
-Base.close(obj::Union{FitsIO,<:FitsHDU}) = close(get(FITSFile, obj))
+Base.isopen(obj::Union{FitsIO,FitsHDU}) = isopen(get(FITSFile, obj))
+Base.close(obj::Union{FitsIO,FitsHDU}) = close(get(FITSFile, obj))
 
 getfile(fh::FITS) = getfile(fh.fitsfile)
 getfile(fh::FITS, ext::Integer) = getfile(fh.fitsfile, ext)
