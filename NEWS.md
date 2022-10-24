@@ -1,5 +1,10 @@
 # User visible changes for EasyFITS
 
+## Version 0.2.4
+
+Fix type piracy for `get` method when `FITSIO` version is greater or equal
+0.17.
+
 ## Version 0.2.0
 
 This version requires [FITSIO.jl](https://github.com/JuliaAstro/FITSIO.jl) and
