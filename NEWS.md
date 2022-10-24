@@ -1,6 +1,6 @@
 # User visible changes for EasyFITS
 
-## Version 0.2.4
+## Versions 0.2.4, 0.2.5
 
 Fix type piracy for `get` method when `FITSIO` version is greater or equal
 0.17.
