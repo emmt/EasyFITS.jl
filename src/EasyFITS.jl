@@ -24,6 +24,7 @@ export
     FitsImage,
     FitsImageHDU,
     FitsTableHDU,
+    @fits_str,
     exists,
     readfits,
     writefits,
@@ -68,8 +69,10 @@ struct FitsImage{T,N} <: DenseArray{T,N}
     hdr::FitsHeader
 end
 
-# Singleton type for writing a FITS file.
-struct FitsFile end
+# String decoration to represent a FITS file name.
+struct FitsFile <: AbstractString
+    path::String
+end
 
 # Abstract type for retrieving the array part of an Image HDU in a FITS file.
 abstract type FitsArray{T,N} <: AbstractArray{T,N} end
@@ -119,10 +122,10 @@ function readfits(::Type{Array{T,N}}, filename::AbstractString;
 end
 
 writefits(filename::AbstractString, args...; kwds...) =
-    write(FitsFile, filename, args...; kwds...)
+    write(FitsFile(filename), args...; kwds...)
 
 writefits!(filename::AbstractString, args...; kwds...) =
-    write(FitsFile, filename, args...; kwds...)
+    write(FitsFile(filename), args...; kwds...)
 
 """
     exists(path) -> boolean
@@ -206,6 +209,10 @@ implements indexation and iteration.  Assuming `io` is a `FitsIO` object, then:
 Also see: [`EasyFITS.find`](@ref).
 
 """ FitsIO
+
+Base.open(path::FitsFile, args...; kwds...) = FitsIO(path, args...; kwds...)
+Base.open(func::Function, path::FitsFile, args...; kwds...) =
+    FitsIO(func, path, args...; kwds...)
 
 FitsIO(path::AbstractString, mode::AbstractString="r") = begin
     local handle::FITS
@@ -982,36 +989,79 @@ function Base.read!(hdu::FitsHDU, dst, args...)
 end
 
 """
-    write(FitsFile, path, args...; overwrite=false, kwds...)
+    FitsFile(path)
+    fits"\$path"
+
+yield a decorated string that represents a FITS filename. This is useful to
+have methods `read`, `write`, `write!`, and `open` behave specifically for FITS
+file.
+
+"""
+FitsFile(x::FitsFile) = x
+
+macro fits_str(str)
+    :(FitsFile($str))
+end
+
+Base.String(x::FitsFile) = getfield(x, :path)
+Base.string(x::FitsFile) = String(x)
+Base.string(io::IO, x::FitsFile) = string(io, string(x))
+Base.convert(::Type{String}, x::FitsFile) = String(x)
+Base.show(io::IO, ::MIME"text/plain", x::FitsFile) = show(io, x)
+Base.show(io::IO, x::FitsFile) = print(io, "fits\"", String(x), "\"")
+
+# Extend AbstractString API (see start of base/strings/basic.jl) plus methods
+# specialized for String (see base/strings/string.jl).
+Base.ncodeunits(s::FitsFile) = ncodeunits(String(s))
+Base.codeunit(s::FitsFile) = codeunit(String(s))
+Base.codeunit(s::FitsFile, i::Integer) = codeunit(String(s), i)
+Base.isvalid(s::FitsFile, i::Integer) = isvalid(String(s), i)
+Base.length(s::FitsFile) = length(String(s))
+Base.pointer(s::FitsFile) = pointer(String(s))
+Base.pointer(s::FitsFile, i::Integer) = pointer(String(s), i)
+Base.iterate(s::FitsFile) = iterate(String(s))
+Base.iterate(s::FitsFile, i::Int) = iterate(String(s), i)
+@inline @propagate_inbounds Base.thisind(s::FitsFile, i::Int) = thisind(String(s), i)
+@inline @propagate_inbounds Base.nextind(s::FitsFile, i::Int) = nextind(String(s), i)
+@inline @propagate_inbounds Base.getindex(x::FitsFile, i::Int) = getindex(String(x), i)
+Base.getindex(s::FitsFile, r::AbstractUnitRange{<:Integer}) = getindex(String(s), r)
+Base.isascii(s::FitsFile) = isascii(String(s))
+Base.cmp(a::FitsFile, b::AbstractString) = cmp(String(a), b)
+Base.cmp(a::AbstractString, b::FitsFile) = cmp(a, String(b))
+Base.cmp(a::FitsFile, b::FitsFile) = cmp(String(a), String(b))
+Base.:(==)(a::FitsFile, b::AbstractString) = String(a) == b
+Base.:(==)(a::AbstractString, b::FitsFile) = a == String(b)
+Base.:(==)(a::FitsFile, b::FitsFile) = String(a) == String(b)
+
+"""
+    write(path::FitsFile, args...; overwrite=false, kwds...)
 
 creates a new FITS file `path` with contents built from the provided arguments
 `args...` and keywords `kwds...`.  Unless `overwrite` is `true`, the file must
 not already exist.  Instead of setting the `overwrite` keyword, simply call:
 
-    write!(FitsFile, path, args...; kwds...)
+    write!(path::FitsFile, args...; kwds...)
 
 to silently overwrites file `path` if it already exits.
 
 Typical examples are:
 
-    write(FitsFile, path, arr; KEY1 = val1, KEY2 = (val2, com2), ...)
-    write(FitsFile, path, hdr, arr)
-    write(FitsFile, path, (hdr1, arr1), arr2, (hdr3, arr3), ...)
+    writefits(path, arr; KEY1 = val1, KEY2 = (val2, com2), ...)
+    writefits(path, hdr, arr)
+    writefits(path, (hdr1, arr1), arr2, (hdr3, arr3), ...)
 
 with `arr*` arrays, `KEY*` keywords, `val*` keyword values, `com*` keyword
 comments and `hdr*` objects of type `FitsHeader`.  In the last example, a FITS
 file with 3 (or more) HDU's is created.
 
 """
-function write!(::Type{FitsFile}, path::AbstractString, args...; kwds...)
+function write!(path::FitsFile, args...; kwds...)
     FitsIO(path, "w!") do io
         write(io, args...; kwds...)
     end
     nothing
 end
-
-function write(::Type{FitsFile}, path::AbstractString, args...;
-               overwrite::Bool=false, kwds...)
+function write(path::FitsFile, args...; overwrite::Bool=false, kwds...)
     (overwrite == false && exists(path)) &&
         throw_file_already_exists(path, "try with `overwrite=true`")
     FitsIO(path, (overwrite ? "w!" : "w")) do io
@@ -1020,11 +1070,14 @@ function write(::Type{FitsFile}, path::AbstractString, args...;
     nothing
 end
 
-write!(path::AbstractString, A::FitsImage) =
-    write!(FitsFile, path, A)
+@deprecate write!(path::AbstractString, A::FitsImage) write!(FitsFile(path), A)
 
-write(path::AbstractString, A::FitsImage; overwrite::Bool=false) =
-    write(FitsFile, path, A; overwrite=overwrite)
+@deprecate write(path::AbstractString, A::FitsImage; overwrite::Bool=false) write(FitsFile(path), A; overwrite=overwrite)
+
+# FIXME: @deprecate read(::Type{FitsFile}, path::AbstractString, args...; kwds...) read(FitsFile(path, args...; kwds...)
+@deprecate write(::Type{FitsFile}, path::AbstractString, args...; kwds...) write(FitsFile(path), args...; kwds...)
+@deprecate write!(::Type{FitsFile}, path::AbstractString, args...; kwds...) write!(FitsFile(path), args...; kwds...)
+
 
 """
     write(io::FitsIO, args...; kwds...)

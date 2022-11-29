@@ -120,6 +120,15 @@ where `path` is the name of the FITS file and `mode` can be:
 - `"w!"` to open FITS file named `path` for writing.  If the file already
   exists, it is (silently) overwritten.
 
+An alternative is to call `open` as:
+
+```julia
+io = open(FitsFile(path), mode)
+io = open(fits"...", mode)
+```
+
+where `"..."` is a quoted string to specify the file name.
+
 Call `close(io)` to close the FITS file associated with the `FitsIO` instance
 `io`.  Call `isopen(io)` to check whether the FITS file associated with the
 `FitsIO` instance `io` is open.  Closing the FITS file is automatically done,
