@@ -8,16 +8,18 @@ CFITSIO_jll = "b3e40c51-02ae-5482-8a39-3ace5868dcf4"
 Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
 CFITSIO_jll = "3, 4"
 Clang = "0.14, 0.15, 0.16"
 Requires = "1.3"
+TOML = "1.0"
 julia = "1.6"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "DataFrames"]
