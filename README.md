@@ -1,33 +1,122 @@
-# Using FITS files made easier for Julia
+# Easy reading/writing of FITS files in Julia
 
-| **License**                     | **Build Status**                                                | **Code Coverage**                                                   |
-|:--------------------------------|:----------------------------------------------------------------|:--------------------------------------------------------------------|
-| [![][license-img]][license-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
+[![License][license-img]][license-url]
+[![Build Status][github-ci-img]][github-ci-url]
+[![Build Status][appveyor-img]][appveyor-url]
+[![Coverage][codecov-img]][codecov-url]
 
 This package is to facilitate the use of FITS files (widely used in Astronomy)
-in [Julia][julia-url].  EasyFITS uses [FITSIO.jl][fitsio-url]
-[CFITSIO.jl][fitsio-url] packages which provide a [Julia][julia-url] interface
-to the [CFITSIO][cfitsio-url] library.
+in [Julia][julia-url]. `EasyFITS` uses [Clang.jl][clang-url] to call the
+functions of the [CFITSIO][cfitsio-url] library.
 
 
 ## Usage
 
-To use the EasyFITS package:
+To use the `EasyFITS` package:
 
 ```julia
 using EasyFITS
 ```
 
-This imports several data types (all prefixed by `Fits...`) and a few methods
-(`exists` and `write!`).  In principle, with EasyFITS, you do not need to
-import `FITSIO` (except to deal with FITS tables).
+This imports a bunch of types (all prefixed by `Fits...`), some constants (all
+prefixed by `FITS_...`), a few methods (`write!`, `readfits`, `openfits`,
+`writefits`, and `writefits!`), and the macro `@fits_str`.
 
 
-## EasyFITS objects
+## FITS files
+
+Open FITS files are represented by objects of type `FitsIO`. To open an
+existing FITS file there are several possibilities:
+
+```julia
+io = FitsIO(path)
+io = openfits(path)
+io = open(FitsFile(path))
+io = open(fits"...")
+```
+
+where `path` is the name of the FITS file while `"..."` denotes the file name
+as a literal string. In the two latter examples, the file name is wrapped into
+a `FitsFile` type (a simple *decoration*) to avoid type-piracy. The `fits"..."`
+syntax is equivalent to `FitsFile("...")`.
+
+The methods to open a FITS file all take an optional second argument `mode` which
+can be:
+
+- `"r"` (the default mode) to open an existing file for reading only.
+
+- `"r+"` to read an existing file for reading and appending to its contents.
+
+- `"w"` to create a new FITS file that must not already exist. An error is
+  thrown if the file already exists.
+
+- `"w!"` to open the file for writing. If the file already exists, it is
+  (silently) overwritten.
+
+The keyword `extended` can be used to specify whether to use the [extended file
+name
+syntax](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/c/c_user/node83.html)
+implemented by the `FITSIO` library. It the extended name syntax is not used
+(which is the default behavior) when opening a FITS file for reading (mode
+`"r"` or `"r+"`), if a file with the given name does not exists but if the name
+does not end with `".gz"` while a file exists whose name is the same as the
+given one but with an additional `".gz"` extension, this latter file open
+instead.
+
+It is not necessary to call `close(io)` to close the FITS file, this is
+automatically done when the `io` object is garbage collected. The do-block
+syntax is however supported:
+
+``` julia
+open(fits"test.fits.gz", "w!") do io
+    write(io, ...)
+    ...
+end
+```
+
+FITS files consist in a concatenation of header data units (HDUs) which each
+have a header part followed by a data part. Open FITS files can be indexed to
+walk along their HDUs:
+
+``` julia
+first(io)           # yields the first HDU
+io[firstindex(io)]  # idem
+io[1]               # idem
+io[2]               # yields the second HDU
+last(io)            # yields the last HDU
+io[lastindex(io)]   # idem
+io[end]             # idem
+io[length(io)]      # idem
+io["name"]          # next HDU matching given name
+```
+
+In other words, FITS files behave as vectors of HDUs with 1-based integer
+indices but can also be indexed by strings.
+
+Note that indexation by name yields the next matching HDU. To rewind the search
+of HDUs by their names, just call `seekstart(io)`. This makes easy to travel
+through all HDUs of a given name:
+
+``` julia
+seekstart(io)
+while true
+    hdu = io["BINTABLE"]
+    hdu === nothing && break
+    ...
+end
+```
+
+Call `seek(io,n)` to move to the `n`-th HDU without retrieving the HDU object.
+`seekstart(io)` and `seekend(io)` are similar but move to the first/last HDU.
+Call `position(io)` to figure out the number of the current HDU.
+
+
+
+## `EasyFITS` objects
 
 ### FITS Image pseudo-arrays
 
-EasyFITS provides objects of type `FitsImage` that, like FITS Image extensions,
+`EasyFITS` provides objects of type `FitsImage` that, like FITS Image extensions,
 combine a data part which is a multi-dimensional array and a header part.  Such
 objects can be indexed by integers or Cartesian indices to get/set array values
 of by strings to get/set keyword values.  Accessing these objects as arrays,
@@ -111,13 +200,13 @@ where `path` is the name of the FITS file and `mode` can be:
 
 - `"r"` or `"r+"` to read or append to the contents of and existing FITS file.
   If file `path` does not exist but `path` does not end with the `".gz"`
-  extension and `"\$path.gz"` does exist, then the compressed file
-  `"$path.gz"` is open instead.
+  extension and `"\$path.gz"` does exist, then the compressed file `"$path.gz"`
+  is open instead.
 
-- `"w"` to create a new FITS file named `path` that must not already exist.  An
+- `"w"` to create a new FITS file named `path` that must not already exist. An
   error is thrown if the file already exists.
 
-- `"w!"` to open FITS file named `path` for writing.  If the file already
+- `"w!"` to open FITS file named `path` for writing. If the file already
   exists, it is (silently) overwritten.
 
 An alternative is to call `open` as:
@@ -127,12 +216,12 @@ io = open(FitsFile(path), mode)
 io = open(fits"...", mode)
 ```
 
-where `"..."` is a quoted string to specify the file name.
+where `"..."` is a quoted string to specify the file name literally.
 
 Call `close(io)` to close the FITS file associated with the `FitsIO` instance
-`io`.  Call `isopen(io)` to check whether the FITS file associated with the
-`FitsIO` instance `io` is open.  Closing the FITS file is automatically done,
-if needed, when the instance is garbage collected.
+`io`. Call `isopen(io)` to check whether the FITS file associated with the
+`FitsIO` instance `io` is open. Closing the FITS file is automatically done, if
+needed, when the instance is garbage collected.
 
 The do-block syntax is supported to automatically close the FITS file:
 
@@ -144,7 +233,7 @@ end
 ```
 
 An instance of `FitsIO` is a collection of *Header Data Units* (HDU) and
-implements indexation and iteration.  Assuming `io` is a `FitsIO` object, then:
+implements indexation and iteration. Assuming `io` is a `FitsIO` object, then:
 
 - `io[i]` yields the `i`-th HDU.
 
@@ -158,12 +247,11 @@ implements indexation and iteration.  Assuming `io` is a `FitsIO` object, then:
 
 - Methods `findfirst(p,io)`, `findlast(p,io)`, `findnext(p,io,i)` and
   `findprev(p,io,i)` can be used on `FitsIO` object `io` to search for a
-  specific HDU.  These methods test each HDU (starting at initial index `i` for
+  specific HDU. These methods test each HDU (starting at initial index `i` for
   `findnext` and `findprev`) with the predicate function `p` (called with a
   `FitsHDU` argument) and return the index (an integer) of the first HDU for
-  which the predicate yields `true` or `nothing` if this never occurs.
-  These methods are build upon `EasyFITS.find` which may be directly
-  called.
+  which the predicate yields `true` or `nothing` if this never occurs. These
+  methods are build upon `EasyFITS.find` which may be directly called.
 
 
 ## Reading data from FITS files
@@ -193,7 +281,7 @@ A["STUFF"] = 1                     # set value of FITS keyword STUFF
 A["STUFF"] = (1, "Some value")     # idem with value-comment pair
 A.STUFF = 3                        # set value
 A.STUFF = (3, "Some other value")  # idem
-arr = get(Array, A)                # get the data part (a regular Julia array)
+arr = convert(Array, A)            # get the data part (a regular Julia array)
 hdr = get(FitsHeader, A)           # get the header part
 EasyFITS.nkeys(A)                  # get the number of keywords
 EasyFITS.nkeys(hdr)                # get the number of keywords
@@ -214,9 +302,19 @@ read(FitsImage, "data.fits")          # load the first array and header
 read(FitsHeader, "data.fits")         # reads only the header part
 read(FitsImage{T}, "data.fits")       # yields pseudo-array with elements of type T
 read(FitsImage{T,N}, "data.fits")     # yields N-dimensional pseudo-array with elements of type T
-read(FitsArray, "data.fits")          # only load the array part (as a regular array)
-read(FitsArray{T}, "data.fits")       # yields regular array with elements of type T
-read(FitsArray{T,N}, "data.fits")     # yields N-dimensional regular array with elements of type T
+read(Array, fits"data.fits")          # only load the array part (as a regular array)
+read(Array{T}, fits"data.fits")       # yields regular array with elements of type T
+read(Array{T,N}, fits"data.fits")     # yields N-dimensional regular array with elements of type T
+```
+
+Above, the `fits` string prefix was needed to indicate that the file was a FITS
+file and avoid type-piracy. The very same result is obtained by using the
+`readfits` function instead:
+
+```julia
+readfits(Array, "data.fits")          # only load the array part (as a regular array)
+readfits(Array{T}, "data.fits")       # yields regular array with elements of type T
+readfits(Array{T,N}, "data.fits")     # yields N-dimensional regular array with elements of type T
 ```
 
 Array slicing is also possible by specifying additional arguments:
@@ -235,7 +333,7 @@ strings to access FITS keywords and implements the `obj.key` syntax.
 
 ## Writing FITS files
 
-With **EasyFITS**, you can write rather complex FITS files in very lines of
+With `EasyFITS`, you can write rather complex FITS files in very lines of
 code.
 
 ### Writing a FITS Image
@@ -249,7 +347,7 @@ write(path, A)
 
 with `path` the name of the output file.  Keyword `overwrite` may be used to
 specify whether overwriting an existing file is allowed.  Another possibility
-to force overwritting is to call:
+to force overwriting is to call:
 
 ```julia
 write!(path, A)
@@ -344,10 +442,10 @@ write(FitsFile, path, arr, (HDUNAME = ("Custom Extension", "Some comment"),
 
 Note that we followed the convention that FITS keywords are in capital letters
 and that an optional comment can be given for each FITS keyword by specifying
-its value as a 2-tuple `(value,comment)`.  Above, the header specifications
-have been wrapped into a single object: a `FitsHeader` or a tuple.  Using a
-named tuple or a tuple of `"key" => value` pairs can also be used for writing
-multiple extensions.  When a single extension is written, the tuple can be
+its value as a 2-tuple `(value,comment)`. Above, the header specifications have
+been wrapped into a single object: a `FitsHeader` or a tuple. Using a named
+tuple or a tuple of `"key" => value` pairs can also be used for writing
+multiple extensions. When a single extension is written, the tuple can be
 avoided:
 
 ```julia
@@ -362,7 +460,7 @@ To avoid ambiguities, these two styles cannot be mixed.
 
 ### Extending for other kinds of data types
 
-The API of **EasyFITS** is designed to be easily extensible for other data
+The API of `EasyFITS` is designed to be easily extensible for other data
 types.   For instance, to benefit from the available methods, it may be possible
 to just extend:
 
@@ -384,10 +482,10 @@ more variants of `write(io,dat,...)`.
 
 ## Automatic (de)compression
 
-With **EasyFITS**, file names ending with `.gz` are automatically recognized
-for compressed files.  When reading a FITS file, say `path`, if no file named
-`path` exists but the is a file named `"$(path).gz"` this latter file will be
-automatically open.  When creating a FITS file, the file is automatically
+With `EasyFITS`, file names ending with `.gz` are automatically recognized for
+compressed files. When reading a FITS file, say `path`, if no file named `path`
+exists but the is a file named `"$(path).gz"` this latter file will be
+automatically open. When creating a FITS file, the file is automatically
 compressed if its name ends with `.gz`.
 
 
@@ -427,25 +525,29 @@ Conversely call `eltype(bpx)` to convert FITS bitpix `bpx` into a Julia type.
 To avoid conflicts such as *type piracy*, all exported methods but `exists` and
 `write!` have their names prefixed by `Fits*`.
 
+[doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[doc-stable-url]: https://emmt.github.io/EasyFITS.jl/stable
+
 [doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [doc-dev-url]: https://emmt.github.io/EasyFITS.jl/dev
 
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.org/emmt/EasyFITS.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/emmt/EasyFITS.jl
+[github-ci-img]: https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml/badge.svg?branch=master
+[github-ci-url]: https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml?query=branch%3Amaster
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/EasyFITS.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/EasyFITS-jl/branch/master
 
-[coveralls-img]: https://coveralls.io/repos/github/emmt/EasyFITS.jl/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/emmt/EasyFITS.jl?branch=master
+[codecov-img]: http://codecov.io/github/emmt/EasyFITS.jl/coverage.svg?branch=master
+[codecov-url]: http://codecov.io/github/emmt/EasyFITS.jl?branch=master
 
-[codecov-img]: https://codecov.io/gh/emmt/EasyFITS.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/emmt/EasyFITS.jl
+[julia-url]: https://julialang.org/
+[julia-pkgs-url]: https://pkg.julialang.org/
 
 [fitsio-url]: https://github.com/JuliaAstro/FITSIO.jl
-[fitsio-url]: https://github.com/JuliaAstro/CFITSIO.jl
+[cfitsio-url]: https://github.com/JuliaAstro/CFITSIO.jl
 [julia-url]: http://julialang.org/
 [libcfitsio-url]: http://heasarc.gsfc.nasa.gov/fitsio/
+[clang-url]:https://github.com/JuliaInterop/Clang.jl
