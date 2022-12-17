@@ -8,13 +8,11 @@ openfits(path::AbstractString, mode::AbstractString = "r"; kwds...) =
 openfits(func::Function, path::AbstractString, mode::AbstractString = "r"; kwds...) =
     open(func, FitsFile(path), mode; kwds...)
 
-readfits(path::AbstractString, mode::AbstractString = "r"; kwds...) =
-    read(FitsFile(path), mode; kwds...)
+readfits(path::AbstractString, ext::Union{Integer,AbstractString} = 1; kwds...) =
+    read(FitsFile(path), ext; kwds...)
 
-writefits(path::AbstractString, mode::AbstractString = "r"; kwds...) =
-    write(FitsFile(path), mode; kwds...)
-writefits!(path::AbstractString, mode::AbstractString = "r"; kwds...) =
-    write!(FitsFile(path), mode; kwds...)
+writefits(path::AbstractString; kwds...) = write(FitsFile(path), mode; kwds...)
+writefits!(path::AbstractString; kwds...) = write!(FitsFile(path), mode; kwds...)
 
 # Implement do-block syntax.
 function FitsIO(f::Function, path::AbstractString, mode::AbstractString = "r"; kwds...)
@@ -26,17 +24,45 @@ function FitsIO(f::Function, path::AbstractString, mode::AbstractString = "r"; k
     end
 end
 
+"""
+    write!(path::FitsFile, args...; kwds...)
+
+writes FITS file whose name is given by `path`. If the file already exists, it
+is silently overwritten. This method is a shortcut for:
+
+    write(path, args...; overwrite=true, kwds...)
+
+"""
 write!(path::FitsFile, args...; kwds...) =  write(path, args...; overwrite=true, kwds...)
 
+"""
+    write(path::FitsFile, arr, hdr=nothing)
+    write(path::FitsFile, hdr, arr)
+
+create a new FITS file whose name is given by `path` and writes array `arr`
+whith header `hdr` into this file. If the file already exists, an error is
+thrown if keyword `overwrite` is false; otherwise the file is silently
+overwritten. Order of arguments `arr` and `hdr` is irrelevant.
+
+Specify keyword `extended = true` to use CFITSIO extended filename syntax.
+
+"""
 function write(path::FitsFile,
-               A::AbstractArray,
-               hdr::Union{Nothing,Header} = nothing;
+               hdr::Union{Nothing,Header},
+               A::AbstractArray;
                #bitpix::Integer = type_to_bitpix(eltype(A)),
                overwrite::Bool = false,
                kwds...)
     open(path, overwrite ? "w!" : "w"; kwds...) do io
         write(io, A, hdr)
     end
+end
+
+function write(path::FitsFile,
+               A::AbstractArray,
+               hdr::Union{Nothing,Header} = nothing;
+               kwds...)
+    return write(path, hdr, A; kwds...)
 end
 
 """
@@ -66,9 +92,8 @@ function read(path::FitsFile,
     return read(Array, path, ext, col; kwds...)
 end
 
-function read(::Type{R}, path::FitsFile,
-              ext::Union{AbstractString,Integer} = 1;
-              kwds...) where {R<:Array}
+function read(R::Type{<:Array}, path::FitsFile,
+              ext::Union{AbstractString,Integer} = 1; kwds...)
     open(path, "r"; kwds...) do io
         hdu = io[ext]
         hdu isa FitsImageHDU || error("not a FITS image extension")
@@ -76,9 +101,9 @@ function read(::Type{R}, path::FitsFile,
     end
 end
 
-function read(::Type{R}, path::FitsFile,
+function read(R::Type{<:Array}, path::FitsFile,
               ext::Union{AbstractString,Integer},
-              col::Union{AbstractString,Integer}; kwds...) where {R<:Array}
+              col::Union{AbstractString,Integer}; kwds...)
     open(path, "r"; kwds...) do io
         hdu = io[ext]
         hdu isa FitsTableHDU || error("not a FITS table extension")
@@ -90,7 +115,7 @@ function read!(arr::DenseArray, path::FitsFile,
                ext::Union{AbstractString,Integer} = 1; kwds...)
     open(path, "r"; kwds...) do io
         hdu = io[ext]
-        hdu isa FitsImageHDU || error("not a FITS table extension")
+        hdu isa FitsImageHDU || error("not a FITS image extension")
         return read!(arr, hdu)
     end
 end

@@ -98,7 +98,7 @@ values as explicitely allowed by the FITS Standard (version 4).
 
 """
 type_to_bitpix(arr::AbstractArray) = type_to_bitpix(typeof(arr))
-type_to_bitpix(::Type{AbstractArray{T}}) where {T} = type_to_bitpix(T)
+type_to_bitpix(::Type{<:AbstractArray{T}}) where {T} = type_to_bitpix(T)
 
 """
     EasyFITS.type_from_bitpix(b) -> T
@@ -159,7 +159,7 @@ their corresponding C and Julia types are:
 
 """
 type_to_code(arr::AbstractArray) = type_to_code(typeof(arr))
-type_to_code(::Type{AbstractArray{T}}) where {T} = type_to_code(T)
+type_to_code(::Type{<:AbstractArray{T}}) where {T} = type_to_code(T)
 
 """
     EasyFITS.type_from_code(c) -> T
@@ -216,7 +216,7 @@ in FITS. Argument can also be an array instance or type.
 
 """
 type_to_letter(arr::AbstractArray) = type_to_letter(typeof(arr))
-type_to_letter(::Type{AbstractArray{T}}) where {T} = type_to_letter(T)
+type_to_letter(::Type{<:AbstractArray{T}}) where {T} = type_to_letter(T)
 
 """
     EasyFITS.type_from_letter(c) -> T

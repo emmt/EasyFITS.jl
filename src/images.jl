@@ -91,7 +91,7 @@ but may be more efficient as no array other than the result is allocated and
 fewer values are read.
 
 """
-function Base.read(hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) where {T}
+function Base.read(hdu::FitsImageHDU{T}, inds::SubArrayIndex...; kwds...) where {T}
     return read(Array{T}, hdu, inds; kwds...)
 end
 
@@ -119,7 +119,7 @@ function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU, inds::SubArrayIndices;
     arr_dims, first, step, last = subarray_params(img_dims, inds)
     length(arr_dims) == N || throw(DimensionMismatch(
         "given indices yield $(length(arr_dims)) dimension(s) not N=$N"))
-    return read!(new_array(T, arr_dims); null = null, anynull = anynull,
+    return read!(new_array(T, arr_dims), hdu; null = null, anynull = anynull,
                  first = first, step = step, last = last)
 end
 
@@ -163,7 +163,7 @@ complete image. This behavior may be changed by specifying another value than
   coordinates of the first and last pixels to read as an `N`-tuple of integers,
   with `N` the number of dimensions of the FITS image extension. Optionally,
   keyword `step` may be specified as an `N`-tuple of integers to indicate the
-  increment along each dimensions.
+  increment along each dimensions. Increments must be positive.
 
 * To read consecutive pixels, specify at least one of the keywords `first`
   and/or `last` with the index of the first and/or last pixels to read as an
@@ -426,10 +426,10 @@ function Base.write(hdu::FitsImageHDU{<:Any,N},
         if len > 0
             if null === nothing
                 check(CFITSIO.fits_write_img(
-                    hdu, type, fpix, npix, dense_array(arr), Ref{Status}(0)))
+                    hdu, type, fpix, len, dense_array(arr), Ref{Status}(0)))
             else
                 check(CFITSIO.fits_write_imgnull(
-                    hdu, type, fpix, npix, dense_array(arr), Ref{eltype(arr)}(null),
+                    hdu, type, fpix, len, dense_array(arr), Ref{eltype(arr)}(null),
                     Ref{Status}(0)))
             end
         end
