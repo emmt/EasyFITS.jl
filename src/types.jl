@@ -21,6 +21,11 @@ const CardData = Union{CardValue,
 
 const CardPair = Pair{<:CardName,<:CardData}
 
+# Aliases used for sub-indexing.
+const IndexRange = OrdinalRange{<:Integer,<:Integer}
+const SubArrayIndex = Union{Colon,Integer,IndexRange}
+const SubArrayIndices{N} = NTuple{N,SubArrayIndex}
+
 """
     EasyFITS.Header
 

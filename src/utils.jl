@@ -324,6 +324,93 @@ function fix_booleans!(arr::AbstractArray{Bool})
 end
 
 """
+    EasyFITS.map_to_longest(f, r, a1, a2; missing=missing)
+
+yields the result of applying function `f` recursively to update result `r` for
+each pair of values of tuples `a1` and `a2`. The recursion stops when the
+longest of `a1` and `a2` is exhausted. In this process, missing values are
+specified by the keyword `missing`. This is equivalent to:
+
+    for i in 1:max(length(a1), length(a2))
+        r = f(r, (i ≤ length(a1) ? a1[i] : missing),
+                 (i ≤ length(a2) ? a2[i] : missing))
+    end
+    return r
+
+except that in-lining is used to unroll the loop.
+
+"""
+@inline map_to_longest(f::Function, r, a1::Tuple{}, a2::Tuple{}; missing=missing) = r
+@inline map_to_longest(f::Function, r, a1::Tuple, a2::Tuple{}; missing=missing) =
+    map_to_longest(f, f(r, first(a1), missing), Base.tail(a1), (); missing=missing)
+@inline map_to_longest(f::Function, r, a1::Tuple{}, a2::Tuple; missing=missing) =
+    map_to_longest(f, f(r, missing, first(a2)), (), Base.tail(a2); missing=missing)
+@inline map_to_longest(f::Function, r, a1::Tuple, a2::Tuple; missing=missing) =
+    map_to_longest(f, f(r, first(a1), first(a2)), Base.tail(a1), Base.tail(a2);
+                   missing=missing)
+
+"""
+    EasyFITS.subarray_params(dims, inds) -> (d, f, s, l)
+
+yields resulting dimensions `d`, first indices `f`, steps `s`, and last indices
+`l` when sub-indexing an array of size `dims` with sub-indices `inds`. Tuples
+`f`, `s`, and `l` have the same number of values as `dims`; `d` may have fewer
+values.
+
+"""
+subarray_params(dims::Dims, inds::SubArrayIndices) =
+    map_to_longest(_update_subarray_params, ((),(),(),()), dims, inds)
+
+# More dimensions than sub-indices is forbidden.
+_update_subarray_params(p, d::Integer, i::Missing) = too_few_subindices()
+@noinline too_few_subindices() = throw(DimensionMismatch("too few sub-indices specified"))
+
+# Update parameters for sub-indexing a given dimension (`d` is an integer) or
+# beyond the number of dimensions (`d` is `missing`).
+_update_subarray_params(p, d::Union{Integer,Missing}, i::Integer) = begin
+    verify_subindex(d, i)
+    if d === missing
+        return p
+    else
+        return (p[1],         # no additional sub-array dimension
+                (p[2]..., i), # first index
+                (p[3]..., 1), # step
+                (p[4]..., i)) # last index
+    end
+end
+
+_update_subarray_params(p, d::Union{Integer,Missing}, ::Colon) =
+    ((p[1]..., (d === missing ? 1 : d)), # sub-array dimension
+     (p[2]..., 1),                       # first index
+     (p[3]..., 1),                       # step
+     (p[4]..., (d === missing ? 1 : d))) # last index
+
+_update_subarray_params(p, d::Union{Integer,Missing}, r::SubArrayIndex) = begin
+    verify_subindex(d, r)
+    return ((p[1]..., length(r)), # sub-array dimension
+            (p[2]..., first(r)),  # first index
+            (p[3]..., step(r)),   # step
+            (p[4]..., last(r)))   # last index
+end
+
+is_valid_subindex(d::Missing, i::Integer) = isone(i)
+is_valid_subindex(d::Integer, i::Integer) = (i ≥ one(i)) & (i ≤ d)
+
+is_valid_subindex(d::Union{Integer,Missing}, ::Colon) = true
+
+is_valid_subindex(d::Missing, r::IndexRange) = isone(first(r)) & isone(length(r))
+is_valid_subindex(d::Integer, r::IndexRange) = begin
+    i_min, i_max = extrema(r)
+    return (i_min ≤ i_max) & (i_min ≥ one(i_min)) & (i_max ≤ d)
+end
+
+function verify_subindex(d::Union{Integer,Missing}, i::SubArrayIndex)
+    is_valid_subindex(d, i) || out_of_bounds_subindex()
+    return nothing
+end
+@noinline out_of_bounds_subindex() = throw(ArgumentError("out of bound sub-index"))
+
+"""
     EasyFITS.new_array(T, dims...) -> arr
 
 yields a new array with element type `T` and dimensions `dims...` which may be
