@@ -74,6 +74,28 @@ get_field_index(T::Type, name::AbstractString) = get_field_index(T, Symbol(name)
 yields the code for FITS image pixels of type `T`. Argument can also be an
 array instance or type.
 
+Basic numeric types are recognized by this method which may be extended by
+other packages to yield the CFITSIO codes equivalent to their own types. The
+CFITSIO constants (to be prefixed by `EasyFITS.CFITSIO.`) and their
+corresponding Julia types and standard BITPIX code are:
+
+| CFITSIO Constant | Julia Type | `BITPIX` |
+|:-----------------|:-----------|---------:|
+| `BYTE_IMG`       | `UInt8`    |        8 |
+| `SBYTE_IMG`      | `Int8`     |          |
+| `SHORT_IMG`      | `Int16`    |       16 |
+| `USHORT_IMG`     | `UInt16`   |          |
+| `LONG_IMG`       | `Int32`    |       32 |
+| `ULONG_IMG`      | `UInt32`   |          |
+| `LONGLONG_IMG`   | `Int64`    |       64 |
+| `ULONGLONG_IMG`  | `UInt64`   |          |
+| `FLOAT_IMG`      | `Float32`  |      -32 |
+| `DOUBLE_IMG`     | `Float64`  |      -64 |
+
+Note that CFITSIO can read/write non-standard pixel types (those without a
+`BITPIX` value above) by setting keywords `BSCALE` and `BZERO` with special
+values as explicitely allowed by the FITS Standard (version 4).
+
 """
 type_to_bitpix(arr::AbstractArray) = type_to_bitpix(typeof(arr))
 type_to_bitpix(::Type{AbstractArray{T}}) where {T} = type_to_bitpix(T)
@@ -109,6 +131,31 @@ end
 
 yields the CFITSIO type code for a keyword value or table cells of type `T`.
 Argument can also be an array instance or type.
+
+Basic numeric types and string types are recognized by this method which may be
+extended by other packages to yield the CFITSIO codes equivalent to their own
+types. The CFITSIO type constants (to be prefixed by `EasyFITS.CFITSIO.`) and
+their corresponding C and Julia types are:
+
+| CFITSIO Constant | C Type               | Julia Type         |
+|:-----------------|:---------------------|:-------------------|
+| `TLOGICAL`       | `char`               | `Cchar`            |
+| `TBYTE`          | `unsigned char`      | `UInt8`            |
+| `TSBYTE`         | `signed char`        | `Int8`             |
+| `TUSHORT`        | `unsigned short`     | `Cushort`          |
+| `TSHORT`         | `short`              | `Cshort`           |
+| `TUINT`          | `unsigned int`       | `Cuint`            |
+| `TINT`           | `int`                | `Cint`             |
+| `TULONG`         | `unsigned long`      | `Culong`           |
+| `TLONG`          | `long`               | `Clong`            |
+| `TULONGLONG`     | `unsigned long long` | `Culonglong`       |
+| `TLONGLONG`      | `long long`          | `Clonglong`        |
+| `TFLOAT`         | `float`              | `Cfloat`           |
+| `TDOUBLE`        | `double`             | `Cdouble`          |
+| `TCOMPLEX`       | `float complex`      | `Complex{Cfloat}`  |
+| `TDBLCOMPLEX`    | `double complex`     | `Complex{Cdouble}` |
+| `TSTRING`        | `char*`              |                    |
+| `TBIT`           |                      |                    |
 
 """
 type_to_code(arr::AbstractArray) = type_to_code(typeof(arr))
