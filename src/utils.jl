@@ -436,6 +436,17 @@ new_array(::Type{T}, n::Val{N}, dims::Integer...) where {T,N} = new_array(T, n, 
     end
 end
 
+"""
+    EasyFITS.dense_array(arr)
+
+yields a dense array, that is an array that stores its elements contiguously,
+with same dimensions and values as `arr`. If `arr` is already a dense array, it
+is returned.
+
+"""
+dense_array(arr::DenseArray) = arr
+dense_array(arr::AbstractArray{T,N}) where {T,N} = convert(Array{T,N}, arr)
+
 function to_string!(buf::Vector{UInt8})
     @inbounds for i in 1:length(buf)
         if iszero(buf[i])
