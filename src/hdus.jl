@@ -24,9 +24,9 @@ function FitsHDU(io::FitsIO, i::Integer)
     check(CFITSIO.fits_movabs_hdu(ptr, i, type, status))
     type = FitsHDUType(type[])
     if type == FITS_ASCII_TABLE_HDU
-        return FitsTableHDU(CheckedArguments(), io, i, true)
+        return FitsTableHDU(BareBuild(), io, i, true)
     elseif type == FITS_BINARY_TABLE_HDU
-        return FitsTableHDU(CheckedArguments(), io, i, false)
+        return FitsTableHDU(BareBuild(), io, i, false)
     elseif type == FITS_IMAGE_HDU
         bitpix = Ref{Cint}()
         check(CFITSIO.fits_get_img_equivtype(ptr, bitpix, status))
@@ -34,9 +34,9 @@ function FitsHDU(io::FitsIO, i::Integer)
         check(CFITSIO.fits_get_img_dim(ptr, ndims, status))
         N = Int(ndims[])::Int
         T = type_from_bitpix(bitpix[])
-        return FitsImageHDU{T,N}(CheckedArguments(), io, i)
+        return FitsImageHDU{T,N}(BareBuild(), io, i)
     else
-        return FitsAnyHDU(CheckedArguments(), io, i)
+        return FitsAnyHDU(BareBuild(), io, i)
     end
 end
 

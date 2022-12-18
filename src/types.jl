@@ -141,21 +141,20 @@ mutable struct FitsIO <: AbstractVector{FitsHDU}
     end
 end
 
-# Singleton type to indicate that the caller has checked arguments for
-# correctness.
-struct CheckedArguments end
+# Singleton type to indicate that the inner constructor should be called.
+struct BareBuild end
 
 struct FitsAnyHDU <: FitsHDU
     io::FitsIO
     num::Int
-    FitsAnyHDU(::CheckedArguments, io::FitsIO, num::Integer) = new(io, num)
+    FitsAnyHDU(::BareBuild, io::FitsIO, num::Integer) = new(io, num)
 end
 
 # FITS Image (Array for Julia).
 struct FitsImageHDU{T,N} <: FitsHDU
     io::FitsIO
     num::Int
-    function FitsImageHDU{T,N}(::CheckedArguments, io::FitsIO, num::Integer) where {T,N}
+    function FitsImageHDU{T,N}(::BareBuild, io::FitsIO, num::Integer) where {T,N}
         isbitstype(T) || bad_argument("parameter T=$T is not a plain type")
         isa(N, Int) && N ≥ 0 || bad_argument("parameter N=$N is a nonnegative Int")
         return new{T,N}(io, num)
@@ -167,7 +166,7 @@ struct FitsTableHDU <: FitsHDU
     io::FitsIO
     num::Int
     ascii::Bool
-    FitsTableHDU(CheckedArguments, io::FitsIO, num::Integer, ascii::Bool) =
+    FitsTableHDU(BareBuild, io::FitsIO, num::Integer, ascii::Bool) =
         new(io, num, ascii)
 end
 

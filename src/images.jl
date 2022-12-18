@@ -298,7 +298,7 @@ function Base.write(io::FitsIO, ::Type{FitsImageHDU},
                                   Ref(convert(NTuple{N,Clong}, dims)),
                                   Ref{Status}(0)))
     # The number of HDUs is only incremented after writing data.
-    return FitsImageHDU{T,N}(CheckedArguments(), io, position(io))
+    return FitsImageHDU{T,N}(BareBuild(), io, position(io))
 end
 
 # Just convert bitpix to type.

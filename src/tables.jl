@@ -528,7 +528,7 @@ function Base.write(io::FitsIO, ::Type{FitsTableHDU},
             write_tdim(io, k, dims)
         end
     end
-    return FitsTableHDU(CheckedArguments(), io, position(io), ascii)
+    return FitsTableHDU(BareBuild(), io, position(io), ascii)
 end
 
 """
