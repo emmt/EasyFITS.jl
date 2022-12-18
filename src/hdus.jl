@@ -12,12 +12,12 @@ The returned object has the following read-only properties:
     hdu.io       # same as FitsIO(hdu)
     hdu.num      # yields the HDU number (the index `i` above)
     hdu.type     # same as FITSHDUType(hdu)
-    hdu.xtension # value of XTENSION card (never nothing)
-    hdu.extname  # value of EXTNAME card of nothing
-    hdu.hduname  # value of HDUNAME card or nothing
+    hdu.xtension # value of the XTENSION card (never nothing)
+    hdu.extname  # value of the EXTNAME card or nothing
+    hdu.hduname  # value of the HDUNAME card or nothing
 
 """
-function FitsHDU(io::FitsIO, i::Int)
+function FitsHDU(io::FitsIO, i::Integer)
     ptr = check(pointer(io))
     status = Ref{Status}(0)
     type = Ref{Cint}()
@@ -40,11 +40,17 @@ function FitsHDU(io::FitsIO, i::Int)
     end
 end
 
-FitsTableHDU(io::FitsIO, i::Int) = FitsHDU(io, i)::FitsTableHDU
+FitsHDU(io::FitsIO, s::AbstractString) = io[s]
 
-FitsImageHDU(io::FitsIO, i::Int) = FitsHDU(io, i)::FitsImageHDU
-FitsImageHDU{T}(io::FitsIO, i::Int) where {T} = FitsHDU(io, i)::FitsImageHDU{T}
-FitsImageHDU{T,N}(io::FitsIO, i::Int) where {T,N} = FitsHDU(io, i)::FitsImageHDU{T,N}
+FitsTableHDU(io::FitsIO, i::Union{Integer,AbstractString}) =
+    FitsHDU(io, i)::FitsTableHDU
+
+FitsImageHDU(io::FitsIO, i::Union{Integer,AbstractString}) =
+    FitsHDU(io, i)::FitsImageHDU
+FitsImageHDU{T}(io::FitsIO, i::Union{Integer,AbstractString}) where {T} =
+    FitsHDU(io, i)::FitsImageHDU{T}
+FitsImageHDU{T,N}(io::FitsIO, i::Union{Integer,AbstractString}) where {T,N} =
+    FitsHDU(io, i)::FitsImageHDU{T,N}
 
 Base.propertynames(::FitsHDU) = (:extname, :hduname, :io, :num, :type, :xtension)
 Base.getproperty(hdu::FitsHDU, sym::Symbol) = getproperty(hdu, Val(sym))

@@ -298,6 +298,12 @@ function Base.getindex(io::FitsIO, s::AbstractString)
     return hdu
 end
 
+function Base.get(io::FitsIO, s::AbstractString, default)
+    hdu = findfirst(s, io)
+    hdu === nothing && return default
+    return hdu
+end
+
 """
     FitsFile(path)
     fits"path"
