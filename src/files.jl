@@ -275,7 +275,7 @@ flushes the internal data buffers of `f` to the associated output FITS file.
 
 """
 Base.flush(f::Union{FitsIO,FitsHDU}) =
-    check(CFITSIO.fits_flush_buffer(out, Ref{Status}(0)))
+    check(CFITSIO.fits_flush_buffer(f, 0, Ref{Status}(0)))
 
 # Implement abstract array API for FitsIO objects.
 function Base.length(io::FitsIO)
