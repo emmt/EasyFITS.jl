@@ -150,6 +150,12 @@ end
     end
 end
 
+# Get comment as a string from header card settings.
+get_comment(dat::Any) = ""
+get_comment(dat::Tuple{Any}) = ""
+get_comment(dat::Tuple{Any,Nothing}) = ""
+get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
+
 @testset "FITS files" begin
     @test fits"test1.fits" === FitsFile("test1.fits")
     open(fits"test1.fits", "w!") do io
@@ -262,10 +268,7 @@ end
             push!(hdu, cards)
             @test length(hdu) == len + length(cards)
             for (key, dat) in cards
-                let card = get(hdu, key, nothing), val = dat[1], com = get(dat, 2, "")
-                    if com === nothing
-                        com = ""
-                    end
+                let card = get(hdu, key, nothing), val = dat[1], com = get_comment(dat)
                     @test card isa EasyFITS.FitsCard
                     if val isa Bool
                         @test card.type == FITS_LOGICAL
