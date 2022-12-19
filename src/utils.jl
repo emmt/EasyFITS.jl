@@ -264,7 +264,7 @@ const TYPE_SHORT_SUFFIXES = (sb  = Int8,            b   = UInt8,
                              e   = Cfloat,          d   = Cdouble,
                              c   = Complex{Cfloat}, m   = Complex{Cdouble},
                              l   = Bool,            s   = String,
-                             x   = Bit)
+                             x   = Bit,             u   = Nothing)
 
 const TYPE_LONG_SUFFIXES = (sbyt    = Int8,            byt      = UInt8,
                             sht     = Cshort,          usht     = Cushort,
@@ -274,7 +274,7 @@ const TYPE_LONG_SUFFIXES = (sbyt    = Int8,            byt      = UInt8,
                             flt     = Cfloat,          dbl      = Cdouble,
                             cmp     = Complex{Cfloat}, dblcmp   = Complex{Cdouble},
                             log     = Bool,            str      = String,
-                            bit     = Bit)
+                            bit     = Bit,             null     = Nothing)
 
 let S = Set{DataType}()
     for (sym, T) in pairs(TYPE_SHORT_SUFFIXES)

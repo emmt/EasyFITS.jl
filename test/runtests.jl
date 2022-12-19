@@ -111,7 +111,8 @@ end
         @test type_from_letter(type_to_letter(ComplexF64)) === ComplexF64
     end
 end
-@testset "Creating arrays" begin
+@testset "Arrays utilities" begin
+    # new_array
     let new_array = EasyFITS.new_array
         let A = new_array(Float32, 4, 5, 6)
             @test eltype(A) === Float32
@@ -140,6 +141,90 @@ end
         @test_throws ArgumentError new_array(Float32, Val(2),  4, 5, 6)
         @test_throws ArgumentError new_array(Int16,   Val(2), (4, 5, 6))
         @test_throws ArgumentError new_array(UInt32,  Val(2), [4, 5, 6])
+    end
+    let dense_array = EasyFITS.dense_array,
+        A = convert(Array, reshape(1:24, 2,3,4)),
+        B = view(A, :, 1:2:3, :)
+        @test dense_array(A) === A
+        @test isa(dense_array(B), Array)
+    end
+end
+@testset "FITS files" begin
+    @test fits"test1.fits" === FitsFile("test1.fits")
+    open(fits"test1.fits", "w!") do io
+        @test io isa FitsIO
+        @test !isreadable(io)
+        @test !isreadonly(io)
+        @test iswritable(io)
+        @test position(io) == 1
+        @test length(io) == 0
+        let A = convert(Array{Int16}, reshape(1:60, 3,4,5)),
+            hdu = write(io, FitsImageHDU, eltype(A), size(A))
+            @test hdu["SIMPLE"].type == FITS_LOGICAL
+            @test hdu["SIMPLE"].value.logical === hdu["SIMPLE"].value.parsed
+            @test hdu["SIMPLE"].value.logical === true
+            @test hdu["BITPIX"].type == FITS_INTEGER
+            @test hdu["BITPIX"].value.integer === hdu["BITPIX"].value.parsed
+            @test hdu["BITPIX"].value.integer == 16
+            @test hdu["NAXIS"].type == FITS_INTEGER
+            reset(hdu) # reset before testing incremental search
+            for i in 1:ndims(A)+1
+                local card = get(hdu, "NAXIS#", nothing)
+                @test (card === nothing) == (i > ndims(A))
+                card === nothing && break
+                @test card.type == FITS_INTEGER
+                @test card.value.integer === card.value.parsed
+                @test card.value.integer == size(A, i)
+            end
+            hdu["GIZMO"] = ("O'Brian", "Gizmo name")
+            let card = hdu["GIZMO"]
+                @test card.type == FITS_STRING
+                @test card.value.string === card.value.parsed
+                @test card.value.string == "O'Brian"
+                @test card.comment == "Gizmo name"
+                @test card.comment.unitless == "Gizmo name"
+                @test card.comment.units == ""
+            end
+            hdu["COUNT"] = (Int16(42), "Gizmo counts")
+            let card = hdu["COUNT"]
+                @test card.type == FITS_INTEGER
+                @test card.value.integer === card.value.parsed
+                @test card.value.integer == 42
+                @test card.comment == "Gizmo counts"
+                @test card.comment.unitless == "Gizmo counts"
+                @test card.comment.units == ""
+            end
+            hdu["SPEED"] = (π, "[m/s] Gizmo speed")
+            let card = hdu["SPEED"]
+                @test card.type == FITS_FLOAT
+                @test card.value.float === card.value.parsed
+                @test card.value.float ≈ π
+                @test card.comment == "[m/s] Gizmo speed"
+                @test card.comment.unitless == "Gizmo speed"
+                @test card.comment.units == "m/s"
+            end
+            hdu["LOGIC"] = false
+            let card = hdu["LOGIC"]
+                @test card.type == FITS_LOGICAL
+                @test card.value.logical === card.value.parsed
+                @test card.value.logical == false
+                @test card.comment == ""
+                @test card.comment.unitless == ""
+                @test card.comment.units == ""
+            end
+            hdu["CMPLX"] = (2 + 1im, "[] Gizmo complex")
+            let card = hdu["CMPLX"]
+                @test card.type == FITS_COMPLEX
+                @test card.value.complex === card.value.parsed
+                @test card.value.complex == 2 + 1im
+                @test card.comment == "[] Gizmo complex"
+                @test card.comment.unitless == "Gizmo complex"
+                @test card.comment.units == ""
+            end
+            write(hdu, A)
+        end
+        @test position(io) == 1
+        @test length(io) == 1
     end
 end
 

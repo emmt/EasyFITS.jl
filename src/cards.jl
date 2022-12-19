@@ -43,7 +43,7 @@ let offset = fieldoffset(FitsCard, get_field_index(FitsCard, :data))
     @eval Base.pointer(A::FitsCard) = Ptr{UInt8}(pointer_from_objref(A)) + $offset
 end
 
-# Implement abstract array API for FITS cards.
+# Implement abstract array API for FITS cards as a vector of bytes.
 Base.firstindex(A::FitsCard) = 1
 Base.lastindex(A::FitsCard) = 80
 Base.length(A::FitsCard) = 80
@@ -448,34 +448,56 @@ Base.propertynames(::FitsCardComment) = (:units, :unitless)
     key === :unitless ? unitless(A) :
     invalid_property(A, key)
 
-function find_units(A::FitsCardComment)
+function find_units_marks(A::FitsCardComment)
     i_first, i_last = firstindex(A), lastindex(A)
-    if i_first ≤ i_last && A[i_first] == '['
-        i2 = i_first
-        i1 = i = nextind(A, i_first)
-        while i ≤ i_last
-            A[i] == ']' && return i1:i2
-            i2, i = i, nextind(A, i)
+    i = i_first
+    # FIXME: @inbounds
+    while i ≤ i_last
+        c = A[i]
+        j = nextind(A, i)
+        if c == '['
+            while j ≤ i_last
+                A[j] == ']' && return i:j
+                j = nextind(A, j)
+            end
+        elseif c != ' '
+            break
         end
+        i = j
     end
-    return i_first : i_first - 1
+    return i_first : prevind(A, i_first)
 end
 
-units(A::FitsCardComment) = SubString(A, find_units(A))
+function empty_substring(s::AbstractString)
+    i = firstindex(s)
+    return SubString(s, i, prevind(s, i))
+end
 
-function unitless(A::FitsCardComment)
-    i_last = lastindex(A)
-    r = find_units(A)
-    if isempty(r)
-        i = firstindex(A)
-    else
-        # Skip units and following spaces.
-        i = nextind(A, last(r))
-        while i ≤ i_last && A[i] == ' '
-            i = nextind(A, i)
+function units(A::FitsCardComment)
+    r = find_units_marks(A)
+    if !isempty(r)
+        i = nextind(A, first(r)) # skip opening [
+        j = prevind(A, last(r))  # skip closing ]
+        # FIXME: @inbounds
+        while i ≤ j
+            A[j] == ' ' || return SubString(A, i, j)
+            j = prevind(A, j)
         end
     end
-    return SubString(A, i, i_last)
+    return empty_substring(A)
+end
+
+function unitless(A::FitsCardComment)
+    r = find_units_marks(A)
+    i_last = lastindex(A)
+    isempty(r) && return SubString(A, firstindex(A), i_last)
+    i = nextind(A, last(r))
+    # FIXME: @inbounds
+    while i ≤ i_last
+        A[i] == ' ' || return SubString(A, i, i_last)
+        i = nextind(A, i)
+    end
+    return empty_substring(A)
 end
 
 Base.convert(::Type{T}, card::FitsCard) where {T<:Pair} = T(card)
@@ -589,7 +611,7 @@ _try_parse_integer(A::FitsCardValue) = tryparse(Int, A)
 function _try_parse_float(A::FitsCardValue)
     io = IOBuffer()
     # FIXME: @inbounds
-    for c in s
+    for c in A
         if (c == 'D') | (c == 'd')
             write(io, 'E')
         else
@@ -600,43 +622,56 @@ function _try_parse_float(A::FitsCardValue)
 end
 
 function _try_parse_complex(A::FitsCardValue)
-    i_first = firstindex(A)
-    # FIXME: @inbounds
-    length(A) ≥ 3 && A[i_first] != '(' || return nothing
+    i = firstindex(A)
     i_last = lastindex(A)
-    io = IOBuffer()
-    i = i_first
-    # Parse real part.
-    flag = false
-    while i < i_last
+    state = 0
+    @inbounds while i ≤ i_last
+        c = A[i]
+        if c != ' '
+            if c == '('
+                state = 1
+            else
+                break
+            end
+        end
         i = nextind(A, i)
+    end
+    state == 1 || return nothing
+    io = IOBuffer()
+    @inbounds while i ≤ i_last
         c = A[i]
         if (c == 'D') | (c == 'd')
             write(io, 'E')
         elseif c == ','
-            flag = true
+            state = 2
+            i = nextind(A, i)
             break
         else
             write(io, c)
         end
+        i = nextind(A, i)
     end
-    flag || return nothing
+    state == 2 || return nothing
     re = tryparse(Cdouble, String(take!(io)))
     re === nothing && return nothing
-    # Parse imaginary part.
-    flag = false
-    while i < i_last
+    @inbounds while i ≤ i_last
         c = A[i]
         if (c == 'D') | (c == 'd')
             write(io, 'E')
         elseif c == ')'
-            flag = i == i_last
+            @inbounds while i < i_last
+                # Check that there are only trailing spaces.
+                i = nextind(A, i)
+                A[i] == ' ' || return nothing
+            end
+            state = 3
             break
         else
             write(io, c)
         end
+        i = nextind(A, i)
     end
-    flag || return nothing
+    state == 3 || return nothing
     im = tryparse(Cdouble, String(take!(io)))
     im === nothing && return nothing
     return complex(re, im)

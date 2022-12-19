@@ -294,7 +294,7 @@ normalize_card_value(x::Complex) = to_type(Complex{Cdouble}, x)
 normalize_card_value(x::AbstractString) = x
 
 # Convert card data (e.g., from a key=>dat pair) into a 2-tuple (val,com).
-normalize_card_data(dat::CardValue) = (normalize_card_value(val), nothing)
+normalize_card_data(dat::CardValue) = (normalize_card_value(dat), nothing)
 normalize_card_data(dat::Tuple{CardValue}) = (normalize_card_value(dat[1]), nothing)
 normalize_card_data(dat::Tuple{CardValue,OptionalString}) = (normalize_card_value(dat[1]), dat[2])
 
@@ -317,18 +317,40 @@ comment `com` to the keyword `key`.
 
 """ update_key
 
-for func in (:write_key, :update_key)
-    @eval begin
-        function $func(dst, key::CardName, val::CardValue, com::OptionalString=nothing)
+for func in (:update_key, :write_key),
+    (V, T) in ((AbstractString, String),
+               (Bool, Bool),
+               (Integer, Int),
+               (Real, Cdouble),
+               (Complex, Complex{Cdouble}),
+               (Union{Nothing,UndefInitializer,Missing}, Nothing))
+    local f = cfunc(func === :update_key ? "ffuky" : "ffpky", T)
+    if T === Nothing
+        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
             _com = unsafe_optional_string(com)
-            if val === nothing
-                check(CFITSIO.$(Symbol("fits_",func,"_null"))(dst, key,
-                                                              _com, Ref{Status}(0)))
-            else
-                type = type_to_code(typeof(val))
-                check(CFITSIO.$(Symbol("fits_",func))(dst, type, key, Ref(val),
-                                                      _com, Ref{Status}(0)))
-            end
+            check(CFITSIO.$(Symbol("fits_",func,"_null"))(
+                dst, key, _com, Ref{Status}(0)))
+            return dst
+        end
+    elseif T === String
+        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
+            _com = unsafe_optional_string(com)
+            check(CFITSIO.$(Symbol("fits_",func,"_str"))(
+                dst, key, val, _com, Ref{Status}(0)))
+            return dst
+        end
+    elseif T === Bool
+        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
+            _com = unsafe_optional_string(com)
+            check(CFITSIO.$(Symbol("fits_",func,"_log"))(
+                dst, key, val, _com, Ref{Status}(0)))
+            return dst
+        end
+    else
+        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
+            _com = unsafe_optional_string(com)
+            check(CFITSIO.$(Symbol("fits_",func))(
+                dst, type_to_code($T), key, Ref{$T}(val), _com, Ref{Status}(0)))
             return dst
         end
     end
