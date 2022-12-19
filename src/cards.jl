@@ -3,25 +3,19 @@
 function Base.get(hdu::FitsHDU, key::Union{CardName,Integer}, def)
     card = FitsCard()
     status = try_read!(card, hdu, key)
-    if iszero(status)
-        return initialize!(card)
-    elseif status == CFITSIO.KEY_NO_EXIST
-        return def
-    else
-        throw(FitsError(status))
-    end
+    iszero(status) && return initialize!(card)
+    status == (key isa Integer ?
+        CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST) || throw(FitsError(status))
+    return def
 end
 
 function FitsCard(hdu::FitsHDU, key::Union{CardName,Integer})
     card = FitsCard()
     status = try_read!(card, hdu, key)
-    if iszero(status)
-        return initialize!(card)
-    elseif status == (key isa Integer ? CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST)
-        throw(KeyError(key))
-    else
-        throw(FitsError(status))
-    end
+    iszero(status) && return initialize!(card)
+    status == (key isa Integer ?
+        CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST) || throw(FitsError(status))
+    throw(KeyError(key))
 end
 
 # Unchecked read of a FITS header card.

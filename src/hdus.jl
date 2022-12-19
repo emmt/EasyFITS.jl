@@ -349,8 +349,9 @@ for func in (:update_key, :write_key),
     else
         @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
             _com = unsafe_optional_string(com)
+            _val = Ref{$T}(val)
             check(CFITSIO.$(Symbol("fits_",func))(
-                dst, type_to_code($T), key, Ref{$T}(val), _com, Ref{Status}(0)))
+                dst, type_to_code($T), key, _val, _com, Ref{Status}(0)))
             return dst
         end
     end
