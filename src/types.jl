@@ -166,7 +166,7 @@ struct FitsTableHDU <: FitsHDU
     io::FitsIO
     num::Int
     ascii::Bool
-    FitsTableHDU(BareBuild, io::FitsIO, num::Integer, ascii::Bool) =
+    FitsTableHDU(::BareBuild, io::FitsIO, num::Integer, ascii::Bool) =
         new(io, num, ascii)
 end
 
