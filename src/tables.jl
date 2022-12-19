@@ -502,8 +502,8 @@ arr1`, `col2 => arr2`, etc. specify columns names and associated data.
 
 """
 function Base.write(io::FitsIO, ::Type{FitsTableHDU},
-                    cols::AbstractVector{<:Pair{<:AbstractString,<:Any}};
-                    ascii::Bool=false, nrows::Integer=0)
+                    cols::AbstractVector{Pair{K,V}};
+                    ascii::Bool=false, nrows::Integer=0) where {K<:AbstractString,V}
     ascii && error("only creating binary tables is supported")
     tbl = ascii ? CFITSIO.ASCII_TBL : CFITSIO.BINARY_TBL
     ncols = length(cols)

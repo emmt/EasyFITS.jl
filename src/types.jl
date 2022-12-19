@@ -65,7 +65,7 @@ keywords. Note the differences between the specifications of the records
 `"USER"` and `"REMARK"`.
 
 """
-const Header = AbstractVector{<:Pair{<:CardName,<:Any}}
+const Header = AbstractVector{Pair{<:CardName,<:Any}}
 
 # String decoration to represent a FITS file name.
 struct FitsFile <: AbstractString
