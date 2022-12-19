@@ -160,13 +160,30 @@ end
         @test length(io) == 0
         let A = convert(Array{Int16}, reshape(1:60, 3,4,5)),
             hdu = write(io, FitsImageHDU, eltype(A), size(A))
-            @test hdu["SIMPLE"].type == FITS_LOGICAL
-            @test hdu["SIMPLE"].value.logical === hdu["SIMPLE"].value.parsed
-            @test hdu["SIMPLE"].value.logical === true
-            @test hdu["BITPIX"].type == FITS_INTEGER
-            @test hdu["BITPIX"].value.integer === hdu["BITPIX"].value.parsed
-            @test hdu["BITPIX"].value.integer == 16
-            @test hdu["NAXIS"].type == FITS_INTEGER
+            @test firstindex(hdu) == 1
+            @test lastindex(hdu) == length(hdu)
+            @test_throws KeyError hdu[firstindex(hdu) - 1]
+            # FIXME: @test_throws KeyError hdu[lastindex(hdu) + 1]
+            @test_throws KeyError hdu[lastindex(hdu) + 5000]
+            @test_throws KeyError hdu["DUMMY"]
+            let card = hdu["SIMPLE"]
+                @test card == hdu[firstindex(hdu)]
+                @test card.type == FITS_LOGICAL
+                @test card.value.logical === card.value.parsed
+                @test card.value.logical === true
+            end
+            let card = hdu["BITPIX"]
+                @test card == hdu[firstindex(hdu) + 1]
+                @test card.type == FITS_INTEGER
+                @test card.value.integer === card.value.parsed
+                @test card.value.integer == 16
+            end
+            let card = hdu["NAXIS"]
+                @test card == hdu[firstindex(hdu) + 2]
+                @test card.type == FITS_INTEGER
+                @test card.value.integer === card.value.parsed
+                @test card.value.integer == 3
+            end
             reset(hdu) # reset before testing incremental search
             for i in 1:ndims(A)+1
                 local card = get(hdu, "NAXIS#", nothing)

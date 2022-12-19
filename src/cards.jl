@@ -14,15 +14,23 @@ end
 
 function FitsCard(hdu::FitsHDU, key::Union{CardName,Integer})
     card = FitsCard()
-    check(try_read!(card, hdu, key))
-    return initialize!(card)
+    status = try_read!(card, hdu, key)
+    if iszero(status)
+        return initialize!(card)
+    elseif status == (key isa Integer ? CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST)
+        throw(KeyError(key))
+    else
+        throw(FitsError(status))
+    end
 end
 
 # Unchecked read of a FITS header card.
 try_read!(card::FitsCard, hdu::FitsHDU, key::CardName) =
     CFITSIO.fits_read_card(hdu, key, pointer(card), Ref{Status}(0))
-try_read!(card::FitsCard, hdu::FitsHDU, key::Integer) =
-    CFITSIO.fits_read_record(hdu, key, pointer(card), Ref{Status}(0))
+function try_read!(card::FitsCard, hdu::FitsHDU, key::Integer)
+    key > 0 || return Status(CFITSIO.KEY_OUT_BOUNDS)
+    return CFITSIO.fits_read_record(hdu, key, pointer(card), Ref{Status}(0))
+end
 
 function read_card_split(hdu::FitsHDU, key::CardName)
     val = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
