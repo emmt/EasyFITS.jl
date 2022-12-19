@@ -157,6 +157,8 @@ get_comment(dat::Tuple{Any,Nothing}) = ""
 get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
 
 @testset "FITS files" begin
+    # Write a simple FITS image.
+    A = convert(Array{Int16}, reshape(1:60, 3,4,5))
     @test fits"test1.fits" === FitsFile("test1.fits")
     open(fits"test1.fits", "w!") do io
         @test io isa FitsIO
@@ -167,8 +169,7 @@ get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
         @test length(io) == 0
 
         # Add an IMAGE extension.
-        let A = convert(Array{Int16}, reshape(1:60, 3,4,5)),
-            hdu = write(io, FitsImageHDU, eltype(A), size(A))
+        let hdu = write(io, FitsImageHDU, eltype(A), size(A))
             @test firstindex(hdu) == 1
             @test lastindex(hdu) == length(hdu)
             @test_throws KeyError hdu[firstindex(hdu) - 1]
@@ -317,6 +318,32 @@ get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
         @test position(io) == 1
         @test length(io) == 1
     end
+    # Read the data.
+    B = readfits("test1.fits")
+    @test eltype(B) == eltype(A)
+    @test size(B) == size(A)
+    @test B == A
+    openfits("test1.fits") do io
+        hdu = io[1]
+        @test hdu["KEY_B1"].value.parsed === true
+        @test hdu["KEY_B2"].value.parsed === false
+        # Read sub-regions.
+        @test read(hdu, :, :, :) == A
+        let inds = (1, axes(A)[2], :)
+            @test read(hdu, inds...) == A[inds...]
+        end
+        let inds = (:, axes(A)[2], 3)
+            @test read(hdu, inds...) == A[inds...]
+        end
+        let inds = (:, 1:2:size(A,2), :)
+            @test read(hdu, inds...) == A[inds...]
+        end
+        let inds = (2, 3, :)
+            @test read(hdu, inds...) == A[inds...]
+        end
+
+    end
+
 end
 
 end # module
