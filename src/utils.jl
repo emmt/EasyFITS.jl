@@ -31,7 +31,7 @@ null(::Type{Ptr{T}}) where {T} = Ptr{T}(0)
 # Check argument whether it is a status code returned by one the CFITSIO
 # library function or a pointer to a FITS file.
 check(status::Ref{Status}) = check(status[])
-check(status::Status) = (status == 0 || throw(FitsError(status)))
+check(status::Status) = status == 0 ? nothing : throw(FitsError(status))
 check(ptr::Ptr{CFITSIO.fitsfile}) = isnull(ptr) ? bad_argument("FITS file has been closed") : ptr
 
 bad_argument(str::ArgumentError.types[1]) = throw(ArgumentError(str))
