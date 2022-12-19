@@ -238,9 +238,9 @@ call:
     push!(hdu::FitsHDU, [key1 => dat1, key2 => val2, ...]) -> hdu
 
 """
-Base.push!(hdu::FitsHDU, pair::Pair{<:CardName,<:CardData}) = set_key(write_key, hdu, pair...)
+Base.push!(hdu::FitsHDU, pair::Pair{<:CardName}) = set_key(write_key, hdu, pair...)
 Base.push!(hdu::FitsHDU, ::Nothing) = hdu
-function Base.push!(hdu, pairs::Header)
+function Base.push!(hdu::FitsHDU, pairs::Header)
     for pair in pairs
         push!(hdu, pair)
     end

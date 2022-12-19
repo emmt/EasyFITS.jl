@@ -149,6 +149,7 @@ end
         @test isa(dense_array(B), Array)
     end
 end
+
 @testset "FITS files" begin
     @test fits"test1.fits" === FitsFile("test1.fits")
     open(fits"test1.fits", "w!") do io
@@ -158,6 +159,8 @@ end
         @test iswritable(io)
         @test position(io) == 1
         @test length(io) == 0
+
+        # Add an IMAGE extension.
         let A = convert(Array{Int16}, reshape(1:60, 3,4,5)),
             hdu = write(io, FitsImageHDU, eltype(A), size(A))
             @test firstindex(hdu) == 1
@@ -237,6 +240,74 @@ end
                 @test card.comment == "[] Gizmo complex"
                 @test card.comment.unitless == "Gizmo complex"
                 @test card.comment.units == ""
+            end
+            cards = ["KEY_B1" => (true,  "This is true"),
+                     "KEY_B2" => (false, "This is false"),
+                     "KEY_I1" => 123,
+                     "KEY_I2" => (0x9, nothing),
+                     "KEY_F1" => (-1.2f0, "Single precision"),
+                     "KEY_F2" => (-3.7, "Double precision"),
+                     "KEY_F3" => (11//7, "Rational number"),
+                     "KEY_F4" => (pi, "Irrational number"),
+                     "KEY_C1" => (complex(2,3), "Integer complex"),
+                     "KEY_C2" => (complex(2.1f0,-3.7f0), "Single precision complex"),
+                     "KEY_C3" => (complex(2.1,-3.7), "Double precision complex"),
+                     "KEY_S1" => " <- significant space here",
+                     "KEY_S2" => ("", "Empty string"),
+                     "KEY_S3" => (" ", "Another empty string"),
+                     "KEY_S4" => ("'oops!'", "String with quotes"),
+                     "KEY_S5" => " <- keep this, not these ->    ",
+                     "KEY_S6" => (SubString("Hello world!", 7, 12), "A sub-string")]
+            len = length(hdu)
+            push!(hdu, cards)
+            @test length(hdu) == len + length(cards)
+            for (key, dat) in cards
+                let card = get(hdu, key, nothing), val = dat[1], com = get(dat, 2, "")
+                    if com === nothing
+                        com = ""
+                    end
+                    @test card isa EasyFITS.FitsCard
+                    if val isa Bool
+                        @test card.type == FITS_LOGICAL
+                        @test card.value.logical === card.value.parsed
+                        @test card.value.logical === val
+                        @test card.comment == com
+                    elseif val isa Integer
+                        @test card.type == FITS_INTEGER
+                        @test card.value.integer === card.value.parsed
+                        @test card.value.integer == val
+                        @test card.comment == com
+                    elseif val isa Real
+                        @test card.type == FITS_FLOAT
+                        @test card.value.float === card.value.parsed
+                        @test card.value.float ≈ val
+                        @test card.comment == com
+                    elseif val isa Complex
+                        @test card.type == FITS_COMPLEX
+                        @test card.value.complex === card.value.parsed
+                        @test card.value.complex ≈ val
+                        @test card.comment == com
+                    elseif val isa Complex
+                        @test card.type == FITS_COMPLEX
+                        @test card.value.complex === card.value.parsed
+                        @test card.value.complex ≈ val
+                        @test card.comment == com
+                    elseif val isa AbstractString
+                        @test card.type == FITS_STRING
+                        @test card.value.string === card.value.parsed
+                        @test card.value.string == rstrip(card.value.string)
+                        @test card.value.string == rstrip(val)
+                        @test card.comment == com
+                    elseif val isa Union{Nothing,Missing,UndefInitializer}
+                        if key ∈ ("HISTORY", "COMMENT", "")
+                            @test card.type == FITS_COMMENT
+                        else
+                            @test card.type == FITS_UNKNOWN
+                            @test card.value.parsed === nothing
+                            @test card.comment == com
+                        end
+                    end
+                end
             end
             write(hdu, A)
         end
