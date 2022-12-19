@@ -266,7 +266,7 @@ end
 # WRITING FITS IMAGES
 
 """
-    write(io::FitsIO, FitsImageHDU, T, dims) -> hdu
+    write(io::FitsIO, FitsImageHDU, T=UInt8, dims=()) -> hdu
 
 creates a new primary array or image extension in FITS file `io` with a
 specified pixel type `T` and size `dims`. If the FITS file is currently empty
@@ -292,7 +292,7 @@ as `(,str)`.
 
 """
 function Base.write(io::FitsIO, ::Type{FitsImageHDU},
-                    ::Type{T}, dims::NTuple{N,Integer}) where {T,N}
+                    ::Type{T} = UInt8, dims::NTuple{N,Integer} = ()) where {T,N}
     # NOTE: All variants end up calling this type-stable version.
     check(CFITSIO.fits_create_img(io, type_to_bitpix(T), N,
                                   Ref(convert(NTuple{N,Clong}, dims)),
@@ -303,7 +303,7 @@ end
 
 # Just convert bitpix to type.
 function Base.write(io::FitsIO, ::Type{FitsImageHDU}, bitpix::Integer,
-                    dims::Tuple{Vararg{Integer}})
+                    dims::Tuple{Vararg{Integer}} = ())
     return write(io, FitsImageHDU, type_from_bitpix(bitpix), dims)
 end
 
