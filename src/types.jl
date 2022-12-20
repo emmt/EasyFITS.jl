@@ -8,18 +8,26 @@ const CARD_ENCODING = :utf8
 const Status = Cint
 const OptionalString = Union{AbstractString,Nothing}
 
+# Types indicating an undefined card value, Nothing is used for the value of
+# commentary cards.
+const UndefinedValue = Union{Missing,UndefInitializer}
+
 # FITS header card name, a.k.a. FITS keyword.
-const CardName = AbstractString
+const CardName = Union{Symbol,AbstractString}
 
 # Acceptable types for the value of a FITS header card.
-const CardValue = Union{Nothing,Real,Complex,AbstractString}
+const CardValue = Union{Nothing,UndefinedValue,Real,Complex,AbstractString}
 
 # The different ways to represent a FITS header card data.
 const CardData = Union{CardValue,
                        Tuple{CardValue},
                        Tuple{CardValue,OptionalString}}
 
-const CardPair = Pair{<:CardName,<:CardData}
+const CardPair{K<:CardName,V<:CardData} = Pair{K,V}
+
+# NOTE: The type of the pair values cannot be restricted, it must be `<:Any`,
+#       not even `V where {V<:Any}`.
+const VectorOfCardPairs{K<:CardName} = AbstractVector{<:Pair{K,<:Any}}
 
 # Aliases used for sub-indexing.
 const IndexRange = OrdinalRange{<:Integer,<:Integer}
@@ -32,10 +40,13 @@ const SubArrayIndices{N} = NTuple{N,SubArrayIndex}
 is the (union of) type(s) that are accepted to specify a FITS header in
 `EasyFITS` package.
 
-A header is either empty (`nothing`) or a vector of pairs `key => dat` with
-`key` a string and `dat` the associated data. This data can be a single value,
-say, `dat = val` or a 2-tuple `dat = (val,com)` with `com` a comment string.
-The value may be `nothing` for commentary keywords.
+A header is either empty (`nothing`), a vector of pairs `key => dat`, or a
+named tuple of `key = dat` terms. Each entry associates a name `key` with `dat`
+that may include a value and a comment (both optional). If specified as pairs,
+`key` can be a string or a symbol. The data `dat` can be a single value, say,
+`dat = val` or a 2-tuple `dat = (val,com)` with `com` a comment string. The
+value may be `nothing` or simply omitted for commentary keywords. Undefined
+values can be indicated by `udef` or `missing`.
 
 For special FITS keywords `"COMMENT"`, `"HISTORY"`, and `""` which are
 commentary keywords by convention, the value may be omitted, that is `dat =
@@ -51,21 +62,22 @@ For example:
      "COUNT" => (42, "Fundamental number"),
      "SPEED" => (2.1, "[km/s] Speed of gizmo"),
      "USER" => "Julia",
-     "REMARK" => (nothing, "Some useful remark."),
+     "UNDEF" => (undef, "Some undefined value."),
+     "MISSING" => (missing, "Another undefined value."),
      "HISTORY" => "Some historical information.",
      "COMMENT" => "Some comment.",
+     "COMMENT" => (nothing, "Some other comment."),
      "HISTORY" => "Some other historical information."]
 
 defines a possible FITS header with several records: a keyword `"VERIFIED"`
 having a logical value and no comments, a keyword `"COUNT"` having an integer
 value and a comment, a keyword `"SPEED"` having a floating-point value and a
-comment with units, a keyword `"USER"` having a string value, a non-standard
-commentary keyword `"REMARK"`, and a few commentary records with standard
-keywords. Note the differences between the specifications of the records
-`"USER"` and `"REMARK"`.
+comment with units, a keyword `"USER"` having a string value, a keywords
+`"UNDEF"` and `"MISSING"` having comments but undefined values, and a few
+commentary records with standard keywords.
 
 """
-const Header = AbstractVector{Pair{<:CardName,<:Any}}
+const Header = Union{NamedTuple,VectorOfCardPairs}
 
 # String decoration to represent a FITS file name.
 struct FitsFile <: AbstractString
@@ -84,14 +96,14 @@ end
 
 # Enumeration of keyword value type identifiers.
 @enum FitsCardType::Cint begin
-    FITS_UNKNOWN = -1
-    FITS_EMPTY   = 0 # no value given
-    FITS_LOGICAL = 1
-    FITS_INTEGER = 2
-    FITS_FLOAT   = 3
-    FITS_COMPLEX = 4
-    FITS_STRING  = 5
-    FITS_COMMENT = 6
+    FITS_UNKNOWN   = -1
+    FITS_UNDEFINED =  0 # no value given
+    FITS_LOGICAL   =  1
+    FITS_INTEGER   =  2
+    FITS_FLOAT     =  3
+    FITS_COMPLEX   =  4
+    FITS_STRING    =  5
+    FITS_COMMENT   =  6
 end
 
 """

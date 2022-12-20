@@ -103,7 +103,7 @@ function print_struct(print_part::Function, io::IO, A::FitsCard)
         print(io, ' ')
         print_part(io, A.comment)
     elseif A.type ∈ (FITS_LOGICAL, FITS_INTEGER, FITS_FLOAT, FITS_COMPLEX,
-                     FITS_STRING, FITS_EMPTY)
+                     FITS_STRING, FITS_UNDEFINED)
         print(io, "= ")
         print_part(io, A.value)
         if length(A.comment) > 0
@@ -168,11 +168,11 @@ yields unrolled code that checks whether vector of bytes bound to variable
 
 """
 macro starts_with(buf::Symbol, str::AbstractString)
+    # NOTE: This assumes that buf has first index 1.
     return esc(_starts_with(buf, 1, str, firstindex(str), lastindex(str)))
 end
 
 function _starts_with(buf::Symbol, i::Int, str::AbstractString, j::Int, last::Int)
-    # FIXME: This assumes that buf and str have the same first index.
     ex = :($buf[$i] == $(UInt8(str[j])))
     if j < last
         return Expr(:(&&), ex, _starts_with(buf, i + 1, str, nextind(str, j), last))
@@ -293,14 +293,14 @@ end
             #
             # NOTE: The position of the last character n the value part is used later for
             # finding the comment part, so we set the first index of the value part so as to have an empty range.
-            return FITS_EMPTY, i : i - 1
+            return FITS_UNDEFINED, i : i - 1
         elseif MANDATORY_COMMENT_SEPARATOR
             error("unexpected leading character '$c' for value part")
         else
             break
         end
     end
-    return FITS_EMPTY, last(r) + 1 : last(r)
+    return FITS_UNDEFINED, last(r) + 1 : last(r)
 end
 
 function initialize!(card::FitsCard)
@@ -542,21 +542,23 @@ yields the parsed value of `A`, a FITS card or a FITS card value.
 """
 parsed_value(card::FitsCard) = parsed_value(card.value)
 parsed_value(value::FitsCardValue) =
-    value.type == FITS_LOGICAL ? value.logical :
-    value.type == FITS_INTEGER ? value.integer :
-    value.type == FITS_FLOAT   ? value.float   :
-    value.type == FITS_COMPLEX ? value.complex :
-    value.type == FITS_STRING  ? value.string  : nothing
+    value.type == FITS_LOGICAL   ? value.logical :
+    value.type == FITS_INTEGER   ? value.integer :
+    value.type == FITS_FLOAT     ? value.float   :
+    value.type == FITS_COMPLEX   ? value.complex :
+    value.type == FITS_STRING    ? value.string  :
+    value.type == FITS_COMMENT   ? nothing       :
+    value.type == FITS_UNDEFINED ? undef         : error("unknown type of FITS card value")
 
 type_name(A::Union{FitsCard,FitsCardValue}) = type_name(get_type(A))
 type_name(type::FitsCardType) =
-    type == FITS_EMPTY   ? "EMPTY"   :
-    type == FITS_LOGICAL ? "LOGICAL" :
-    type == FITS_INTEGER ? "INTEGER" :
-    type == FITS_FLOAT   ? "FLOAT"   :
-    type == FITS_COMPLEX ? "COMPLEX" :
-    type == FITS_STRING  ? "STRING"  :
-    type == FITS_COMMENT ? "COMMENT" : "UNKNOWN"
+    type == FITS_LOGICAL   ? "LOGICAL"   :
+    type == FITS_INTEGER   ? "INTEGER"   :
+    type == FITS_FLOAT     ? "FLOAT"     :
+    type == FITS_COMPLEX   ? "COMPLEX"   :
+    type == FITS_STRING    ? "STRING"    :
+    type == FITS_COMMENT   ? "COMMENT"   :
+    type == FITS_UNDEFINED ? "UNDEFINED" : "UNKNOWN"
 
 for T in (:Bool, :UInt8, :Int8, :UInt16, :Int16, :UInt32, :Int32, :UInt64, :Int64,
           :UInt128, :Int128, :BigInt, :Float32, :Float64, :BigFloat, :String)
@@ -595,14 +597,14 @@ function Base.convert(::Type{T}, A::FitsCardValue) where {T<:String}
 end
 
 function Base.convert(::Type{T}, A::FitsCardValue) where {T<:Nothing}
-    type = A.type
-    if type == FITS_COMMENT || type == FITS_EMPTY
-        return nothing
-    end
+    A.type == FITS_COMMENT && return T()
     convert_value_error(T, A)
 end
 
-Base.isempty(A::Union{FitsCard,FitsCardValue}) = get_type(A) ∈ (FITS_COMMENT, FITS_EMPTY)
+function Base.convert(::Type{T}, A::FitsCardValue) where {T<:UndefinedValue}
+    A.type == FITS_UNDEFINED && return T()
+    convert_value_error(T, A)
+end
 
 # Private functions to convert the value of a FITS card. It is the caller's
 # responsibility to check that the card type is correct.
@@ -720,7 +722,12 @@ end
 """
     FitsCardType(T)
 
-yields the FITS header card type code corresponding to Julia type `T`.
+yields the FITS header card type code corresponding to Julia type `T`. The
+returned value is one of: `FITS_UNDEFINED`, `FITS_LOGICAL`, `FITS_INTEGER`,
+`FITS_FLOAT`, `FITS_COMPLEX`, `FITS_STRING`, `FITS_COMMENT`, or `FITS_UNKNOWN`.
+The latter indicates unsupported type of card value.
+
+FIXME: use `nothing` for commentary cards, `missing` or `undef` for undefined value
 
 ---
 
@@ -731,10 +738,11 @@ yield the type code of the FITS header card or value `x`.
 
 """
 FitsCardType(::Type)                   = FITS_UNKNOWN
-FitsCardType(::Type{<:Nothing})        = FITS_EMPTY
+FitsCardType(::Type{<:UndefinedValue}) = FITS_UNDEFINED
 FitsCardType(::Type{<:Bool})           = FITS_LOGICAL
 FitsCardType(::Type{<:Integer})        = FITS_INTEGER
 FitsCardType(::Type{<:AbstractFloat})  = FITS_FLOAT
 FitsCardType(::Type{<:Complex})        = FITS_COMPLEX
 FitsCardType(::Type{<:AbstractString}) = FITS_STRING
+FitsCardType(::Type{<:Nothing})        = FITS_COMMENT
 FitsCardType(x::Union{FitsCard,FitsCardValue}) = get_type(x)

@@ -156,6 +156,41 @@ get_comment(dat::Tuple{Any}) = ""
 get_comment(dat::Tuple{Any,Nothing}) = ""
 get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
 
+get_units(comment::AbstractString) =
+    replace(comment, r"^\[(.*?)\s*\].*|.*" => s"\1")
+suppress_units(comment::AbstractString) =
+    replace(comment, r"^\[.*?\]\s*" => "")
+
+cards_1 = (key_b1 = (true,  "This is true"),
+           key_b2 = (false, "This is false"),
+           key_b3 = false,
+           key_b4 = (true, ""),
+           key_i1 = 123, # no comment
+           key_i2 = (0x9, nothing),
+           key_i3 = (42, "[cm] with units"),
+           key_i4 = (-77, "[] no units"),
+           key_i5 = (101, "[  foo / bar ] trailing spaces do not matter"),
+           key_f1 = (-1.2f0, "Single precision"),
+           key_f2 = (-3.7, "Double precision"),
+           key_f3 = (11//7, "Rational number"),
+           key_f4 = (pi, "Irrational number"),
+           key_c1 = (complex(2,3), "Integer complex"),
+           key_c2 = (complex(2.1f0,-3.7f0), "Single precision complex"),
+           key_c3 = (complex(2.1,-3.7), "Double precision complex"),
+           key_s1 = " <- significant space here",
+           key_s2 = ("", "Empty string"),
+           key_s3 = (" ", "Another empty string"),
+           key_s4 = ("'oops!'", "String with quotes"),
+           key_s5 = " <- keep this, not these ->    ",
+           key_s6 = (SubString("Hello world!", 7, 12), "A sub-string"),
+           key_n2 = (undef, "undefined value"),
+           key_n3 = (missing, "missing value"),
+           comment = "simple comment",
+           history = (nothing, "historical comment"),
+           )
+
+cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
+
 @testset "FITS files" begin
     # Write a simple FITS image.
     A = convert(Array{Int16}, reshape(1:60, 3,4,5))
@@ -168,7 +203,7 @@ get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
         @test position(io) == 1
         @test length(io) == 0
 
-        # Add an IMAGE extension.
+        # Add a simple IMAGE extension.
         let hdu = write(io, FitsImageHDU, eltype(A), size(A))
             @test firstindex(hdu) == 1
             @test lastindex(hdu) == length(hdu)
@@ -203,120 +238,68 @@ get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
                 @test card.value.integer === card.value.parsed
                 @test card.value.integer == size(A, i)
             end
-            hdu["GIZMO"] = ("O'Brian", "Gizmo name")
-            let card = hdu["GIZMO"]
-                @test card.type == FITS_STRING
-                @test card.value.string === card.value.parsed
-                @test card.value.string == "O'Brian"
-                @test card.comment == "Gizmo name"
-                @test card.comment.unitless == "Gizmo name"
-                @test card.comment.units == ""
-            end
-            hdu["COUNT"] = (Int16(42), "Gizmo counts")
-            let card = hdu["COUNT"]
-                @test card.type == FITS_INTEGER
-                @test card.value.integer === card.value.parsed
-                @test card.value.integer == 42
-                @test card.comment == "Gizmo counts"
-                @test card.comment.unitless == "Gizmo counts"
-                @test card.comment.units == ""
-            end
-            hdu["SPEED"] = (π, "[m/s] Gizmo speed")
-            let card = hdu["SPEED"]
-                @test card.type == FITS_FLOAT
-                @test card.value.float === card.value.parsed
-                @test card.value.float ≈ π
-                @test card.comment == "[m/s] Gizmo speed"
-                @test card.comment.unitless == "Gizmo speed"
-                @test card.comment.units == "m/s"
-            end
-            hdu["LOGIC"] = false
-            let card = hdu["LOGIC"]
-                @test card.type == FITS_LOGICAL
-                @test card.value.logical === card.value.parsed
-                @test card.value.logical == false
-                @test card.comment == ""
-                @test card.comment.unitless == ""
-                @test card.comment.units == ""
-            end
-            hdu["CMPLX"] = (2 + 1im, "[] Gizmo complex")
-            let card = hdu["CMPLX"]
-                @test card.type == FITS_COMPLEX
-                @test card.value.complex === card.value.parsed
-                @test card.value.complex == 2 + 1im
-                @test card.comment == "[] Gizmo complex"
-                @test card.comment.unitless == "Gizmo complex"
-                @test card.comment.units == ""
-            end
-            cards = ["KEY_B1" => (true,  "This is true"),
-                     "KEY_B2" => (false, "This is false"),
-                     "KEY_I1" => 123,
-                     "KEY_I2" => (0x9, nothing),
-                     "KEY_F1" => (-1.2f0, "Single precision"),
-                     "KEY_F2" => (-3.7, "Double precision"),
-                     "KEY_F3" => (11//7, "Rational number"),
-                     "KEY_F4" => (pi, "Irrational number"),
-                     "KEY_C1" => (complex(2,3), "Integer complex"),
-                     "KEY_C2" => (complex(2.1f0,-3.7f0), "Single precision complex"),
-                     "KEY_C3" => (complex(2.1,-3.7), "Double precision complex"),
-                     "KEY_S1" => " <- significant space here",
-                     "KEY_S2" => ("", "Empty string"),
-                     "KEY_S3" => (" ", "Another empty string"),
-                     "KEY_S4" => ("'oops!'", "String with quotes"),
-                     "KEY_S5" => " <- keep this, not these ->    ",
-                     "KEY_S6" => (SubString("Hello world!", 7, 12), "A sub-string")]
+            write(hdu, A)
+        end
+        @test position(io) == 1
+        @test length(io) == 1
+        # Add IMAGE extensions with no data, just headers.
+        for pass in 1:2
+            local cards = pass == 1 ? cards_1 : cards_2
+            local hdu = write(io, FitsImageHDU)
             len = length(hdu)
             push!(hdu, cards)
             @test length(hdu) == len + length(cards)
-            for (key, dat) in cards
-                let card = get(hdu, key, nothing), val = dat[1], com = get_comment(dat)
-                    @test card isa EasyFITS.FitsCard
+            for (key, dat) in (cards isa AbstractVector ? cards : pairs(cards))
+                local card = get(hdu, key, nothing)
+                @test card isa EasyFITS.FitsCard
+                if uppercase(rstrip(String(key))) ∈ ("HISTORY","COMMENT","")
+                    local com = dat isa Tuple{Nothing,AbstractString} ? dat[2] :
+                        dat isa AbstractString ? dat :
+                        dat isa Nothing || dat isa Tuple{Nothing,Nothing} ? "" :
+                        error("bad card specification: $(repr(key)) => $(repr(dat))")
+                    @test card.type == FITS_COMMENT
+                    @test card.value.parsed === nothing
+                    @test card.comment == com
+                else
+                    local val = dat isa Tuple ? dat[1] : dat
+                    local com = dat isa Tuple{Any,AbstractString} ? dat[2] : ""
                     if val isa Bool
                         @test card.type == FITS_LOGICAL
                         @test card.value.logical === card.value.parsed
                         @test card.value.logical === val
-                        @test card.comment == com
                     elseif val isa Integer
                         @test card.type == FITS_INTEGER
                         @test card.value.integer === card.value.parsed
                         @test card.value.integer == val
-                        @test card.comment == com
                     elseif val isa Real
                         @test card.type == FITS_FLOAT
                         @test card.value.float === card.value.parsed
                         @test card.value.float ≈ val
-                        @test card.comment == com
                     elseif val isa Complex
                         @test card.type == FITS_COMPLEX
                         @test card.value.complex === card.value.parsed
                         @test card.value.complex ≈ val
-                        @test card.comment == com
                     elseif val isa Complex
                         @test card.type == FITS_COMPLEX
                         @test card.value.complex === card.value.parsed
                         @test card.value.complex ≈ val
-                        @test card.comment == com
                     elseif val isa AbstractString
                         @test card.type == FITS_STRING
                         @test card.value.string === card.value.parsed
                         @test card.value.string == rstrip(card.value.string)
                         @test card.value.string == rstrip(val)
-                        @test card.comment == com
-                    elseif val isa Union{Nothing,Missing,UndefInitializer}
-                        if key ∈ ("HISTORY", "COMMENT", "")
-                            @test card.type == FITS_COMMENT
-                        else
-                            @test card.type == FITS_UNKNOWN
-                            @test card.value.parsed === nothing
-                            @test card.comment == com
-                        end
+                    elseif val isa Union{Missing,UndefInitializer}
+                        @test card.type == FITS_UNDEFINED
+                        @test card.value.parsed === undef
+                    else
+                        error("bad card specification: $(repr(key)) => $(repr(dat))")
                     end
+                    @test card.comment == com
+                    @test card.comment.units == get_units(com)
+                    @test card.comment.unitless == suppress_units(com)
                 end
             end
-            write(hdu, A)
         end
-        @test position(io) == 1
-        @test length(io) == 1
     end
     # Read the data.
     B = readfits("test1.fits")
@@ -324,10 +307,11 @@ get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
     @test size(B) == size(A)
     @test B == A
     openfits("test1.fits") do io
-        hdu = io[1]
+        hdu = io[2]
         @test hdu["KEY_B1"].value.parsed === true
         @test hdu["KEY_B2"].value.parsed === false
         # Read sub-regions.
+        hdu = io[1]
         @test read(hdu, :, :, :) == A
         let inds = (1, axes(A)[2], :)
             @test read(hdu, inds...) == A[inds...]
@@ -341,9 +325,7 @@ get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
         let inds = (2, 3, :)
             @test read(hdu, inds...) == A[inds...]
         end
-
     end
-
 end
 
 end # module

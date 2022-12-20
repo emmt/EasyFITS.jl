@@ -202,17 +202,6 @@ function Base.reset(hdu::FitsHDU)
     return hdu
 end
 
-@inline function set_key(f::Function, hdu::FitsHDU, key::CardName, dat::CardData)
-    if ! isa(dat, Tuple) && isa(dat, AbstractString) && is_comment_keyword(key)
-        # Specific case of a commentary card.
-        f(hdu, key, nothing, dat)
-    else
-        val, com = normalize_card_data(dat)
-        f(hdu, key, val, com)
-    end
-    return hdu
-end
-
 """
     setindex!(hdu::FitsHDU, dat, key) -> hdu
     hdu[key] = dat
@@ -222,7 +211,8 @@ in the header of the FITS header data unit `hdu`. See [`EasyFITS.Header`](@ref)
 for the possible forms of `dat`.
 
 """
-Base.setindex!(hdu::FitsHDU, dat::CardData, key::CardName) = set_key(update_key, hdu, key, dat)
+Base.setindex!(hdu::FitsHDU, dat::CardData, key::CardName) =
+    set_key(hdu, key => dat; update=true)
 
 """
     push!(hdu::FitsHDU, key => dat) -> hdu
@@ -232,17 +222,27 @@ appends a new record associating the keyword `key` with the data `dat` in the
 header of the FITS header data unit `hdu`. See [`EasyFITS.Header`](@ref) for
 the possible forms of such pairs.
 
-A vector of pairs may be specified to push more than one record in a single
-call:
+A vector of pairs or a named tuple may be specified to push more than one
+record in a single call:
 
-    push!(hdu::FitsHDU, [key1 => dat1, key2 => val2, ...]) -> hdu
+    push!(hdu::FitsHDU, ["key1" => dat1, "key2" => val2, ...]) -> hdu
+    push!(hdu::FitsHDU, (key1 = dat1, key2 = val2, ...)) -> hdu
 
 """
-Base.push!(hdu::FitsHDU, pair::Pair{<:CardName}) = set_key(write_key, hdu, pair...)
+Base.push!(hdu::FitsHDU, pair::Pair{<:CardName}) = set_key(hdu, pair; update=false)
+
 Base.push!(hdu::FitsHDU, ::Nothing) = hdu
-function Base.push!(hdu::FitsHDU, pairs::Header)
-    for pair in pairs
-        push!(hdu, pair)
+
+function Base.push!(hdu::FitsHDU, cards::VectorOfCardPairs)
+    for card in cards
+        push!(hdu, card)
+    end
+    return hdu
+end
+
+function Base.push!(hdu::FitsHDU, cards::NamedTuple)
+    for key in keys(cards)
+        push!(hdu, key => cards[key])
     end
     return hdu
 end
@@ -279,27 +279,79 @@ function is_comment_keyword(key::AbstractString)
     c == ' ' && return isequal(FitsLogic(), key, "")
     return false
 end
+is_comment_keyword(key::Symbol) =
+    key === :COMMENT || key === :HISTORY ||
+    key === :comment || key === :history
 
-"""
-   EasyFITS.normalize_card_value(x)
+@inline function set_key(hdu::FitsHDU, pair::CardPair; update::Bool)
+    key = first(pair)
+    dat = last(pair)
+    if iszero(_strcasecmp(key, :HISTORY))
+        com = comment_only(dat)
+        com === nothing && illegal_card_value(key, dat, true)
+        write_history(hdu, com)
+    elseif iszero(_strcasecmp(key, :COMMENT))
+        com = comment_only(dat)
+        com === nothing && illegal_card_value(key, dat, true)
+        write_comment(hdu, com)
+    else
+        val, com = normalize_card_data(dat)
+        val === nothing && illegal_card_value(key, dat, false)
+        if update
+            update_key(hdu, key, val, com)
+        else
+            write_key(hdu, key, val, com)
+        end
+    end
+    return hdu
+end
 
-converts `x` to a suitable keyword value.
-
-"""
-normalize_card_value(x::Nothing) = x
-normalize_card_value(x::Bool) = x
-normalize_card_value(x::Integer) = to_type(Int, x)
-normalize_card_value(x::Real) = to_type(Cdouble, x)
-normalize_card_value(x::Complex) = to_type(Complex{Cdouble}, x)
-normalize_card_value(x::AbstractString) = x
+# NOTE: `Base.unsafe_convert(Ptr{UInt8},str::String)` and
+# `Base.unsafe_convert(Ptr{UInt8},sym::Symbol)` both yield a pointer to a null
+# terminated array of bytes, thus suitable for direct byte-by-byte comparison
+# between ASCII C strings. A `String` may have embedded nulls (not a `Symbol`),
+# however these nulls will just stop the comparison which is what we want. This
+# save us from checking for nulls as would be the case if we used `Cstring`
+# instead of `Ptr{UInt8}`.
+_strcasecmp(s1::Union{AbstractString,Symbol}, s2::Union{AbstractString,Symbol}) =
+    @ccall strcasecmp(s1::Ptr{UInt8}, s2::Ptr{UInt8})::Cint
 
 # Convert card data (e.g., from a key=>dat pair) into a 2-tuple (val,com).
-normalize_card_data(dat::CardValue) = (normalize_card_value(dat), nothing)
-normalize_card_data(dat::Tuple{CardValue}) = (normalize_card_value(dat[1]), nothing)
-normalize_card_data(dat::Tuple{CardValue,OptionalString}) = (normalize_card_value(dat[1]), dat[2])
+# NOTE: An empty comment "" is the same as unspecified comment (nothing).
+normalize_card_data(val::Any) = (normalize_card_value(val), nothing)
+normalize_card_data(val::Tuple{Any}) = (normalize_card_value(val[1]), nothing)
+normalize_card_data(val::Tuple{Any,OptionalString}) = (normalize_card_value(val[1]), val[2])
+
+"""
+   EasyFITS.normalize_card_value(val)
+
+converts `val` to a suitable keyword value, yielding `nothing` for illegal
+value type. Argument `val` shall be the bare value of a non-commentary FITS
+keyword without the comment part.
+
+"""
+normalize_card_value(val::UndefinedValue) = undef
+normalize_card_value(val::Bool) = val
+normalize_card_value(val::Integer) = to_type(Int, val)
+normalize_card_value(val::Real) = to_type(Cdouble, val)
+normalize_card_value(val::Complex) = to_type(Complex{Cdouble}, val)
+normalize_card_value(val::AbstractString) = val
+normalize_card_value(val::Any) = nothing # means error
 
 unsafe_optional_string(s::AbstractString) = s
 unsafe_optional_string(s::Nothing) = Ptr{Cchar}(0)
+
+comment_only(val::AbstractString) = val
+comment_only(val::Tuple{Nothing,AbstractString}) = val[2]
+comment_only(val::Union{Nothing,Tuple{Nothing,Nothing}}) = ""
+comment_only(val::Any) = nothing # means error
+
+@noinline illegal_card_value(key::CardName, val::Any, commentary::Bool=false) = bad_argument(
+    "invalid value of type ", typeof(val), " for ", (commentary ? "commentary " : ""),
+    "FITS keyword \"", normalize_card_name(key), "\"")
+
+normalize_card_name(key::Symbol) = normalize_card_name(String(key))
+normalize_card_name(key::AbstractString) = uppercase(rstrip(key))
 
 """
     EasyFITS.write_key(dst, key, val, com=nothing) -> dst
@@ -319,13 +371,13 @@ comment `com` to the keyword `key`.
 
 for func in (:update_key, :write_key),
     (V, T) in ((AbstractString, String),
-               (Bool, Bool),
-               (Integer, Int),
-               (Real, Cdouble),
-               (Complex, Complex{Cdouble}),
-               (Union{Nothing,UndefInitializer,Missing}, Nothing))
-    local f = cfunc(func === :update_key ? "ffuky" : "ffpky", T)
-    if T === Nothing
+               (Bool,           Bool),
+               (Integer,        Int),
+               (Real,           Cdouble),
+               (Complex,        Complex{Cdouble}),
+               (UndefinedValue, UndefInitializer))
+    if T === UndefInitializer
+        # Commentary (nothing) card or undefined value (undef or missing).
         @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
             _com = unsafe_optional_string(com)
             check(CFITSIO.$(Symbol("fits_",func,"_null"))(
@@ -428,6 +480,26 @@ new comment is specified by `com`.
 function modify_comment(hdu::FitsHDU, key::CardName, com::AbstractString)
     check(CFITSIO.fits_modify_comment(hdu, key, com, Ref{Status}(0)))
     return hdu
+end
+
+function write_comment(hdu::FitsHDU, str::AbstractString)
+    check(CFITSIO.fits_write_comment(hdu, str, Ref{Status}(0)))
+    return hdu
+end
+
+function write_history(hdu::FitsHDU, str::AbstractString)
+    check(CFITSIO.fits_write_history(hdu, str, Ref{Status}(0)))
+    return hdu
+end
+
+function write_record(f::Union{FitsIO,FitsHDU}, card::FitsCard)
+    check(CFITSIO.fits_write_record(f, card, Ref{Status}(0)))
+    return f
+end
+
+function update_record(f::Union{FitsIO,FitsHDU}, key::CardName, card::FitsCard)
+    check(CFITSIO.fits_update_card(f, key, card, Ref{Status}(0)))
+    return f
 end
 
 Base.show(io::IO, hdu::FitsImageHDU{T,N}) where {T,N} = begin

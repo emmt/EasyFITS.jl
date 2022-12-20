@@ -256,28 +256,30 @@ let expr = :(bad_argument("invalid TFORM type letter"))
 end
 
 # Named tuples to associate suffixes to types.
-const TYPE_SHORT_SUFFIXES = (sb  = Int8,            b   = UInt8,
-                             i   = Cshort,          ui  = Cushort,
-                             k   = Cint,            uk  = Cuint,
-                             j   = Clong,           uj  = Culong,
-                             jj  = Clonglong,       ujj = Culonglong,
-                             e   = Cfloat,          d   = Cdouble,
-                             c   = Complex{Cfloat}, m   = Complex{Cdouble},
-                             l   = Bool,            s   = String,
-                             x   = Bit,             u   = Nothing)
+const SHORT_TYPE_SUFFIXES = (Int8            => :sb, UInt8            => :b,
+                             Cshort          => :i,  Cushort          => :ui,
+                             Cint            => :k,  Cuint            => :uk,
+                             Clong           => :j,  Culong           => :uj,
+                             Clonglong       => :jj, Culonglong       => :ujj,
+                             Cfloat          => :e,  Cdouble          => :d,
+                             Complex{Cfloat} => :c,  Complex{Cdouble} => :m,
+                             Bool            => :l,  String           => :s,
+                             Bit             => :x,  Nothing          => :u,
+                             Missing         => :u,  UndefInitializer => :u)
 
-const TYPE_LONG_SUFFIXES = (sbyt    = Int8,            byt      = UInt8,
-                            sht     = Cshort,          usht     = Cushort,
-                            int     = Cint,            uint     = Cuint,
-                            lng     = Clong,           ulng     = Culong,
-                            lnglng  = Clonglong,       ulnglng  = Culonglong,
-                            flt     = Cfloat,          dbl      = Cdouble,
-                            cmp     = Complex{Cfloat}, dblcmp   = Complex{Cdouble},
-                            log     = Bool,            str      = String,
-                            bit     = Bit,             null     = Nothing)
+const LONG_TYPE_SUFFIXES = (Int8            => :sbyt,   UInt8            => :byt,
+                            Cshort          => :sht,    Cushort          => :usht,
+                            Cint            => :int,    Cuint            => :uint,
+                            Clong           => :lng,    Culong           => :ulng,
+                            Clonglong       => :lnglng, Culonglong       => :ulnglng,
+                            Cfloat          => :flt,    Cdouble          => :dbl,
+                            Complex{Cfloat} => :cmp,    Complex{Cdouble} => :dblcmp,
+                            Bool            => :log,    String           => :str,
+                            Bit             => :bit,    Nothing          => :null,
+                            Missing         => :null,   UndefInitializer => :null)
 
 let S = Set{DataType}()
-    for (sym, T) in pairs(TYPE_SHORT_SUFFIXES)
+    for (T, sym) in SHORT_TYPE_SUFFIXES
         T ∈ S && continue
         push!(S, T)
         if T === String
@@ -289,7 +291,7 @@ let S = Set{DataType}()
 end
 
 let S = Set{DataType}()
-    for (sym, T) in pairs(TYPE_LONG_SUFFIXES)
+    for (T, sym) in LONG_TYPE_SUFFIXES
         T ∈ S && continue
         push!(S, T)
         if T === String

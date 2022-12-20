@@ -19,7 +19,7 @@ export
     FitsCard,
     FitsCardType,
     FITS_UNKNOWN,
-    FITS_EMPTY,
+    FITS_UNDEFINED,
     FITS_LOGICAL,
     FITS_INTEGER,
     FITS_FLOAT,
