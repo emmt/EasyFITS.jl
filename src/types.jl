@@ -153,6 +153,15 @@ mutable struct FitsIO <: AbstractVector{FitsHDU}
     end
 end
 
+"""
+    EasyFits.Invalid
+
+is a singleton used to indicate invalid arguments while sparing throwing an
+exception.
+
+"""
+struct Invalid end
+
 # Singleton type to indicate that the inner constructor should be called.
 struct BareBuild end
 

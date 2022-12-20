@@ -125,18 +125,21 @@ function print_esc(io::IO, s::FitsCardPart)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", s::FitsCardValue)
-    if s.type == FITS_LOGICAL
+    type = s.type
+    if type == FITS_LOGICAL
         show(io, mime, s.logical)
-    elseif s.type == FITS_INTEGER
+    elseif type == FITS_INTEGER
         show(io, mime, s.integer)
-    elseif s.type == FITS_FLOAT
+    elseif type == FITS_FLOAT
         show(io, mime, s.float)
-    elseif s.type == FITS_COMPLEX
+    elseif type == FITS_COMPLEX
         show(io, mime, s.complex)
-    elseif s.type == FITS_STRING
+    elseif type == FITS_STRING
         show(io, mime, s.string)
-    else
+    elseif type == FITS_COMMENT
         show(io, mime, nothing)
+    elseif type == FITS_UNDEFINED
+        show(io, mime, missing)
     end
 end
 
@@ -548,7 +551,7 @@ parsed_value(value::FitsCardValue) =
     value.type == FITS_COMPLEX   ? value.complex :
     value.type == FITS_STRING    ? value.string  :
     value.type == FITS_COMMENT   ? nothing       :
-    value.type == FITS_UNDEFINED ? undef         : error("unknown type of FITS card value")
+    value.type == FITS_UNDEFINED ? missing       : error("unknown type of FITS card value")
 
 type_name(A::Union{FitsCard,FitsCardValue}) = type_name(get_type(A))
 type_name(type::FitsCardType) =
@@ -726,8 +729,6 @@ yields the FITS header card type code corresponding to Julia type `T`. The
 returned value is one of: `FITS_UNDEFINED`, `FITS_LOGICAL`, `FITS_INTEGER`,
 `FITS_FLOAT`, `FITS_COMPLEX`, `FITS_STRING`, `FITS_COMMENT`, or `FITS_UNKNOWN`.
 The latter indicates unsupported type of card value.
-
-FIXME: use `nothing` for commentary cards, `missing` or `undef` for undefined value
 
 ---
 

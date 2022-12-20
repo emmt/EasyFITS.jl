@@ -190,7 +190,7 @@ cards_1 = (key_b1 = (true,  "This is true"),
            key_n2 = (undef, "undefined value"),
            key_n3 = (missing, "missing value"),
            comment = "simple comment",
-           history = (nothing, "historical comment"),
+           history = "historical comment",
            )
 
 cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
@@ -294,7 +294,7 @@ cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
                         @test card.value.string == rstrip(val)
                     elseif val isa Union{Missing,UndefInitializer}
                         @test card.type == FITS_UNDEFINED
-                        @test card.value.parsed === undef
+                        @test card.value.parsed === missing
                     else
                         error("bad card specification: $(repr(key)) => $(repr(dat))")
                     end

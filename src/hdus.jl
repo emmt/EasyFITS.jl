@@ -286,17 +286,18 @@ is_comment_keyword(key::Symbol) =
 @inline function set_key(hdu::FitsHDU, pair::CardPair; update::Bool)
     key = first(pair)
     dat = last(pair)
-    if iszero(_strcasecmp(key, :HISTORY))
-        com = comment_only(dat)
-        com === nothing && illegal_card_value(key, dat, true)
-        write_history(hdu, com)
-    elseif iszero(_strcasecmp(key, :COMMENT))
-        com = comment_only(dat)
-        com === nothing && illegal_card_value(key, dat, true)
-        write_comment(hdu, com)
+    type = keyword_type(key)
+    if type === :comment || type === :history
+        com = dat isa AbstractString ? dat :
+            dat isa Nothing ? "" : invalid_card_value(key, dat, true)
+        if type === :history
+            write_history(hdu, com)
+        else
+            write_comment(hdu, com)
+        end
     else
         val, com = normalize_card_data(dat)
-        val === nothing && illegal_card_value(key, dat, false)
+        val === Invalid() && invalid_card_value(key, dat, false)
         if update
             update_key(hdu, key, val, com)
         else
@@ -305,6 +306,10 @@ is_comment_keyword(key::Symbol) =
     end
     return hdu
 end
+
+keyword_type(key::CardName) =
+    iszero(_strcasecmp(key, :COMMENT)) ? :comment :
+    iszero(_strcasecmp(key, :HISTORY)) ? :history : :other
 
 # NOTE: `Base.unsafe_convert(Ptr{UInt8},str::String)` and
 # `Base.unsafe_convert(Ptr{UInt8},sym::Symbol)` both yield a pointer to a null
@@ -325,28 +330,24 @@ normalize_card_data(val::Tuple{Any,OptionalString}) = (normalize_card_value(val[
 """
    EasyFITS.normalize_card_value(val)
 
-converts `val` to a suitable keyword value, yielding `nothing` for illegal
+converts `val` to a suitable keyword value, yielding `Invalid()` for invalid
 value type. Argument `val` shall be the bare value of a non-commentary FITS
 keyword without the comment part.
 
 """
-normalize_card_value(val::UndefinedValue) = undef
+normalize_card_value(val::UndefinedValue) = missing
+normalize_card_value(val::Nothing) = nothing
 normalize_card_value(val::Bool) = val
 normalize_card_value(val::Integer) = to_type(Int, val)
 normalize_card_value(val::Real) = to_type(Cdouble, val)
 normalize_card_value(val::Complex) = to_type(Complex{Cdouble}, val)
 normalize_card_value(val::AbstractString) = val
-normalize_card_value(val::Any) = nothing # means error
+normalize_card_value(val::Any) = Invalid() # means error
 
 unsafe_optional_string(s::AbstractString) = s
 unsafe_optional_string(s::Nothing) = Ptr{Cchar}(0)
 
-comment_only(val::AbstractString) = val
-comment_only(val::Tuple{Nothing,AbstractString}) = val[2]
-comment_only(val::Union{Nothing,Tuple{Nothing,Nothing}}) = ""
-comment_only(val::Any) = nothing # means error
-
-@noinline illegal_card_value(key::CardName, val::Any, commentary::Bool=false) = bad_argument(
+@noinline invalid_card_value(key::CardName, val::Any, commentary::Bool=false) = bad_argument(
     "invalid value of type ", typeof(val), " for ", (commentary ? "commentary " : ""),
     "FITS keyword \"", normalize_card_name(key), "\"")
 
@@ -367,7 +368,20 @@ appends a new FITS header card in `dst` associating value `val` and comment
 updates or appends a FITS header card in `dst` associating value `val` and
 comment `com` to the keyword `key`.
 
-""" update_key
+The card is considered to have an undefined value if `val` is `missing` or
+`undef`.
+
+If `val` is `nothing` and `com` is a string, the comment of the FITS header
+card is updated to be `com`.
+
+"""
+update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::Nothing) = hdu
+function update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::AbstractString)
+    # BUG: When modifying the comment of an existing keyword which has an
+    #      undefined value, the keyword becomes a commentary keyword.
+    check(CFITSIO.fits_modify_comment(hdu, key, com, Ref{Status}(0)))
+    return hdu
+end
 
 for func in (:update_key, :write_key),
     (V, T) in ((AbstractString, String),
@@ -375,8 +389,8 @@ for func in (:update_key, :write_key),
                (Integer,        Int),
                (Real,           Cdouble),
                (Complex,        Complex{Cdouble}),
-               (UndefinedValue, UndefInitializer))
-    if T === UndefInitializer
+               (UndefinedValue, Missing))
+    if T === Missing
         # Commentary (nothing) card or undefined value (undef or missing).
         @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
             _com = unsafe_optional_string(com)
@@ -467,18 +481,6 @@ creates or updates a FITS comment record of `hdu` with the current date.
 """
 function write_date(hdu::FitsHDU)
     check(CFITSIO.fits_write_date(hdu, Ref{Status}(0)))
-    return hdu
-end
-
-"""
-    EasyFITS.modify_comment(hdu::FitsHDU, key, com) -> hdu
-
-modifies the comment of the FITS header card of `hdu` whose name is `key`. The
-new comment is specified by `com`.
-
-"""
-function modify_comment(hdu::FitsHDU, key::CardName, com::AbstractString)
-    check(CFITSIO.fits_modify_comment(hdu, key, com, Ref{Status}(0)))
     return hdu
 end
 
