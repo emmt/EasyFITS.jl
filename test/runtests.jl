@@ -156,8 +156,12 @@ get_comment(dat::Tuple{Any}) = ""
 get_comment(dat::Tuple{Any,Nothing}) = ""
 get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
 
-get_units(comment::AbstractString) =
-    replace(comment, r"^\[(.*?)\s*\].*|.*" => s"\1")
+function get_units(comment::AbstractString)
+    m = match(r"^\[(.*?)\s*\]", comment)
+    m === nothing && return ""
+    return m.captures[1]
+end
+
 suppress_units(comment::AbstractString) =
     replace(comment, r"^\[.*?\]\s*" => "")
 
