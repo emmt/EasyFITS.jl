@@ -1,6 +1,6 @@
 module TestingEasyFITS
 
-using Test, EasyFITS
+using Test, EasyFITS, DataFrames
 
 @testset "BITPIX" begin
     let type_to_bitpix = EasyFITS.type_to_bitpix,
@@ -26,9 +26,9 @@ using Test, EasyFITS
         @test type_from_bitpix(type_to_bitpix(UInt16)) === UInt16
         @test type_from_bitpix(type_to_bitpix(UInt32)) === UInt32
         @test type_from_bitpix(type_to_bitpix(UInt64)) === UInt64
-
     end
 end
+
 @testset "Data types" begin
     let type_to_code = EasyFITS.type_to_code,
         type_from_code = EasyFITS.type_from_code
@@ -52,6 +52,7 @@ end
         @test_throws ArgumentError type_from_code(typemin(Int))
     end
 end
+
 @testset "TFORM types" begin
     let Bit = EasyFITS.Bit,
         type_to_letter = EasyFITS.type_to_letter,
@@ -213,6 +214,7 @@ cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
         # Add a simple IMAGE extension.
         let hdu = write(io, FitsImageHDU, eltype(A), size(A))
             @test length(io) == 1
+            @test hdu === last(io)
             @test firstindex(hdu) == 1
             @test lastindex(hdu) == length(hdu)
             @test_throws KeyError hdu[firstindex(hdu) - 1]
@@ -332,6 +334,71 @@ cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
         end
         let inds = (2, 3, :)
             @test read(hdu, inds...) == A[inds...]
+        end
+    end
+end
+
+@testset "FITS Tables" begin
+    openfits("test2.fits", "w!") do io
+        @test length(io) == 0
+        hdu = write(io, FitsTableHDU, ["Col#1" => ('E', "m/s"),
+                                       "Col#2" => ('D', "Hz")])
+        @test length(io) == 2 # a table cannot not be the primary HDU
+        @test hdu === last(io)
+        @test hdu.ncols == 2
+        @test hdu.nrows == 0
+        @test ncol(hdu) == 2
+        @test nrow(hdu) == 0
+        @test hdu.column_names == ["Col#1", "Col#2"]
+        @test hdu[:tunit1].value.parsed == "m/s"
+        @test hdu[:tunit2].value.parsed == "Hz"
+        for col ∈ (1, "Col#1")
+            local x = read(hdu, col)
+            @test x isa Vector{Cfloat}
+            @test size(x) == (0,)
+        end
+        for col ∈ (2, "col#2  ") # case and trailing spaces are ignored
+            local x = read(hdu, col)
+            @test x isa Vector{Cdouble}
+            @test size(x) == (0,)
+        end
+        n1 = 4
+        x1 = 2:2:2*n1
+        write(hdu, 1 => x1)
+        @test hdu.nrows == nrow(hdu) == n1
+        @test hdu.ncols == ncol(hdu) == 2
+        let y = read(hdu, 1)
+            @test y isa Vector{Cfloat}
+            @test size(y) == (n1,)
+            @test y == x1
+        end
+        x2 = 3:3:3*n1
+        write(hdu, "col#2" => x2)
+        @test hdu.nrows == nrow(hdu) == n1
+        @test hdu.ncols == ncol(hdu) == 2
+        let y = read(hdu, 2)
+            @test y isa Vector{Cdouble}
+            @test size(y) == (n1,)
+            @test y == x2
+        end
+        n2 = 3
+        y1 = 5:5:5*n2
+        write(hdu, 1 => y1; first = n1 + 1)
+        @test hdu.nrows == nrow(hdu) == n1 + n2
+        @test hdu.ncols == ncol(hdu) == 2
+        let y = read(hdu, 1)
+            @test y isa Vector{Cfloat}
+            @test size(y) == (n1 + n2,)
+            @test y == vcat(x1, y1)
+        end
+        y2 = 7:7:7*n2
+        write(hdu, 2 => y2; first = n1 + 1)
+        @test hdu.nrows == nrow(hdu) == n1 + n2
+        @test hdu.ncols == ncol(hdu) == 2
+        let y = read(hdu, 2)
+            @test y isa Vector{Cdouble}
+            @test size(y) == (n1 + n2,)
+            @test y == vcat(x2, y2)
         end
     end
 end
