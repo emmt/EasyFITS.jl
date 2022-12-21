@@ -20,6 +20,7 @@ using Test, EasyFITS, DataFrames
         @test type_from_bitpix(-32) === Float32
         @test type_from_bitpix(-64) === Float64
         @test_throws ArgumentError type_from_bitpix(typemin(Int))
+        @test type_to_bitpix(Int16[]) === 16
 
         # Non-standard pixel types.
         @test type_from_bitpix(type_to_bitpix(Int8)) === Int8
@@ -75,6 +76,7 @@ end
         @test type_to_letter(UInt32)         === 'V'
         @test type_to_letter(UInt64)         === 'W'
         @test_throws MethodError type_to_letter(Dict)
+        @test type_to_letter(Bool[])         === 'L'
 
         @test type_from_letter('A') === String
         @test type_from_letter('L') === Bool
@@ -92,6 +94,7 @@ end
         @test type_from_letter('V') === UInt32
         @test type_from_letter('W') === UInt64
         @test_throws ArgumentError type_from_letter('@')
+        @test type_from_letter(Int('L')) === Bool
 
         @test type_from_letter(type_to_letter(AbstractString)) === String
         @test type_from_letter(type_to_letter(SubString)) === String
