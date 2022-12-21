@@ -574,14 +574,38 @@ function Base.write(hdu::FitsTableHDU,
     return write(hdu, col => last(pair); kwds...)
 end
 
+# Union of possible types for specifying column data to write.
+const ColumnInputData = Union{Pair{<:Integer,<:AbstractArray},
+                              Pair{<:AbstractString,<:AbstractArray}}
+
+# Write more than one column at a time.
+@inline function Base.write(hdu::FitsTableHDU, data::ColumnInputData,
+                            args::ColumnInputData...; kwds...)
+    write(hdu, data; kwds...)
+    return write(hdu, args...; kwds...)
+end
+
+@inline function Base.write(hdu::FitsTableHDU,
+                            data::Tuple{Vararg{ColumnInputData}};
+                            kwds...)
+    write(hdu, Base.first(data); kwds...)
+    return write(hdu, Base.tail(data)...; kwds...)
+end
+
 function Base.write(hdu::FitsTableHDU,
-                    pairs::Union{Pair{<:Integer,<:AbstractArray},
-                                 Pair{<:AbstractString,<:AbstractArray}}...;
+                    # NOTE: For a vector of input column data, it is not
+                    # possible to be more specific for the key type if we want
+                    # to allow for a mixture of key types.
+                    pairs::AbstractVector{<:Pair{<:Any,<:AbstractArray}};
                     kwds...)
     for pair in pairs
-        write(hdu, pair; kwds...)
+        write(hdu, pair)
     end
     return hdu
 end
+
+# No more columns to write.
+Base.write(hdu::FitsTableHDU, ::Tuple{}; kdws...) = hdu
+Base.write(hdu::FitsTableHDU; kdws...) = hdu
 
 #------------------------------------------------------------------------------
