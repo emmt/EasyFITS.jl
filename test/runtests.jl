@@ -2,6 +2,16 @@ module TestingEasyFITS
 
 using Test, EasyFITS, DataFrames
 
+# Yield type for which we are sure that no possible conversion is implemented.
+other_type(type::FitsCardType) =
+    type === FITS_LOGICAL   ? Missing :
+    type === FITS_INTEGER   ? Missing :
+    type === FITS_FLOAT     ? Missing :
+    type === FITS_COMPLEX   ? Missing :
+    type === FITS_STRING    ? Missing :
+    type === FITS_COMMENT   ? Missing : Int
+
+
 @testset "BITPIX" begin
     let type_to_bitpix = EasyFITS.type_to_bitpix,
         type_from_bitpix = EasyFITS.type_from_bitpix
@@ -178,10 +188,10 @@ cards_1 = (key_b1 = (true,  "This is true"),
            key_b4 = (true, ""),
            key_i1 = 123, # no comment
            key_i2 = (0x9, nothing),
-           key_i3 = (42, "[cm] with units"),
+           key_i3 = (Int16(42), "[cm] with units"),
            key_i4 = (-77, "[] no units"),
            key_i5 = (101, "[  foo / bar ] trailing spaces do not matter"),
-           key_f1 = (-1.2f0, "Single precision"),
+           key_f1 = (-1.2f-2, "Single precision"),
            key_f2 = (-3.7, "Double precision"),
            key_f3 = (11//7, "Rational number"),
            key_f4 = (pi, "Irrational number"),
@@ -205,6 +215,20 @@ cards_1 = (key_b1 = (true,  "This is true"),
 cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
 tempfile, io = mktemp(; cleanup=false)
 close(io)
+
+@testset "FITS Headers" begin
+    @test FitsCardType(Any)              === FITS_UNKNOWN
+    @test FitsCardType(typeof(undef))    === FITS_UNDEFINED
+    @test FitsCardType(Missing)          === FITS_UNDEFINED
+    @test FitsCardType(Bool)             === FITS_LOGICAL
+    @test FitsCardType(Int)              === FITS_INTEGER
+    @test FitsCardType(Float32)          === FITS_FLOAT
+    @test FitsCardType(Complex{Int32})   === FITS_COMPLEX
+    @test FitsCardType(Complex{Float64}) === FITS_COMPLEX
+    @test FitsCardType(String)           === FITS_STRING
+    @test FitsCardType(Nothing)          === FITS_COMMENT
+end
+
 @testset "FITS Images" begin
     # Write a simple FITS image.
     A = convert(Array{Int16}, reshape(1:60, 3,4,5))
@@ -228,6 +252,17 @@ close(io)
             @test_throws KeyError hdu[lastindex(hdu) + 5000]
             @test_throws KeyError hdu["DUMMY"]
             let card = hdu["SIMPLE"]
+                # This is the first FITS card we get, take the opportunity of
+                # testing its properies.
+                @test card isa AbstractVector{UInt8}
+                @test prod(size(card)) == length(firstindex(card) : lastindex(card))
+                @test IndexStyle(card) === IndexLinear()
+                @test propertynames(card) isa Tuple{Vararg{Symbol}}
+                @test propertynames(card.value) isa Tuple{Vararg{Symbol}}
+                @test propertynames(card.comment) isa Tuple{Vararg{Symbol}}
+                @test card.parsed === card.value.parsed
+                @test card.logical === card.value.logical
+                # The rest is pretty common...
                 @test card == hdu[firstindex(hdu)]
                 @test card.type == FITS_LOGICAL
                 @test card.value.logical === card.value.parsed
@@ -258,16 +293,56 @@ close(io)
         end
         @test position(io) == 1
         @test length(io) == 1
-        # Add IMAGE extensions with no data, just headers.
         for pass in 1:2
+            # Add IMAGE extensions with no data, just header cards.
             local cards = pass == 1 ? cards_1 : cards_2
             local hdu = write(io, FitsImageHDU)
             len = length(hdu)
             push!(hdu, cards)
             @test length(hdu) == len + length(cards)
+            let buf = IOBuffer()
+                # Exercise `show`.
+                for i in eachindex(hdu)
+                    if pass == 1
+                        show(buf, hdu[i])
+                    else
+                        show(buf, MIME"text/plain"(), hdu[i])
+                    end
+                end
+                # Just test something.
+                @test length(String(take!(buf))) ≥ length(hdu)
+            end
+            if pass == 1
+                # Check exponent conversion, i.e. 'd' or 'D' -> 'E' when
+                # parsing a floating-point value.
+                key = "TEST"
+                val = 1e-200
+                hdu[key] = (val, "Quite a tiny value")
+                card = hdu[key]
+                @test card.type == FITS_FLOAT
+                i = findfirst(isequal(UInt8('=')), card)
+                @test i == 9
+                j = findnext(b -> b ∈ (UInt8('e'), UInt8('E'), UInt8('d'), UInt8('D')), card, i)
+                bak = card.value.parsed
+                @test bak ≈ val
+                card[j] = UInt8('D')
+                @test card.value.parsed ≈ val
+                @test card.value.parsed === bak
+                card[j] = UInt8('d')
+                @test card.value.parsed ≈ val
+                @test card.value.parsed === bak
+                card[j] = UInt8('E')
+                @test card.value.parsed ≈ val
+                @test card.value.parsed === bak
+                card[j] = UInt8('e')
+                @test card.value.parsed ≈ val
+                @test card.value.parsed === bak
+                delete!(hdu, key)
+            end
             for (key, dat) in (cards isa AbstractVector ? cards : pairs(cards))
                 local card = get(hdu, key, nothing)
                 @test card isa EasyFITS.FitsCard
+                @test_throws ErrorException convert(other_type(card.type), card.value)
                 if uppercase(rstrip(String(key))) ∈ ("HISTORY","COMMENT","")
                     local com = dat isa Tuple{Nothing,AbstractString} ? dat[2] :
                         dat isa AbstractString ? dat :
@@ -351,10 +426,19 @@ end
                                        "Col#2" => ('D', "Hz")])
         @test length(io) == 2 # a table cannot not be the primary HDU
         @test hdu === last(io)
+        @test hdu.io === io
         @test hdu.ncols == 2
-        @test hdu.nrows == 0
         @test ncol(hdu) == 2
+        @test hdu.first_column == 1
+        @test hdu.last_column == hdu.ncols + 1 - hdu.first_column
+        @test hdu.nrows == 0
         @test nrow(hdu) == 0
+        @test hdu.first_row == 1
+        @test hdu.last_row == hdu.nrows + 1 - hdu.first_row
+        @test hdu.data_ndims == 2
+        @test hdu.data_size == (hdu.nrows, hdu.ncols)
+        @test hdu.data_axes == (hdu.first_row:hdu.last_row,
+                                hdu.first_column:hdu.last_column)
         @test hdu.column_names == ["Col#1", "Col#2"]
         @test hdu[:tunit1].value.parsed == "m/s"
         @test hdu[:tunit2].value.parsed == "Hz"
