@@ -364,41 +364,57 @@ end
         end
         n1 = 4
         x1 = 2:2:2*n1
+        y1 = 3:3:3*n1
         write(hdu, 1 => x1)
         @test hdu.nrows == nrow(hdu) == n1
         @test hdu.ncols == ncol(hdu) == 2
-        let y = read(hdu, 1)
-            @test y isa Vector{Cfloat}
-            @test size(y) == (n1,)
-            @test y == x1
+        let a = read(hdu, 1)
+            @test a isa Vector{Cfloat}
+            @test size(a) == (n1,)
+            @test a == x1
         end
-        x2 = 3:3:3*n1
-        write(hdu, "col#2" => x2)
+        write(hdu, "col#2" => y1)
         @test hdu.nrows == nrow(hdu) == n1
         @test hdu.ncols == ncol(hdu) == 2
-        let y = read(hdu, 2)
-            @test y isa Vector{Cdouble}
-            @test size(y) == (n1,)
-            @test y == x2
+        let a = read(hdu, 2)
+            @test a isa Vector{Cdouble}
+            @test size(a) == (n1,)
+            @test a == y1
         end
         n2 = 3
-        y1 = 5:5:5*n2
-        write(hdu, 1 => y1; first = n1 + 1)
+        x2 = 5:5:5*n2
+        y2 = 7:7:7*n2
+        write(hdu, 1 => x2; first = hdu.nrows + 1)
         @test hdu.nrows == nrow(hdu) == n1 + n2
         @test hdu.ncols == ncol(hdu) == 2
-        let y = read(hdu, 1)
-            @test y isa Vector{Cfloat}
-            @test size(y) == (n1 + n2,)
-            @test y == vcat(x1, y1)
+        let a = read(hdu, 1)
+            @test a isa Vector{Cfloat}
+            @test size(a) == (n1 + n2,)
+            @test a == vcat(x1, x2)
         end
-        y2 = 7:7:7*n2
         write(hdu, 2 => y2; first = n1 + 1)
         @test hdu.nrows == nrow(hdu) == n1 + n2
         @test hdu.ncols == ncol(hdu) == 2
-        let y = read(hdu, 2)
-            @test y isa Vector{Cdouble}
-            @test size(y) == (n1 + n2,)
-            @test y == vcat(x2, y2)
+        let a = read(hdu, 2)
+            @test a isa Vector{Cdouble}
+            @test size(a) == (n1 + n2,)
+            @test a == vcat(y1, y2)
+        end
+        n3 = 2
+        x3 = -1:-1:-1*n3
+        y3 = 11:11:11*n3
+        write(hdu, "Col#2" => y3, 1 => x3; first = hdu.nrows)
+        @test hdu.nrows == nrow(hdu) == n1 + n2 + n3 - 1
+        @test hdu.ncols == ncol(hdu) == 2
+        let a = read(hdu, 1)
+            @test a isa Vector{Cfloat}
+            @test size(a) == (hdu.nrows,)
+            @test a == vcat(x1, x2[1:end-1], x3)
+        end
+        let a = read(hdu, 2)
+            @test a isa Vector{Cdouble}
+            @test size(a) == (hdu.nrows,)
+            @test a == vcat(y1, y2[1:end-1], y3)
         end
     end
 end

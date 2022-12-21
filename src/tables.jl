@@ -574,4 +574,14 @@ function Base.write(hdu::FitsTableHDU,
     return write(hdu, col => last(pair); kwds...)
 end
 
+function Base.write(hdu::FitsTableHDU,
+                    pairs::Union{Pair{<:Integer,<:AbstractArray},
+                                 Pair{<:AbstractString,<:AbstractArray}}...;
+                    kwds...)
+    for pair in pairs
+        write(hdu, pair; kwds...)
+    end
+    return hdu
+end
+
 #------------------------------------------------------------------------------
