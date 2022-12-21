@@ -604,11 +604,7 @@ function _try_parse_float(A::FitsCardValue)
     io = IOBuffer()
     # FIXME: @inbounds
     for c in A
-        if (c == 'D') | (c == 'd')
-            write(io, 'E')
-        else
-            write(io, c)
-        end
+        write(io, ifelse((c == 'D') | (c == 'd'), oftype(c, 'E'), c))
     end
     return tryparse(Cdouble, String(take!(io)))
 end
