@@ -201,12 +201,13 @@ cards_1 = (key_b1 = (true,  "This is true"),
            )
 
 cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
-
+tempfile, io = mktemp(; cleanup=false)
+close(io)
 @testset "FITS Images" begin
     # Write a simple FITS image.
     A = convert(Array{Int16}, reshape(1:60, 3,4,5))
     @test fits"test1.fits" === FitsFile("test1.fits")
-    open(fits"test1.fits", "w!") do io
+    openfits(tempfile, "w!") do io
         @test io isa FitsIO
         @test !isreadable(io)
         @test !isreadonly(io)
@@ -315,11 +316,11 @@ cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
         end
     end
     # Read the data.
-    B = readfits("test1.fits")
+    B = readfits(tempfile)
     @test eltype(B) == eltype(A)
     @test size(B) == size(A)
     @test B == A
-    openfits("test1.fits") do io
+    openfits(tempfile) do io
         hdu = io[2]
         @test hdu["KEY_B1"].value.parsed === true
         @test hdu["KEY_B2"].value.parsed === false
@@ -342,7 +343,7 @@ cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
 end
 
 @testset "FITS Tables" begin
-    openfits("test2.fits", "w!") do io
+    openfits(tempfile, "w!") do io
         @test length(io) == 0
         hdu = write(io, FitsTableHDU, ["Col#1" => ('E', "m/s"),
                                        "Col#2" => ('D', "Hz")])
