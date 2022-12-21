@@ -26,21 +26,6 @@ function try_read!(card::FitsCard, hdu::FitsHDU, key::Integer)
     return CFITSIO.fits_read_record(hdu, key, pointer(card), Ref{Status}(0))
 end
 
-function read_card_split(hdu::FitsHDU, key::CardName)
-    val = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
-    com = Vector{UInt8}(undef, CFITSIO.FLEN_COMMENT)
-    check(CFITSIO.fits_read_keyword(hdu, key, pointer(val), pointer(com), Ref{Status}(0)))
-    return (key, to_string!(val), to_string!(com))
-end
-
-function read_card_split(hdu::FitsHDU, num::Integer)
-    key = Vector{UInt8}(undef, CFITSIO.FLEN_KEYWORD)
-    val = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
-    com = Vector{UInt8}(undef, CFITSIO.FLEN_COMMENT)
-    check(CFITSIO.fits_read_keyn(hdu, num, pointer(key), pointer(val), pointer(com), Ref{Status}(0)))
-    return (to_string!(key), to_string!(val), to_string!(com))
-end
-
 let offset = fieldoffset(FitsCard, get_field_index(FitsCard, :data))
     @eval Base.pointer(A::FitsCard) = Ptr{UInt8}(pointer_from_objref(A)) + $offset
 end
