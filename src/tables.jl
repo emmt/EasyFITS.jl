@@ -2,18 +2,25 @@
 # FITS TABLES PROPERTIES
 
 Base.propertynames(::FitsTableHDU) = (:nrows, :ncols, :column_names,
+                                      :first_row, :last_row,
                                       :first_column, :last_column,
-                                      :data_size, :data_ndims,
+                                      :data_size, :data_ndims, :data_axes,
                                       :extname, :hduname, :io, :num, :type, :xtension)
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:data_ndims}) = 2
 Base.getproperty(hdu::FitsTableHDU, ::Val{:data_size}) = (get_num_rows(hdu),
                                                           get_num_cols(hdu))
+Base.getproperty(hdu::FitsTableHDU, ::Val{:data_axes}) = (Base.OneTo(get_num_rows(hdu)),
+                                                          Base.OneTo(get_num_cols(hdu)))
+
+Base.getproperty(hdu::FitsTableHDU, ::Val{:first_row}) = 1
+Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = get_num_rows(hdu)
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:first_column}) = 1
 Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = get_num_cols(hdu)
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:nrows}) = get_num_rows(hdu)
+
 function get_num_rows(f::Union{FitsIO,FitsTableHDU})
     nrows = Ref{Clonglong}()
     check(CFITSIO.fits_get_num_rowsll(f, nrows, Ref{Status}(0)))
@@ -104,11 +111,13 @@ The column `col` may be specified by its name or by its number. If `col` is a
 string, keyword `case` specifies whether uppercase/lowercase matters (`case =
 false` by default).
 
-Keyword `firstrow` may be specified with the index of the first row to read. By
-default, `firstrow = 1` and reading starts at the first row of the table.
+Keywords `first` and/or `last` may be specified with the index of the
+first/last row to read. By default, `first = hdu.first_row` and reading starts
+at the first row of the table By default, `last = hdu.last_row` and reading
+stops at the last row of the table. An alternative is to specify the row range
+after the column name/index:
 
-Keyword `nrows` may be specified with the number of rows to read. By default,
-all the rows at and after row specified by keyword `firstrow` are read.
+    read([R,] hdu, col, first:last)
 
 See [`read!(::DenseArray,::FitsTableHDU,::Integer)`](@ref) for the other
 possible keywords.
@@ -117,85 +126,92 @@ possible keywords.
 Base.read(hdu::FitsTableHDU, col::Union{Integer,AbstractString}; kwds...) =
     read(Array, hdu, col; kwds...)
 
+function Base.read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
+                   rng::AbstractUnitRange{<:Integer}; kwds...)
+    return read(Array, hdu, col;
+                first = Int(Base.first(rng)),
+                last = Int(Base.last(rng)), kwds...)
+end
+
+function Base.read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
+                   ::Colon; kwds...)
+    return read(Array, hdu, col;
+                first = hdu.first_row,
+                last = hadu.last_row, kwds...)
+end
+
 function Base.read(::Type{R}, hdu::FitsTableHDU, col::AbstractString;
                    case::Bool = false, kwds...) where {R<:Array}
     return read(R, hdu, get_colnum(hdu, col, case); kwds...)
 end
 
 function Base.read(::Type{Array}, hdu::FitsTableHDU, col::Integer;
-                   firstrow::Integer = 1,
-                   nrows::Union{Integer,Nothing} = nothing,
+                   first::Integer = hdu.first_row,
+                   last::Integer = hdu.last_row,
                    kwds...)
     type, repeat, width = get_eqcoltype(hdu, col)
     if type == CFITSIO.TSTRING
         return read(Array{String}, hdu, col;
-                    firstrow=firstrow, nrows=nrows, kwds...)
+                    first=first, last=last, kwds...)
     else
-        dims = size_to_read(hdu, col, firstrow, nrows, true)
+        dims = size_to_read(hdu, col, first, last, true)
         return read!(new_array(type_from_code(type), dims), hdu, col;
-                     firstrow=firstrow, kwds...)
+                     first=first, kwds...)
     end
 end
 
 function Base.read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer;
-                   firstrow::Integer = 1,
-                   nrows::Union{Integer,Nothing} = nothing,
+                   first::Integer = hdu.first_row,
+                   last::Integer = hdu.last_row,
                    kwds...) where {T<:Number}
-    dims = size_to_read(hdu, col, firstrow, nrows, true)
-    return read!(new_array(T, dims), hdu, col; firstrow=firstrow, kwds...)
+    dims = size_to_read(hdu, col, first, last, true)
+    return read!(new_array(T, dims), hdu, col; first=first, kwds...)
 end
 
 function Base.read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer;
-                   firstrow::Integer = 1,
-                   nrows::Union{Integer,Nothing} = nothing,
+                   first::Integer = hdu.first_row,
+                   last::Integer = hdu.last_row,
                    kwds...) where {T<:Number,N}
-    dims = size_to_read(hdu, col, firstrow, nrows, true)
+    dims = size_to_read(hdu, col, first, last, true)
     length(dims) == N || error("invalid number of dimensions")
-    return read!(new_array(T, Val(N), dims), hdu, col; firstrow=firstrow, kwds...)
+    return read!(new_array(T, Val(N), dims), hdu, col; first=first, kwds...)
 end
 
 # Read array of strings as bytes. FIXME: null and anynull keywords
 
 function Base.read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer;
-                   firstrow::Integer = 1,
-                   nrows::Union{Integer,Nothing} = nothing,
+                   first::Integer = hdu.first_row,
+                   last::Integer = hdu.last_row,
                    kwds...)
-    dims = size_to_read(hdu, col, firstrow, nrows, false)
+    dims = size_to_read(hdu, col, first, last, false)
     return bytes_to_strings(read!(new_array(UInt8, dims), hdu, col;
-                                  firstrow=firstrow, kwds...))
+                                  first=first, kwds...))
 end
 
 function Base.read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer;
-                   firstrow::Integer = 1,
-                   nrows::Union{Integer,Nothing} = nothing,
+                   first::Integer = hdu.first_row,
+                   last::Integer = hdu.last_row,
                    kwds...) where {N}
-    dims = size_to_read(hdu, col, firstrow, nrows, false)
+    dims = size_to_read(hdu, col, first, last, false)
     length(dims) == N+1 || error("invalid number of dimensions")
     return bytes_to_strings(read!(new_array(T, Val(N+1), dims), hdu, col;
-                                  firstrow=firstrow, kwds...))
-end
-
-function nrows_to_read(hdu::FitsTableHDU, firstrow::Integer, nrows::Nothing = nothing)
-    1 ≤ firstrow || bad_argument("out of range value for `firstrow` keyword")
-    return max(0, Int(hdu.nrows + 1 - firstrow)::Int)
-end
-
-function nrows_to_read(hdu::FitsTableHDU, firstrow::Integer, nrows::Integer)
-    nrows ≤ nrows_to_read(hdu, firstrow) || bad_argument("too many rows to read")
-    return Int(nrows)::Int
+                                  first=first, kwds...))
 end
 
 # Yields size of column data as read.
 function size_to_read(hdu::FitsTableHDU, col::Integer,
-                      firstrow::Integer = 1,
-                      nrows::Union{Integer,Nothing} = nothing,
+                      first::Integer = hdu.first_row,
+                      last::Integer = hdu.last_row,
                       compress::Bool = true)
-    _nrows = nrows_to_read(hdu, firstrow, nrows)
+    nrows = max(Int(last + 1 - first)::Int, 0)
+    if nrows > 0 && (first < hdu.first_row || last > hdu.last_row)
+        bad_argument("out of bounds first row to read")
+    end
     dims = read_tdim(hdu, col)
-    if compress && length(dims) == 1 && first(dims) == 1
-        dims[firstindex(dims)] = _nrows
+    if compress && length(dims) == 1 && Base.first(dims) == 1
+        dims[firstindex(dims)] = nrows
     else
-        push!(dims, _nrows)
+        push!(dims, nrows)
     end
     return dims
 end
@@ -235,8 +251,9 @@ The column `col` may be specified by its name or by its number. If `col` is a
 string, keyword `case` specifies whether uppercase/lowercase matters (`case =
 false` by default).
 
-Keyword `firstrow` may be specified with the index of the first row to read. By
-default, `firstrow = 1` and reading starts at the first row of the table.
+Keyword `first` may be specified with the index of the first row to read. By
+default, `first = hdu.first_row` and reading starts at the first row of the
+table.
 
 Keyword `anynull` may be specified with a reference to a boolean
 (`Ref{Bool}()`) to retrieve whether any of the read values is undefined.
@@ -264,7 +281,7 @@ end
 function Base.read!(arr::DenseArray{T,N}, hdu::FitsTableHDU, col::Integer;
                     null::Union{DenseArray{Bool,N},Number,Nothing} = nothing,
                     anynull::Union{Ref{Bool},Nothing} = nothing,
-                    firstrow::Integer = 1) where {T<:Number,N}
+                    first::Integer = hdu.first_row) where {T<:Number,N}
     if null === nothing
         _null = zero(T)
     elseif null isa Number
@@ -277,13 +294,12 @@ function Base.read!(arr::DenseArray{T,N}, hdu::FitsTableHDU, col::Integer;
     else
         _anynull = C_NULL
     end
-    read_col!(hdu, col, firstrow, 1, arr, _null, _anynull)
+    read_col!(hdu, col, first, 1, arr, _null, _anynull)
     if anynull isa Ref{Bool}
         anynull[] = !iszero(_anynull[])
     end
     return arr
 end
-
 
 for T in (Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64,
           Float32, Float64, Complex{Float32}, Complex{Float64}, Bool)
@@ -538,7 +554,7 @@ function Base.write(io::FitsIO, ::Type{FitsTableHDU},
 end
 
 """
-    write(hdu::FitsTableHDU, col => arr, ...; first=1, case=false, null=nothing) -> hdu
+    write(hdu::FitsTableHDU, col => arr, ...; first=hdu.first_row, case=false, null=nothing) -> hdu
 
 writes column data into FITS table extension of `hdu`. `col` is the column
 name/number, `arr` is an array of column values. Column values are converted as
@@ -560,7 +576,7 @@ function Base.write(hdu::FitsTableHDU,
                     pair::Pair{<:Integer,<:AbstractArray};
                     case::Bool = false,
                     null::Union{Number,Nothing} = nothing,
-                    first::Integer = 1)
+                    first::Integer = hdu.first_row)
     col = pair.first
     arr = dense_array(pair.second)
     write_col(hdu, col, first, 1, arr, null)
@@ -570,8 +586,8 @@ end
 function Base.write(hdu::FitsTableHDU,
                     pair::Pair{<:AbstractString,<:AbstractArray};
                     case::Bool = false, kwds...)
-    col = get_colnum(hdu, first(pair), case)
-    return write(hdu, col => last(pair); kwds...)
+    col = get_colnum(hdu, pair.first, case)
+    return write(hdu, col => pair.second; kwds...)
 end
 
 # Union of possible types for specifying column data to write.
