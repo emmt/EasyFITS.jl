@@ -342,7 +342,7 @@ function initialize!(card::FitsCard)
             if isempty(name)
                 name = first(r) : first(r) + 7
             end
-            type, value, comment = find_value_and_comment(card, mark : last(r))
+            type, value, comment = find_value_and_comment(card, mark + 1 : last(r))
         else
             # No value marker found. Assume a commentary card whose name is
             # "HIERARCH".

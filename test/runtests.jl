@@ -198,6 +198,8 @@ cards_1 = (key_b1 = (true,  "This is true"),
            key_n3 = (missing, "missing value"),
            comment = "simple comment",
            history = "historical comment",
+           very_long_key_name = (1, "Should use HIERARCH convention"),
+           uncommented_very_long_key_name = 2.0,
            )
 
 cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
