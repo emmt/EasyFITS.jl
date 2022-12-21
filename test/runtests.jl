@@ -111,7 +111,10 @@ end
         @test type_from_letter(type_to_letter(ComplexF64)) === ComplexF64
     end
 end
-@testset "Arrays utilities" begin
+
+@testset "Utilities" begin
+    @test EasyFITS.library_version() isa VersionNumber
+
     # new_array
     let new_array = EasyFITS.new_array
         let A = new_array(Float32, 4, 5, 6)
@@ -195,7 +198,7 @@ cards_1 = (key_b1 = (true,  "This is true"),
 
 cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
 
-@testset "FITS files" begin
+@testset "FITS Images" begin
     # Write a simple FITS image.
     A = convert(Array{Int16}, reshape(1:60, 3,4,5))
     @test fits"test1.fits" === FitsFile("test1.fits")
@@ -209,6 +212,7 @@ cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
 
         # Add a simple IMAGE extension.
         let hdu = write(io, FitsImageHDU, eltype(A), size(A))
+            @test length(io) == 1
             @test firstindex(hdu) == 1
             @test lastindex(hdu) == length(hdu)
             @test_throws KeyError hdu[firstindex(hdu) - 1]

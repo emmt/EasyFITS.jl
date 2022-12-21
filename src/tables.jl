@@ -528,7 +528,13 @@ function Base.write(io::FitsIO, ::Type{FitsTableHDU},
             write_tdim(io, k, dims)
         end
     end
-    return FitsTableHDU(BareBuild(), io, position(io), ascii)
+    # The number of HDUs as returned by fits_get_num_hdus is only incremented
+    # after writing data.
+    n = position(io)
+    if length(io) < n
+        setfield!(io, :nhdus, n)
+    end
+    return FitsTableHDU(BareBuild(), io, n, ascii)
 end
 
 """

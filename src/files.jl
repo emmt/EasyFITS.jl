@@ -278,13 +278,7 @@ Base.flush(f::Union{FitsIO,FitsHDU}) =
     check(CFITSIO.fits_flush_buffer(f, 0, Ref{Status}(0)))
 
 # Implement abstract array API for FitsIO objects.
-function Base.length(io::FitsIO)
-    ptr = pointer(io)
-    isnull(ptr) && return 0
-    num = Ref{Cint}()
-    check(CFITSIO.fits_get_num_hdus(ptr, num, Ref{Status}(0)))
-    return Int(num[])
-end
+Base.length(io::FitsIO) = getfield(io, :nhdus)
 Base.size(io::FitsIO) = (length(io),)
 Base.axes(io::FitsIO) = (keys(io),)
 Base.IndexStyle(::Type{FitsIO}) = IndexLinear()
@@ -296,6 +290,14 @@ function Base.getindex(io::FitsIO, s::AbstractString)
     hdu = findfirst(s, io)
     hdu === nothing && error("no FITS header data unit named \"$s\"")
     return hdu
+end
+
+get_num_hdus(io::FitsIO) = get_num_hdus(pointer(io))
+function get_num_hdus(ptr::Ptr{CFITSIO.fitsfile})
+    isnull(ptr) && return 0
+    num = Ref{Cint}()
+    check(CFITSIO.fits_get_num_hdus(ptr, num, Ref{Status}(0)))
+    return Int(num[])
 end
 
 function Base.get(io::FitsIO, s::AbstractString, default)

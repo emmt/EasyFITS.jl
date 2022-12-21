@@ -123,6 +123,7 @@ mutable struct FitsIO <: AbstractVector{FitsHDU}
     handle::Ptr{CFITSIO.fitsfile}
     mode::Symbol
     path::String
+    nhdus::Int
     function FitsIO(path::AbstractString, mode::AbstractString = "r"; extended::Bool=false)
         access = mode == "r" ? :r :
             mode == "r+" ? :rw :
@@ -130,6 +131,7 @@ mutable struct FitsIO <: AbstractVector{FitsHDU}
             throw(ArgumentError("mode must be \"r\", \"r+\", \"w\" or \"w!\""))
         status = Ref{Status}(0)
         handle = Ref{Ptr{CFITSIO.fitsfile}}(0)
+        num = Ref{Cint}(0)
         if access === :w
             if extended
                 prefix = (mode == "w!" && ! startswith(path, '!') ? "!" : "")
@@ -148,8 +150,14 @@ mutable struct FitsIO <: AbstractVector{FitsHDU}
             else
                 check(CFITSIO.fits_open_diskfile(handle, path, iomode, status))
             end
+            if !iszero(CFITSIO.fits_get_num_hdus(handle[], num, status))
+                errcode = status[]
+                status[] = 0
+                CFITSIO.fits_close_file(ptr, status)
+                throw(FitsError(errcode))
+            end
         end
-        return finalizer(_close, new(handle[], access, path))
+        return finalizer(_close, new(handle[], access, path, num[]))
     end
 end
 

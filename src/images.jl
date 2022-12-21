@@ -297,8 +297,13 @@ function Base.write(io::FitsIO, ::Type{FitsImageHDU},
     check(CFITSIO.fits_create_img(io, type_to_bitpix(T), N,
                                   Ref(convert(NTuple{N,Clong}, dims)),
                                   Ref{Status}(0)))
-    # The number of HDUs is only incremented after writing data.
-    return FitsImageHDU{T,N}(BareBuild(), io, position(io))
+    # The number of HDUs as returned by fits_get_num_hdus is only incremented
+    # after writing data.
+    n = position(io)
+    if length(io) < n
+        setfield!(io, :nhdus, n)
+    end
+    return FitsImageHDU{T,N}(BareBuild(), io, n)
 end
 
 # Just convert bitpix to type.
