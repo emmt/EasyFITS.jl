@@ -40,21 +40,19 @@ const SubArrayIndices{N} = NTuple{N,SubArrayIndex}
 is the (union of) type(s) that are accepted to specify a FITS header in
 `EasyFITS` package.
 
-A header is either empty (`nothing`), a vector of pairs `key => dat`, or a
-named tuple of `key = dat` terms. Each entry associates a name `key` with `dat`
-that may include a value and a comment (both optional). If specified as pairs,
-`key` can be a string or a symbol. The data `dat` can be a single value, say,
-`dat = val` or a 2-tuple `dat = (val,com)` with `com` a comment string. The
-value may be `nothing` or simply omitted for commentary keywords. Undefined
-values can be indicated by `udef` or `missing`.
-
-For special FITS keywords `"COMMENT"`, `"HISTORY"`, and `""` which are
-commentary keywords by convention, the value may be omitted, that is `dat =
-com` is acceptable. Note that, for such keywords, the comment is automatically
-split across multiple records if it is too long.
-
-A non-commentary keyword may have units specified in square brackets at the
-beginning of the associated comment.
+A header may be a vector of pairs like `key => val`, `key => (val,com)`, or
+`key => com` with `key` the keyword name, `val` its value, and `com` its
+comment. The keyword name `key` is a string or a symbol which is automatically
+converted to uppercase letters and trailing spaces discarded. The syntax `key
+=> com`, with `com` a string, is only allowed for commentary keywords `COMMENT`
+or `HISTORY`. For other keywords, the value is mandatory but the comment is
+optional, not specifying the comment is like specifying `nothing` for the
+comment; otherwise, the comment must be a string. The value `val` may be
+`missing` or `undef` to indicate that it is undefined. If the comment is too
+long, it is automatically split across multiple records for commentary keywords
+and it is truncated for other keywords. A non-commentary keyword may have units
+specified in square brackets at the beginning of the associated comment.
+Commentary keywords may appear more than once, other keywords are unique.
 
 For example:
 
@@ -66,15 +64,28 @@ For example:
      "MISSING" => (missing, "Another undefined value."),
      "HISTORY" => "Some historical information.",
      "COMMENT" => "Some comment.",
-     "COMMENT" => (nothing, "Some other comment."),
+     "COMMENT" => "Some other comment.",
      "HISTORY" => "Some other historical information."]
 
-defines a possible FITS header with several records: a keyword `"VERIFIED"`
-having a logical value and no comments, a keyword `"COUNT"` having an integer
-value and a comment, a keyword `"SPEED"` having a floating-point value and a
-comment with units, a keyword `"USER"` having a string value, a keywords
-`"UNDEF"` and `"MISSING"` having comments but undefined values, and a few
-commentary records with standard keywords.
+defines a possible FITS header with several records: a keyword `VERIFIED`
+having a logical value and no comments, a keyword `COUNT` having an integer
+value and a comment, a keyword `SPEED` having a floating-point value and a
+comment with units, a keyword `USER` having a string value, keywords `UNDEF`
+and `MISSING` having comments but undefined values, and a few additional
+commentary keywords.
+
+A header may also be specified as a named tuple with entries `key = val`, `key
+= (val,com)`, or `key = com`. The same rules apply as above except that `key`
+must be allowed as a variable symbolic name (no embedded hyphen `'-'`).
+
+Finally, most methods assume that `nothing` can be used to indicate an empty
+header.
+
+!!! note
+    Specifying a FITS header as a dictionary is purposely not implemented
+    because, to a certain extend, the order of keywords in a FITS header is
+    relevant and because some keywords (`COMMENT`, `HISTORY`, and `CONTINUE`)
+    may appear more than once.
 
 """
 const Header = Union{NamedTuple,VectorOfCardPairs}

@@ -32,7 +32,7 @@ function __init__()
 
         yields the number of columns of the FITS table extension in `hdu`.
 
-    """
+        """
         DataFrames.ncol(hdu::FitsTableHDU) = hdu.ncols
     end
 end
