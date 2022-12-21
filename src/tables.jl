@@ -560,10 +560,10 @@ function Base.write(hdu::FitsTableHDU,
                     pair::Pair{<:Integer,<:AbstractArray};
                     case::Bool = false,
                     null::Union{Number,Nothing} = nothing,
-                    start::Integer = 1)
-    col = first(pair)
-    arr = dense_array(last(pair))
-    write_col(hdu, col, start, 1, arr, null)
+                    first::Integer = 1)
+    col = pair.first
+    arr = dense_array(pair.second)
+    write_col(hdu, col, first, 1, arr, null)
     return hdu
 end
 
