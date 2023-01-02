@@ -175,8 +175,8 @@ end
 """
     EasyFits.Invalid
 
-is a singleton used to indicate invalid arguments while sparing throwing an
-exception.
+is the singleton type of the object used to indicate invalid arguments while
+sparing throwing an exception.
 
 """
 struct Invalid end
@@ -184,13 +184,14 @@ struct Invalid end
 # Singleton type to indicate that the inner constructor should be called.
 struct BareBuild end
 
+# Any other FITS extension than Image and Table (who knows...).
 struct FitsAnyHDU <: FitsHDU
     io::FitsIO
     num::Int
     FitsAnyHDU(::BareBuild, io::FitsIO, num::Integer) = new(io, num)
 end
 
-# FITS Image (Array for Julia).
+# FITS Image extension (Array for Julia).
 struct FitsImageHDU{T,N} <: FitsHDU
     io::FitsIO
     num::Int
@@ -201,7 +202,7 @@ struct FitsImageHDU{T,N} <: FitsHDU
     end
 end
 
-# FITS table.
+# FITS Table extension.
 struct FitsTableHDU <: FitsHDU
     io::FitsIO
     num::Int
@@ -211,7 +212,7 @@ struct FitsTableHDU <: FitsHDU
 end
 
 # Object to store a single FITS header card. Must be mutable to have access to
-# its address.
+# its address. It behaves like a vector of bytes.
 mutable struct FitsCard <: AbstractVector{UInt8}
     data::NTuple{CFITSIO.FLEN_CARD,UInt8}
     type::FitsCardType
