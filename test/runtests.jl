@@ -195,7 +195,7 @@ cards_1 = (key_b1 = (true,  "This is true"),
            key_f2 = (-3.7, "Double precision"),
            key_f3 = (11//7, "Rational number"),
            key_f4 = (pi, "Irrational number"),
-           key_c1 = (complex(2,3), "Integer complex"),
+           key_c1 = (complex(-2,3), "Integer complex"),
            key_c2 = (complex(2.1f0,-3.7f0), "Single precision complex"),
            key_c3 = (complex(2.1,-3.7), "Double precision complex"),
            key_s1 = " <- significant space here",
@@ -325,18 +325,11 @@ end
                 j = findnext(b -> b ∈ (UInt8('e'), UInt8('E'), UInt8('d'), UInt8('D')), card, i)
                 bak = card.value.parsed
                 @test bak ≈ val
-                card[j] = UInt8('D')
-                @test card.value.parsed ≈ val
-                @test card.value.parsed === bak
-                card[j] = UInt8('d')
-                @test card.value.parsed ≈ val
-                @test card.value.parsed === bak
-                card[j] = UInt8('E')
-                @test card.value.parsed ≈ val
-                @test card.value.parsed === bak
-                card[j] = UInt8('e')
-                @test card.value.parsed ≈ val
-                @test card.value.parsed === bak
+                for c in "dDeE"
+                    card[j] = c
+                    @test card.value.parsed ≈ val
+                    @test card.value.parsed === bak
+                end
                 delete!(hdu, key)
             end
             for (key, dat) in (cards isa AbstractVector ? cards : pairs(cards))
