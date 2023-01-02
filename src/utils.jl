@@ -169,6 +169,16 @@ yields the Julia type `T` corresponding to CFITSIO type code `c`.
 """
 type_from_code(c::Integer) = type_from_code(Int(c)::Int)
 
+# Provide default value, if symbol not defined in C FITSIO library (e.g.
+# MS-Windows). Otherwise, check that assumed and actual values agree.
+function cdef(key::Symbol, val)
+    if isdefined(CFITSIO, key)
+        cval = getfield(CFITSIO, key)
+        val == cval || error("CFITSIO constant $sym is $cval, not $val")
+    end
+    return val
+end
+
 # Data type code as assumed by the CFITSIO library. NOTE: Sets are used to
 # avoid duplicates.
 let types = Set{DataType}(),
@@ -177,7 +187,7 @@ let types = Set{DataType}(),
     for (type, code) in ((String,           CFITSIO.TSTRING),
                          (Bool,             CFITSIO.TLOGICAL),
                          (Int8,             CFITSIO.TSBYTE),
-                         (UInt8,            CFITSIO.TBYTE),
+                         (UInt8,            cdef(:TBYTE, 11),
                          (Cshort,           CFITSIO.TSHORT),
                          (Cushort,          CFITSIO.TUSHORT),
                          (Cint,             CFITSIO.TINT),
