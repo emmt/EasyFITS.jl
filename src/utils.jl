@@ -169,9 +169,12 @@ yields the Julia type `T` corresponding to CFITSIO type code `c`.
 """
 type_from_code(c::Integer) = type_from_code(Int(c)::Int)
 
-# Provide default value, if symbol not defined in C FITSIO library (e.g.
-# MS-Windows). Otherwise, check that assumed and actual values agree.
-function cdef(key::Symbol, val)
+# Provide default value, if symbol constant is not defined in C FITSIO library
+# (e.g. MS-Windows). Otherwise, check that assumed and actual values agree.
+# NOTE: This "hack" is needed to cope with some symbols under MS-Windows. If
+# the assumed constant is wrong, the call will clash when tested under, say,
+# Linux.
+function _const(key::Symbol, val)
     if isdefined(CFITSIO, key)
         cval = getfield(CFITSIO, key)
         val == cval || error("CFITSIO constant $sym is $cval, not $val")
@@ -187,7 +190,7 @@ let types = Set{DataType}(),
     for (type, code) in ((String,           CFITSIO.TSTRING),
                          (Bool,             CFITSIO.TLOGICAL),
                          (Int8,             CFITSIO.TSBYTE),
-                         (UInt8,            cdef(:TBYTE, 11)),
+                         (UInt8,            _const(:TBYTE, 11)),
                          (Cshort,           CFITSIO.TSHORT),
                          (Cushort,          CFITSIO.TUSHORT),
                          (Cint,             CFITSIO.TINT),

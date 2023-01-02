@@ -287,10 +287,10 @@ is_comment_keyword(key::Symbol) =
     key = first(pair)
     dat = last(pair)
     type = keyword_type(key)
-    if type === :comment || type === :history
+    if type === :COMMENT || type === :HISTORY
         com = dat isa AbstractString ? dat :
             dat isa Nothing ? "" : invalid_card_value(key, dat, true)
-        if type === :history
+        if type === :HISTORY
             write_history(hdu, com)
         else
             write_comment(hdu, com)
@@ -307,19 +307,171 @@ is_comment_keyword(key::Symbol) =
     return hdu
 end
 
-keyword_type(key::CardName) =
-    iszero(_strcasecmp(key, :COMMENT)) ? :comment :
-    iszero(_strcasecmp(key, :HISTORY)) ? :history : :other
+"""
+    @eq b c
+    @eq c b
 
-# NOTE: `Base.unsafe_convert(Ptr{UInt8},str::String)` and
-# `Base.unsafe_convert(Ptr{UInt8},sym::Symbol)` both yield a pointer to a null
-# terminated array of bytes, thus suitable for direct byte-by-byte comparison
-# between ASCII C strings. A `String` may have embedded nulls (not a `Symbol`),
-# however these nulls will just stop the comparison which is what we want. This
-# save us from checking for nulls as would be the case if we used `Cstring`
-# instead of `Ptr{UInt8}`.
-_strcasecmp(s1::Union{AbstractString,Symbol}, s2::Union{AbstractString,Symbol}) =
-    @ccall strcasecmp(s1::Ptr{UInt8}, s2::Ptr{UInt8})::Cint
+yields whether expression/symbol `b` resulting in a byte value (of type
+`UInt8`) is equal to char `c`. The comparison is case insensitive and assumes
+ASCII characters.
+
+"""
+macro eq(b::Union{Expr,Symbol}, c::Char)
+    esc(_eq(b, c))
+end
+
+macro eq(c::Char, b::Union{Expr,Symbol})
+    esc(_eq(b, c))
+end
+
+_eq(b::UInt8, c::UInt8) = b == c
+_eq(b::UInt8, c1::UInt8, c2::UInt8) = ((b == c1)|(b == c2))
+_eq(b::Union{Expr,Symbol}, c::Char) =
+    'a' ≤ c ≤ 'z' ? :(_eq($b, $(UInt8(c) & ~0x20), $(UInt8(c)))) :
+    'A' ≤ c ≤ 'Z' ? :(_eq($b, $(UInt8(c)), $(UInt8(c) | 0x20))) :
+    :(_eq($b, $(UInt8(c))))
+
+"""
+    EasyFITS.keyword_type(key)
+
+yields the type of FITS keyword `key` (a symbol or a string) as one of:
+`:COMMENT`, `:HISTORY`, `:CONTINUE`, or `:HIERARCH`. The comparison is
+insensitive to case of letters and to trailing spaces. The method is meant to
+be fast.
+
+"""
+function keyword_type(str::Union{String,Symbol})
+    # NOTE: This single-pass version takes at most 7ns for all keywords on my
+    # laptop dating from 2015.
+    #
+    # NOTE: `Base.unsafe_convert(Ptr{UInt8},str::String)` and
+    # `Base.unsafe_convert(Ptr{UInt8},sym::Symbol)` both yield a pointer to a
+    # null terminated array of bytes, thus suitable for direct byte-by-byte
+    # comparison between ASCII C strings. A `String` may have embedded nulls
+    # (not a `Symbol`), however these nulls will just stop the comparison which
+    # is what we want. This save us from checking for nulls as would be the
+    # case if we used `Cstring` instead of `Ptr{UInt8}`.
+    obj = Base.cconvert(Ptr{UInt8}, str)
+    ptr = Base.unsafe_convert(Ptr{UInt8}, obj)
+    GC.@preserve obj begin
+        b1 = unsafe_load(ptr, 1)
+        if @eq('C', b1)
+            # May be COMMENT or CONTINUE.
+            if @eq('O', unsafe_load(ptr, 2))
+                b3 = unsafe_load(ptr, 3)
+                if @eq('M', b3) &&
+                    @eq('M', unsafe_load(ptr, 4)) &&
+                    @eq('E', unsafe_load(ptr, 5)) &&
+                    @eq('N', unsafe_load(ptr, 6)) &&
+                    @eq('T', unsafe_load(ptr, 7))
+                    unsafe_only_spaces(ptr, 8) && return :COMMENT
+                elseif @eq('N', b3) &&
+                    @eq('T', unsafe_load(ptr, 4)) &&
+                    @eq('I', unsafe_load(ptr, 5)) &&
+                    @eq('N', unsafe_load(ptr, 6)) &&
+                    @eq('U', unsafe_load(ptr, 7)) &&
+                    @eq('E', unsafe_load(ptr, 8))
+                    unsafe_only_spaces(ptr, 9) && return :CONTINUE
+                end
+            end
+        elseif @eq('H', b1)
+            # May be HISTORY or HIERARCH.
+            if @eq('I', unsafe_load(ptr, 2))
+                b3 = unsafe_load(ptr, 3)
+                if @eq('S', b3) &&
+                    @eq('T', unsafe_load(ptr, 4)) &&
+                    @eq('O', unsafe_load(ptr, 5)) &&
+                    @eq('R', unsafe_load(ptr, 6)) &&
+                    @eq('Y', unsafe_load(ptr, 7))
+                    unsafe_only_spaces(ptr, 8) && return :HISTORY
+                elseif @eq('E', b3) &&
+                    @eq('R', unsafe_load(ptr, 4)) &&
+                    @eq('A', unsafe_load(ptr, 5)) &&
+                    @eq('R', unsafe_load(ptr, 6)) &&
+                    @eq('C', unsafe_load(ptr, 7)) &&
+                    @eq('H', unsafe_load(ptr, 8)) &&
+                    @eq(' ', unsafe_load(ptr, 9))
+                    unsafe_only_spaces(ptr, 10) || return :HIERARCH
+                end
+            end
+        end
+    end
+    return :OTHER
+end
+
+# NOTE: This version takes less than 7ns for any keyword for all keywords
+# on my laptop dating from 2015.
+function keyword_type(str::AbstractString)
+   n = ncodeunits(str)
+    if n ≥ 7
+        b1 = _load(str, 1)
+        if @eq('C', b1)
+            # Can be COMMENT or CONTINUE.
+            if @eq('O', _load(str, 2))
+                b3 = _load(str, 3)
+                if @eq('M', b3) &&
+                    @eq('M', _load(str, 4)) &&
+                    @eq('E', _load(str, 5)) &&
+                    @eq('N', _load(str, 6)) &&
+                    @eq('T', _load(str, 7))
+                    while n > 7 && @eq(' ', _load(str, n))
+                        n -= 1
+                    end
+                    n == 7 && return :COMMENT
+                elseif n ≥ 8 &&
+                    @eq('N', b3) &&
+                    @eq('T', _load(str, 4)) &&
+                    @eq('I', _load(str, 5)) &&
+                    @eq('N', _load(str, 6)) &&
+                    @eq('U', _load(str, 7)) &&
+                    @eq('E', _load(str, 8))
+                    while n > 8 && @eq(' ', _load(str, n))
+                        n -= 1
+                    end
+                    n == 8 && return :CONTINUE
+                end
+            end
+        elseif @eq('H', b1)
+            # Can be HISTORY or HIERARCH.
+            if @eq('I', _load(str, 2))
+                b3 = _load(str, 3)
+                if @eq('S', b3) &&
+                    @eq('T', _load(str, 4)) &&
+                    @eq('O', _load(str, 5)) &&
+                    @eq('R', _load(str, 6)) &&
+                    @eq('Y', _load(str, 7))
+                    while n > 7 && @eq(' ', _load(str, n))
+                        n -= 1
+                    end
+                    n == 7 && return :HISTORY
+                elseif n > 9 && @eq('E', b3) &&
+                    @eq('R', _load(str, 4)) &&
+                    @eq('A', _load(str, 5)) &&
+                    @eq('R', _load(str, 6)) &&
+                    @eq('C', _load(str, 7)) &&
+                    @eq('H', _load(str, 8)) &&
+                    @eq(' ', _load(str, 9))
+                    for i in 10:n
+                        @eq(' ', _load(str, i)) || return :HIERARCH
+                    end
+                end
+            end
+        end
+    end
+    return :OTHER
+end
+
+# Private method to mimic `unsafe_load` for other type of arguments.
+_load(str::AbstractString, i::Int) = @inbounds codeunit(str, i)
+
+@inline function unsafe_only_spaces(ptr::Ptr{UInt8}, i::Int=1)
+    while true
+        b = unsafe_load(ptr, i)
+        iszero(b) && return true
+        @eq(' ', b) || return false
+        i += 1
+    end
+end
 
 # Convert card data (e.g., from a key=>dat pair) into a 2-tuple (val,com).
 # NOTE: An empty comment "" is the same as unspecified comment (nothing).
