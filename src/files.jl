@@ -11,8 +11,8 @@ openfits(func::Function, path::AbstractString, mode::AbstractString = "r"; kwds.
 readfits(path::AbstractString, ext::Union{Integer,AbstractString} = 1; kwds...) =
     read(FitsFile(path), ext; kwds...)
 
-writefits(path::AbstractString; kwds...) = write(FitsFile(path), mode; kwds...)
-writefits!(path::AbstractString; kwds...) = write!(FitsFile(path), mode; kwds...)
+writefits(path::AbstractString, args...; kwds...) = write(FitsFile(path), args...; kwds...)
+writefits!(path::AbstractString, args...; kwds...) = write!(FitsFile(path), args...; kwds...)
 
 # Implement do-block syntax.
 function FitsIO(f::Function, path::AbstractString, mode::AbstractString = "r"; kwds...)
