@@ -55,25 +55,61 @@ end
 #------------------------------------------------------------------------------
 # READING FITS TABLES
 
-function get_colnum(f::Union{FitsIO,FitsTableHDU}, col::AbstractString,
-                    case::Bool = false)
+const ColumnName = Union{AbstractString,Symbol}
+
+"""
+    EasyFITS.get_colnum(hdu::FitsTableHDU, col, case=false) -> num
+
+yields the column number of column matching `col` (a string, a symbol, or an
+integer) in FITS table extension of `hdu`. Optional argument `case` specify
+whether upper-/lower-case matters if `col` is a string or a symbol.
+
+"""
+function get_colnum(hdu::FitsTableHDU, col::Integer, case::Bool = false)
+    @boundscheck check_colnum(hdu, col)
+    return to_type(Int, col)
+end
+
+function get_colnum(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
     colnum = Ref{Cint}()
-    check(CFITSIO.fits_get_colnum(f, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
+    check(CFITSIO.fits_get_colnum(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
                                   col, colnum, Ref{Status}(0)))
     return to_type(Int, colnum[])
 end
 
-function get_colname(f::Union{FitsIO,FitsTableHDU}, col::AbstractString,
-                     case::Bool = false)
+check_colnum(hdu::FitsTableHDU, col::Integer) =
+    ((hdu.first_column ≤ col) & (col ≤ hdu.last_column)) || bad_argument("out of range column index")
+
+"""
+    EasyFITS.get_colname(hdu::FitsTableHDU, col, case=false) -> (str, num)
+
+yields the column name and number of column matching `col` (a string, a symbol,
+or an integer) in FITS table extension of `hdu`. Optional argument `case`
+specify whether upper-/lower-case matters if `col` is a string or a symbol. If
+`case` is false, the column name `str` is converted to upper-case letters.
+
+"""
+function get_colname(hdu::FitsTableHDU, col::Integer, case::Bool = false)
+    check_colnum(hdu, col)
+    card = get(hdu, "TTYPE$col", nothing) # FIXME: optimize?
+    (card === nothing || card.type != FITS_STRING) && return ("COL#$col", to_type(Int, col))
+    return (case ? card.value.string : uppercase(card.value.string), to_type(Int, col))
+end
+
+function get_colname(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
     colnum = Ref{Cint}()
     colname = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
-    check(CFITSIO.fits_get_colname(f, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
+    check(CFITSIO.fits_get_colname(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
                                    col, pointer(colname), colnum, Ref{Status}(0)))
     return (to_string!(colname), to_type(Int, colnum[]))
 end
 
 for func in (:get_coltype, :get_eqcoltype)
     local cfunc = Symbol("fits_",func,"ll")
+    @eval function $func(f::Union{FitsIO,FitsTableHDU}, col::ColumnName,
+                         case::Bool = false)
+        return $func(f, get_colnum(f, col, case))
+    end
     @eval function $func(f::Union{FitsIO,FitsTableHDU}, col::Integer)
         type = Ref{Cint}()
         repeat = Ref{Clonglong}()
@@ -83,8 +119,9 @@ for func in (:get_coltype, :get_eqcoltype)
     end
 end
 
-read_tdim(f::Union{FitsIO,FitsTableHDU}, col::AbstractString, case::Bool=false) =
+read_tdim(f::Union{FitsIO,FitsTableHDU}, col::ColumnName, case::Bool=false) =
     read_tdim(f, get_colnum(f, col, case))
+
 function read_tdim(f::Union{FitsIO,FitsTableHDU}, col::Integer)
     1 ≤ col ≤ 999 || error("invalid column number")
     naxis = Ref{Cint}()
@@ -108,14 +145,14 @@ reads column `col` of the FITS table extension in `hdu` and returns its values
 as an array `arr` of type `R`.
 
 The column `col` may be specified by its name or by its number. If `col` is a
-string, keyword `case` specifies whether uppercase/lowercase matters (`case =
-false` by default).
+string or a symbol, keyword `case` specifies whether uppercase/lowercase
+matters (`case = false` by default).
 
 Keywords `first` and/or `last` may be specified with the index of the
-first/last row to read. By default, `first = hdu.first_row` and reading starts
-at the first row of the table By default, `last = hdu.last_row` and reading
-stops at the last row of the table. An alternative is to specify the row range
-after the column name/index:
+first/last row to read. By default, `first = hdu.first_row`, that is reading
+starts at the first row of the table, and `last = hdu.last_row`, that is
+reading stops at the last row of the table. An alternative is to specify the
+row range after the column name/index:
 
     read([R,] hdu, col, first:last)
 
@@ -242,14 +279,150 @@ function bytes_to_strings(A::AbstractArray{UInt8,N}) where {N}
 end
 
 """
+    read(R::Type{<:Dict} = Dict{String,Array}, hdu::FitsTableHDU[, cols[, rows]])
+
+reads some columns of the FITS table extension in `hdu` as a dictionary indexed
+by the column names. The columns to read can be specified by `cols` which may
+be a single column name/index or a tuple/range/vector of column namas/indices.
+Column names may be strings or keywords (not a mixture of these). The rows to
+read can be specified by `rows` as a single row index or a unit range of row
+indices. Keywords `first` and `last` may also be used to specify the range of
+rows to read. By default, all columns and all rows are read.
+
+"""
+read(hdu::FitsTableHDU, args...; kwds...) =
+    read(Dict{String,Array}, hdu, args...; kwds...)
+
+read(::Type{Dict}, hdu::FitsTableHDU, args...; kwds...) =
+    read(Dict{String,Array}, hdu, args...; kwds...)
+
+read(::Type{Dict{String}}, hdu::FitsTableHDU, args...; kwds...) =
+    read(Dict{String,Array}, hdu, args...; kwds...)
+
+# Get rid of the selection of rows.
+function read(::Type{Dict{String,Array}}, hdu::FitsTableHDU, cols,
+              rows::Union{Integer,AbstractUnitRange{<:Integer}}; kwds...)
+    return read(Dict{String,Array}, hdu, cols;
+                first = Int(Base.first(rows))::Int,
+                last = Int(Base.last(rows))::Int, kwds...)
+end
+
+# Read all rows.
+function read(::Type{Dict{String,Array}}, hdu::FitsTableHDU, cols,
+              rows::Colon; kwds...)
+    return read(Dict{String,Array}, hdu, cols;
+                first = hdu.first_row,
+                last = hdu.last_row, kwds...)
+end
+
+# Read selection of columns.
+function read(::Type{Dict{String,Array}},
+              hdu::FitsTableHDU,
+              cols::Union{Integer,
+                          AbstractVector{<:Integer},
+                          Tuple{Vararg{Integer}},
+                          OrdinalRange{<:Integer,<:Integer},
+                          AbstractString,
+                          AbstractVector{<:AbstractString},
+                          Tuple{Vararg{AbstractString}},
+                          Symbol,
+                          AbstractVector{<:Symbol},
+                          Tuple{Vararg{Symbol}}} = hdu.first_column:hdu.last_column;
+              first::Integer = hdu.first_row,
+              last::Integer = hdu.last_row,
+              case::Bool = false,
+              kwds...)
+    dict = Dict{String,Array}()
+    names = hdu.column_names
+    if !case
+        for i in eachindex(names)
+            names[i] = uppercase(names[i])
+        end
+    end
+    for col in cols
+        if col isa Integer
+            num = to_type(Int, col)
+        elseif col isa AbstractString || col isa Symbol
+            num = get_colnum(hdu, col, case)
+        end
+        key = names[num]
+        push!(dict, key => read(Array, hdu, num; first = first, last = last, kwds...))
+    end
+    return dict
+end
+
+"""
+    read(R::Type{<:Union{Vector,Vector{Array}}}, hdu::FitsTableHDU[, cols[, rows]])
+
+reads some columns of the FITS table extension in `hdu` as a vector. The
+columns to read can be specified by `cols` which may be a single column
+name/index or a tuple/range/vector of column names/indices. Column names may be
+strings or keywords (not a mixture of these). The rows to read can be specified
+by `rows` as a single row index or a unit range of row indices. Keywords
+`first` and `last` may also be used to specify the range of rows to read. By
+default, all columns and all rows are read.
+
+"""
+read(::Type{Vector}, hdu::FitsTableHDU, args...; kwds...) =
+    read(Vector{Array}, hdu, args...; kwds...)
+
+# Get rid of the selection of rows.
+function read(::Type{Vector{Array}}, hdu::FitsTableHDU, cols,
+              rows::Union{Integer,AbstractUnitRange{<:Integer}}; kwds...)
+    return read(Vector{Array}, hdu, cols;
+                first = Int(Base.first(rows))::Int,
+                last = Int(Base.last(rows))::Int, kwds...)
+end
+
+# Read all rows.
+function read(::Type{Vector{Array}}, hdu::FitsTableHDU, cols,
+              rows::Colon; kwds...)
+    return read(Vector{Array}, hdu, cols;
+                first = hdu.first_row,
+                last = hdu.last_row, kwds...)
+    return read(Vector{Array}, hdu, cols; kwds...)
+end
+
+# Read selection of columns.
+function read(::Type{Vector{Array}},
+              hdu::FitsTableHDU,
+              cols::Union{Integer,
+                          AbstractVector{<:Integer},
+                          Tuple{Vararg{Integer}},
+                          OrdinalRange{<:Integer,<:Integer},
+                          AbstractString,
+                          AbstractVector{<:AbstractString},
+                          Tuple{Vararg{AbstractString}},
+                          Symbol,
+                          AbstractVector{<:Symbol},
+                          Tuple{Vararg{Symbol}}} = hdu.first_column:hdu.last_column;
+              first::Integer = hdu.first_row,
+              last::Integer = hdu.last_row,
+              case::Bool = false,
+              kwds...)
+    vect = Vector{Array}(undef, length(cols))
+    i = firstindex(vect)
+    for col in cols
+        if col isa Integer
+            num = to_type(Int, col)
+        elseif col isa AbstractString || col isa Symbol
+            num = get_colnum(hdu, col, case)
+        end
+        vect[i] = read(Array, hdu, num; first = first, last = last, kwds...)
+        i += 1
+    end
+    return vect
+end
+
+"""
     read!(arr::DenseArray, hdu::FitsTableHDU, col) -> arr
 
 overwrites the elements of array `arr` with values of the column `col` of the
 FITS table extension in `hdu` and returns `arr`.
 
 The column `col` may be specified by its name or by its number. If `col` is a
-string, keyword `case` specifies whether uppercase/lowercase matters (`case =
-false` by default).
+string or a symbol, keyword `case` specifies whether uppercase/lowercase
+matters (`case = false` by default).
 
 Keyword `first` may be specified with the index of the first row to read. By
 default, `first = hdu.first_row` and reading starts at the first row of the
