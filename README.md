@@ -37,8 +37,8 @@ io = open(fits"...")
 
 where `path` is the name of the FITS file while `"..."` denotes the file name
 as a literal string. In the two latter examples, the file name is wrapped into
-a `FitsFile` type (a simple *decoration*) to avoid type-piracy. The `fits"..."`
-syntax is equivalent to `FitsFile("...")`.
+a `FitsFile` structure (a simple *decoration*) to avoid type-piracy. The
+`fits"..."` syntax is equivalent to `FitsFile("...")`.
 
 The methods to open a FITS file all take an optional second argument `mode` which
 can be:
@@ -56,14 +56,14 @@ can be:
 The keyword `extended` can be used to specify whether to use the [extended file
 name
 syntax](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/c/c_user/node83.html)
-implemented by the `FITSIO` library. It the extended name syntax is not used
-(which is the default behavior) when opening a FITS file for reading (mode
+implemented by the `FITSIO` library. When the extended name syntax is not used
+(which is the default behavior) while opening a FITS file for reading (mode
 `"r"` or `"r+"`), if a file with the given name does not exists but if the name
-does not end with `".gz"` while a file exists whose name is the same as the
-given one but with an additional `".gz"` extension, this latter file open
+does not end with `".gz"` and a file exists whose name is the same as the
+given one but with an additional `".gz"` extension, this latter file is open
 instead.
 
-It is not necessary to call `close(io)` to close the FITS file, this is
+It is not mandatory to call `close(io)` to close the FITS file, this is
 automatically done when the `io` object is garbage collected. The do-block
 syntax is however supported:
 
@@ -87,7 +87,7 @@ last(io)            # yields the last HDU
 io[lastindex(io)]   # idem
 io[end]             # idem
 io[length(io)]      # idem
-io["name"]          # next HDU matching given name
+io["name"]          # next HDU matching given name or nothing
 ```
 
 In other words, FITS files behave as vectors of HDUs with 1-based integer
@@ -484,7 +484,7 @@ more variants of `write(io,dat,...)`.
 
 With `EasyFITS`, file names ending with `.gz` are automatically recognized for
 compressed files. When reading a FITS file, say `path`, if no file named `path`
-exists but the is a file named `"$(path).gz"` this latter file will be
+exists but there is a file named `"$(path).gz"` this latter file will be
 automatically open. When creating a FITS file, the file is automatically
 compressed if its name ends with `.gz`.
 
@@ -494,14 +494,7 @@ compressed if its name ends with `.gz`.
 To check whether a file `path` already exists in the file system, call:
 
 ```julia
-exists(path) -> bool
-```
-
-Also:
-
-```julia
-EasyFITS.getfile(arg [, ext])
-EasyFITS.find(pred, )
+isfile(path) -> bool
 ```
 
 ### FITS bits per pixel (BITPIX)

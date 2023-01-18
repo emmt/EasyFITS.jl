@@ -1,16 +1,41 @@
 # Things to do in EasyFITS
 
-* Provide `FitsTable` for FITS Table extensions.
+- Deal with long strings (`CONTINUE` FITS keyword).
 
-* Use only low-level `CFITSIO` module.
-* When slicing, update header `NAXIS*` keywords.
-* Cleanup `get(...)` extensions.
-* Extend `Array(...)` to yield the array contents of a FITS image.
-* Provide `comment!` to set the comment part.
-* HDU can be specified by name ("EXTNAME" or "HDUNAME") when loading a FITS
-  Image.
-* When an "IMAGE" (resp. "TABLE") extension is expected without other
-  constraint, find the first one.
-* Filter keyword values (e.g., `Irrational`) to prevent problems.
-* Deprecate `exists(path)` in favor of `isfile(path)`.
-* `"r+"` mode.
+- Deal with columns of bits.
+
+- Deal with variable length columns.
+
+- Use `@inbounds` to optimize some more loops.
+
+- Optimize conversion to `String` of card parts and make `FitsCardPart`
+  equivalent to `SubString{String}`.
+
+- Implement `read!(arr,hdu,inds...)`.
+
+- Implement `io[f::Function]` to search:
+
+  ``` julia
+  function Base.getindex(io::FitsIo, f::Function)
+      for hdu in io
+          f(hdu) && return hdu
+      end
+      return nothing
+  end
+  ```
+
+- FITS cards are (restricted) ASCII strings. The FITS standard states that FITS
+  header cards exclusively consist in the characters whose hexadecimal values
+  are in the range `0x20` through `0x7E`. The ASCII control characters with
+  hexadecimal values less than `0x20` (including the null, tab, carriage
+  return, and line-feed characters), and the delete character (hexadecimal
+  value `0x7F`) must not appear anywhere within a keyword record.
+
+  For keywords, all digits `0` through `9` (hexadecimal codes `0x30` to `0x39`)
+  and upper case Latin alphabetic characters `A` through `Z` (hexadecimal codes
+  `0x41` to `0x5A`) are permitted; lower-case characters shall not be used. The
+  underscore (`_`, hexadecimal code `0x5F`) and hyphen (`-`, hexadecimal code
+  `0x2D`) are also permitted. Space ` ` (hexadecimal code `0x20`) may appear in
+  `HIERARCH` keywords. Equal sign `=` (hexadecimal code `0x3D`) followed by a
+  space is used to indicate a keyword value. A slash `/` (hexadecimal code
+  `0x2F`) is used to separate value and comment.

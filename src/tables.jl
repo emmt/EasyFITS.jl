@@ -421,7 +421,7 @@ overwrites the elements of array `arr` with values of the column `col` of the
 FITS table extension in `hdu` and returns `arr`.
 
 The column `col` may be specified by its name or by its number. If `col` is a
-string or a symbol, keyword `case` specifies whether uppercase/lowercase
+string or a symbol, keyword `case` indicates whether uppercase/lowercase
 matters (`case = false` by default).
 
 Keyword `first` may be specified with the index of the first row to read. By
@@ -434,8 +434,8 @@ Keyword `anynull` may be specified with a reference to a boolean
 Keyword `null` may be specified with a reference to a value of the same type as
 the elements of the destination `arr` (`Ref{eltype(arr)}()`) to retrieve the
 value of undefined values. Keyword `null` may also be set with an array of
-`Bool` of same size as `arr` and which will be set to `1` for undefined values
-and to `0` elsewhere.
+`Bool` of same size as `arr` and which will be set to `true` for undefined
+values and to `false` elsewhere.
 
 Output arrays `arr` and `null` must have contiguous elements, in other words,
 they must be *dense arrays*.

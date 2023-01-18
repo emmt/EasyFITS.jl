@@ -128,8 +128,6 @@ end
 
 @testset "Utilities" begin
     @test EasyFITS.library_version() isa VersionNumber
-
-    # new_array
     let new_array = EasyFITS.new_array
         let A = new_array(Float32, 4, 5, 6)
             @test eltype(A) === Float32
@@ -164,6 +162,39 @@ end
         B = view(A, :, 1:2:3, :)
         @test dense_array(A) === A
         @test isa(dense_array(B), Array)
+    end
+    let keyword_type = EasyFITS.keyword_type
+        @test keyword_type("COMMENT") === :COMMENT
+        @test keyword_type("HISTORY") === :HISTORY
+        @test keyword_type("CONTINUE") === :CONTINUE
+        @test keyword_type("HIERARCH") === :OTHER
+        @test keyword_type("HIERARCH ") === :OTHER
+        @test keyword_type("HIERARCH A") === :HIERARCH
+        @test keyword_type("Comment") === :COMMENT
+        @test keyword_type("History") === :HISTORY
+        @test keyword_type("Continue") === :CONTINUE
+        @test keyword_type("Hierarch") === :OTHER
+        @test keyword_type("Hierarch ") === :OTHER
+        @test keyword_type("Hierarch A") === :HIERARCH
+        @test keyword_type("CoMmEnT ") === :COMMENT
+        @test keyword_type("hIsToRy ") === :HISTORY
+        @test keyword_type("CoNtInUe ") === :CONTINUE
+        @test keyword_type("hIeRaRcH ") === :OTHER
+        @test keyword_type("HiErArCh A") === :HIERARCH
+        @test keyword_type(:COMMENT) === :COMMENT
+        @test keyword_type(:HISTORY) === :HISTORY
+        @test keyword_type(:CONTINUE) === :CONTINUE
+        @test keyword_type(:comment) === :COMMENT
+        @test keyword_type(:history) === :HISTORY
+        @test keyword_type(:continue) === :CONTINUE
+        @test keyword_type(SubString("some comment given", 6:12)) === :COMMENT
+        @test keyword_type(SubString("some comment given", 6:13)) === :COMMENT
+        @test keyword_type(SubString("some comment given", 5:13)) === :OTHER
+        @test keyword_type(SubString("History", 1:7)) === :HISTORY
+        @test keyword_type(SubString("Continue", 1:8)) === :CONTINUE
+        @test keyword_type(SubString("HIERARCH A", 1:8)) === :OTHER
+        @test keyword_type(SubString("HIERARCH A", 1:9)) === :OTHER
+        @test keyword_type(SubString("HIERARCH A", 1:10)) === :HIERARCH
     end
 end
 

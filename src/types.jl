@@ -60,8 +60,8 @@ For example:
      "COUNT" => (42, "Fundamental number"),
      "SPEED" => (2.1, "[km/s] Speed of gizmo"),
      "USER" => "Julia",
-     "UNDEF" => (undef, "Some undefined value."),
-     "MISSING" => (missing, "Another undefined value."),
+     "AGE" => (undef, "Some undefined value."),
+     "JOB" => (missing, "Another undefined value."),
      "HISTORY" => "Some historical information.",
      "COMMENT" => "Some comment.",
      "COMMENT" => "Some other comment.",
@@ -70,9 +70,9 @@ For example:
 defines a possible FITS header with several records: a keyword `VERIFIED`
 having a logical value and no comments, a keyword `COUNT` having an integer
 value and a comment, a keyword `SPEED` having a floating-point value and a
-comment with units, a keyword `USER` having a string value, keywords `UNDEF`
-and `MISSING` having comments but undefined values, and a few additional
-commentary keywords.
+comment with units, a keyword `USER` having a string value, keywords `AGE` and
+`JOB` having comments but undefined values, and a few additional commentary
+keywords.
 
 A header may also be specified as a named tuple with entries `key = val`, `key
 = (val,com)`, or `key = com`. The same rules apply as above except that `key`

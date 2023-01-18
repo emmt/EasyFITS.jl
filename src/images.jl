@@ -124,11 +124,11 @@ function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU, inds::SubArrayIndices;
 end
 
 """
-    read!(arr::DenseArray, hdu::FitsImageHDU, inds...) -> arr
+    read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU, inds...) -> arr
 
 overwrites `arr` with a rectangular sub-region of the FITS image extension in
-`hdu` defined by the indices `inds...`. The ouput array must have the same
-dimensions as the rectangular sub-region to read (the same rules as for
+`hdu` defined by the indices `inds...`. The destination array must have the
+same dimensions as the rectangular sub-region to read (the same rules as for
 sub-indexing an array are applied to determine the dimensions of the
 sub-region). Keywords `anynull` and `null` may be specified to deal with
 undefined pixel values.
@@ -151,7 +151,7 @@ function Base.read!(arr::DenseArray{T,L}, hdu::FitsImageHDU{<:Any,N},
 end
 
 """
-    read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU; kwds...) -> arr
+    read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU) -> arr
 
 overwrites all the elements of the array `arr` with pixel values read from the
 FITS image extension of the header data unit `hdu` and returns `arr`. Pixel
@@ -159,15 +159,15 @@ values are converted to the element type of `arr`. The default is to read the
 complete image. This behavior may be changed by specifying another value than
 `nothing` for the keywords `first` and/or `last`:
 
-* To read a rectangular sub-image, specify keywords `first` and `last` with the
-  coordinates of the first and last pixels to read as an `N`-tuple of integers,
-  with `N` the number of dimensions of the FITS image extension. Optionally,
-  keyword `step` may be specified as an `N`-tuple of integers to indicate the
-  increment along each dimensions. Increments must be positive.
+* To read a rectangular sub-image, set keywords `first` and `last` with
+  `N`-tuple of integers indicating the coordinates of the first and last pixels
+  to read. Optionally, keyword `step` may be set to an `N`-tuple of integers to
+  indicate the increment along each dimensions. Increments must be positive.
+  Here `N` is the number of dimensions of the FITS image extension.
 
 * To read consecutive pixels, specify at least one of the keywords `first`
-  and/or `last` with the index of the first and/or last pixels to read as an
-  integer.
+  and/or `last` with an integer indicating the index of the first and/or last
+  pixels to read.
 
 When at least one of the keywords `first` and/or `last` is not `nothing`, the
 dimensions of the destination `arr` are not considered. In any case, the number
@@ -177,10 +177,10 @@ Keyword `anynull` may be specified with a reference to a boolean
 (`Ref{Bool}()`) to retrieve whether any of the read pixels is undefined.
 
 Keyword `null` may be specified with a reference to a value of the same type as
-the elements of the destination `arr` (`Ref{eltype(arr)}()`) to retrieve the value
-of undefined pixels. Unless reading a rectangular sub-image, keyword `null` may
-be set with an array of `Bool` of same size as `arr` and which will be set to
-`1` for undefined pixels and to `0` elsewhere.
+the elements of the destination `arr` (`Ref{eltype(arr)}()`) to retrieve the
+value of undefined pixels. Unless reading a rectangular sub-image, keyword
+`null` may be set with an array of `Bool` of same size as `arr` and which will
+be set to `true` for undefined pixels and to `false` elsewhere.
 
 Output arrays `arr` and `null` must have contiguous elements, in other words,
 they must be *dense arrays*.

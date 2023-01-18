@@ -21,6 +21,8 @@ using non-exported ones, *properties* are used extensively.
 
 - `EasyFITS` no longer wraps over `FITSIO` but directly use `CFITSIO_jll`.
 
+- `exists(path)` is no longer provided, call `ispath(path)` instead.
+
 
 ### FITS headers
 
@@ -51,8 +53,8 @@ using non-exported ones, *properties* are used extensively.
 
 - Reading column values is done by `read(hdu,col)` where `hdu` is the header
   data unit object of the FITS table extension and `col` is the column
-  name/number. Partial reading is possible by using the keywords `firstrow` and
-  `nrows` to specify the first row and the number of rows to read.
+  name/number. Partial reading is possible by using the keywords `first` and
+  `last` to specify the first and last rows to read.
 
 
 ### FITS image extensions

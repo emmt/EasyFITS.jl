@@ -310,7 +310,7 @@ function initialize!(card::FitsCard)
     #
     # * Card name consists in upper case Latin letters (A:Z), digits (0:9),
     #   hyphen (_) or underscore (_) characters, it is left justified in
-    #   columns 1:8, right padded with ordinary spaces. Exception: the HIERACH
+    #   columns 1:8, right padded with ordinary spaces. Exception: the HIERARCH
     #   convention.
     #
     # * If value indicator "= " is present in columns 9:10, the card may have a
