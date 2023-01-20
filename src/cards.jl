@@ -1,75 +1,79 @@
 # Management of FITS cards.
 
-function Base.get(hdu::FitsHDU, key::Union{CardName,Integer}, def)
-    card = FitsCard()
-    status = try_read!(card, hdu, key)
-    iszero(status) && return initialize!(card)
+function Base.get(hdu::FITSHDU, key::Union{CardName,Integer}, def)
+    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    status = try_read!(buf, hdu, key)
+    iszero(status) && return FITSCard(buf)
     status == (key isa Integer ?
-        CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST) || throw(FitsError(status))
+        CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST) || throw(FITSError(status))
     return def
 end
 
-function FitsCard(hdu::FitsHDU, key::Union{CardName,Integer})
-    card = FitsCard()
-    status = try_read!(card, hdu, key)
-    iszero(status) && return initialize!(card)
+function FITSCard(hdu::FITSHDU, key::Union{CardName,Integer})
+    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    status = try_read!(buf, hdu, key)
+    iszero(status) && return FITSCard(buf)
     status == (key isa Integer ?
-        CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST) || throw(FitsError(status))
+        CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST) || throw(FITSError(status))
     throw(KeyError(key))
 end
 
 # Unchecked read of a FITS header card.
-try_read!(card::FitsCard, hdu::FitsHDU, key::CardName) =
-    CFITSIO.fits_read_card(hdu, key, pointer(card), Ref{Status}(0))
-function try_read!(card::FitsCard, hdu::FitsHDU, key::Integer)
-    key > 0 || return Status(CFITSIO.KEY_OUT_BOUNDS)
-    return CFITSIO.fits_read_record(hdu, key, pointer(card), Ref{Status}(0))
+@inline function try_read!(buf::AbstracVector{UInt8}, hdu::FITSHDU, key::CardName)
+    @boundscheck length(buf) ≥ CFITSIO.FLEN_CARD || error("buffer is too small")
+    return CFITSIO.fits_read_card(hdu, key, buf, Ref{Status}(0))
+end
+@inline function try_read!(buf::AbstracVector{UInt8}, hdu::FITSHDU, key::Integer)
+    @boundscheck length(buf) ≥ CFITSIO.FLEN_CARD || error("buffer is too small")
+    return key > 0 ?
+        CFITSIO.fits_read_record(hdu, key, buf, Ref{Status}(0)) :
+        CFITSIO.KEY_OUT_BOUNDS
 end
 
-let offset = fieldoffset(FitsCard, get_field_index(FitsCard, :data))
-    @eval Base.pointer(A::FitsCard) = Ptr{UInt8}(pointer_from_objref(A)) + $offset
+let offset = fieldoffset(FITSCard, get_field_index(FITSCard, :data))
+    @eval Base.pointer(A::FITSCard) = Ptr{UInt8}(pointer_from_objref(A)) + $offset
 end
 
 # Implement abstract array API for FITS cards as a vector of bytes.
-Base.firstindex(A::FitsCard) = 1
-Base.lastindex(A::FitsCard) = 80
-Base.length(A::FitsCard) = 80
-Base.IndexStyle(::Type{<:FitsCard}) = IndexLinear()
-Base.size(A::FitsCard) = (length(A),)
-Base.axes(A::FitsCard) = (keys(A),)
-Base.keys(A::FitsCard) = Base.OneTo(length(A))
-@inline function Base.getindex(A::FitsCard, i::Int)
+Base.firstindex(A::FITSCard) = 1
+Base.lastindex(A::FITSCard) = 80
+Base.length(A::FITSCard) = 80
+Base.IndexStyle(::Type{<:FITSCard}) = IndexLinear()
+Base.size(A::FITSCard) = (length(A),)
+Base.axes(A::FITSCard) = (keys(A),)
+Base.keys(A::FITSCard) = Base.OneTo(length(A))
+@inline function Base.getindex(A::FITSCard, i::Int)
     @boundscheck checkbounds(A, i)
     return GC.@preserve A unsafe_load(pointer(A), i)
 end
-@inline function Base.setindex!(A::FitsCard, x, i::Int)
+@inline function Base.setindex!(A::FITSCard, x, i::Int)
     @boundscheck checkbounds(A, i)
     GC.@preserve A unsafe_store!(pointer(A), convert(eltype(A), x), i)
     return A
 end
 
 # Private accessors.  The end-user only sees the properties.
-get_type(A::FitsCard) = getfield(A, :type)
-get_type(A::FitsCardValue) = get_type(parent(A))
-set_type!(A::FitsCard, val::FitsCardType) = setfield!(A, :type, val)
-for (part, child) in (("name",    FitsCardName),
-                      ("value",   FitsCardValue),
-                      ("comment", FitsCardComment))
+get_type(A::FITSCard) = getfield(A, :type)
+get_type(A::FITSCardValue) = get_type(parent(A))
+set_type!(A::FITSCard, val::FITSCardType) = setfield!(A, :type, val)
+for (part, child) in (("name",    FITSCardName),
+                      ("value",   FITSCardValue),
+                      ("comment", FITSCardComment))
     for field in ("offset", "length")
         part_field = part*"_"*field
-        i = get_field_index(FitsCard, part_field)
+        i = get_field_index(FITSCard, part_field)
         @eval begin
             $(Symbol("get_"*field))(A::$child) = getfield(parent(A), $i)
-            $(Symbol("get_"*part_field))(A::FitsCard) = getfield(A, $i)
-            $(Symbol("set_"*part_field*"!"))(A::FitsCard, x::Integer) =
+            $(Symbol("get_"*part_field))(A::FITSCard) = getfield(A, $i)
+            $(Symbol("set_"*part_field*"!"))(A::FITSCard, x::Integer) =
                 setfield!(A, $i, Int(x))
         end
     end
 end
 
-Base.show(io::IO, A::FitsCard) = print_struct(print, io, A)
+Base.show(io::IO, A::FITSCard) = print_struct(print, io, A)
 
-function Base.show(io::IO, ::MIME"text/plain", A::FitsCard)
+function Base.show(io::IO, ::MIME"text/plain", A::FITSCard)
     print(io, '"')
     print_struct(print_esc, io, A)
     print(io, '"')
@@ -77,7 +81,7 @@ end
 
 # Print structure contents in a human readable form with an auxiliary function
 # to print parts.
-function print_struct(print_part::Function, io::IO, A::FitsCard)
+function print_struct(print_part::Function, io::IO, A::FITSCard)
     print(io, A.name)
     len = length(A.name)
     while len < 8
@@ -99,7 +103,7 @@ function print_struct(print_part::Function, io::IO, A::FitsCard)
 end
 
 # Like print but escape some characters.
-function print_esc(io::IO, s::FitsCardPart)
+function print_esc(io::IO, s::FITSCardPart)
     for c in s
         if (c == '"') | (c == '\\')
             print(io, '\\')
@@ -109,7 +113,7 @@ function print_esc(io::IO, s::FitsCardPart)
     return io
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", s::FitsCardValue)
+function Base.show(io::IO, mime::MIME"text/plain", s::FITSCardValue)
     type = s.type
     if type == FITS_LOGICAL
         show(io, mime, s.logical)
@@ -138,9 +142,9 @@ end
 # parsing. Things are a bit more complicated for long strings and comments that
 # may be split across several cards.
 #
-# For these reasons a `FitsCard` is an abstract array of bytes while its
+# For these reasons a `FITSCard` is an abstract array of bytes while its
 # different parts (its name, value, and comment or respective types
-# `FitsCardName`, `FitsCardValue`, and `FitsCardComment`) are abstract UTF8
+# `FITSCardName`, `FITSCardValue`, and `FITSCardComment`) are abstract UTF8
 # strings. For efficiency, these parts are represented by simple decorations
 # that wrap their parent FITS card.
 
@@ -178,7 +182,7 @@ equal(b::UInt8, c::Char) = (b == UInt8(c))
 # NOTE: Trimming in a FITS card only concerns ordinary ASCII spaces so that the
 #       string can be accessed as an ASCII string.
 
-@inline @propagate_inbounds function trim_left(card::FitsCard, r::AbstractUnitRange{Int})
+@inline @propagate_inbounds function trim_left(card::FITSCard, r::AbstractUnitRange{Int})
     i_first, i_last = first(r), last(r)
     while i_first ≤ i_last && equal(card[i_first], ' ')
         i_first += 1
@@ -186,7 +190,7 @@ equal(b::UInt8, c::Char) = (b == UInt8(c))
     return i_first : i_last
 end
 
-@inline @propagate_inbounds function trim_right(card::FitsCard, r::AbstractUnitRange{Int})
+@inline @propagate_inbounds function trim_right(card::FITSCard, r::AbstractUnitRange{Int})
     i_first, i_last = first(r), last(r)
     while i_last ≥ i_first && equal(card[i_last], ' ')
         i_last -= 1
@@ -194,7 +198,7 @@ end
     return i_first : i_last
 end
 
-@inline @propagate_inbounds function trim(card::FitsCard, r::AbstractUnitRange{Int})
+@inline @propagate_inbounds function trim(card::FITSCard, r::AbstractUnitRange{Int})
     i_first, i_last = first(r), last(r)
     while i_first ≤ i_last && equal(card[i_first], ' ')
         i_first += 1
@@ -209,7 +213,7 @@ end
 #       possible index for the value part while last(r) is the position of the
 #       last non-space character of the card.
 
-@propagate_inbounds function find_value_and_comment(card::FitsCard, r::AbstractUnitRange{Int})
+@propagate_inbounds function find_value_and_comment(card::FITSCard, r::AbstractUnitRange{Int})
     # Find value, then find beginning of comment.
     type, value = find_value(card, r)
     flag = false # to remember whether a slash was already found
@@ -230,7 +234,7 @@ end
     return type, value, comment
 end
 
-@propagate_inbounds function find_value(card::FitsCard, r::AbstractUnitRange{Int})
+@propagate_inbounds function find_value(card::FITSCard, r::AbstractUnitRange{Int})
     for i in r
         c = card[i]
         if equal(c, ' ')
@@ -291,7 +295,7 @@ end
     return FITS_UNDEFINED, last(r) + 1 : last(r)
 end
 
-function initialize!(card::FitsCard)
+function initialize!(card::FITSCard)
     # Find end of card, trimming trailing spaces. NOTE: This is assumed by the
     # helper methods find_value and find_value_and_comment.
     r = firstindex(card) : lastindex(card)
@@ -378,17 +382,17 @@ end
 #------------------------------------------------------------------------------
 # Methods for FITS card parts.
 
-Base.parent(s::FitsCardPart) = getfield(s, :parent)
-Base.pointer(s::FitsCardPart) = pointer(parent(s)) + get_offset(s)
+Base.parent(s::FITSCardPart) = getfield(s, :parent)
+Base.pointer(s::FITSCardPart) = pointer(parent(s)) + get_offset(s)
 
 # Implement abstract string API for FITS card parts.
-Base.ncodeunits(s::FitsCardPart) = get_length(s)
-Base.codeunit(s::FitsCardPart) = UInt8
-@inline function Base.codeunit(s::FitsCardPart, i::Int)
+Base.ncodeunits(s::FITSCardPart) = get_length(s)
+Base.codeunit(s::FITSCardPart) = UInt8
+@inline function Base.codeunit(s::FITSCardPart, i::Int)
     @boundscheck (i % UInt) - 1 < ncodeunits(s) || throw(BoundsError(s, i))
     return @inbounds getindex(parent(s), i + get_offset(s))
 end
-function Base.isascii(s::FitsCardPart)
+function Base.isascii(s::FITSCardPart)
     @inbounds for i = 1:ncodeunits(s)
         codeunit(s, i) >= 0x80 && return false
     end
@@ -399,9 +403,9 @@ end
 include("ascii.jl")
 include("utf8.jl")
 
-Base.getindex(s::FitsCardPart, r::AbstractUnitRange{<:Integer}) = s[Int(first(r)):Int(last(r))]
+Base.getindex(s::FITSCardPart, r::AbstractUnitRange{<:Integer}) = s[Int(first(r)):Int(last(r))]
 
-@inline function Base.getindex(s::FitsCardPart, r::UnitRange{Int})
+@inline function Base.getindex(s::FITSCardPart, r::UnitRange{Int})
     isempty(r) && return ""
     i, j = first(r), last(r)
     @boundscheck begin
@@ -414,31 +418,31 @@ Base.getindex(s::FitsCardPart, r::AbstractUnitRange{<:Integer}) = s[Int(first(r)
     return GC.@preserve s unsafe_string(pointer(s) + off, len)
 end
 
-Base.propertynames(::FitsCard) = (:comment, :complex, :name, :pair, :parsed,
+Base.propertynames(::FITSCard) = (:comment, :complex, :name, :pair, :parsed,
                                   :string, :type, :value, :units)
-@inline Base.getproperty(card::FitsCard, key::Symbol) = getproperty(card, Val(key))
+@inline Base.getproperty(card::FITSCard, key::Symbol) = getproperty(card, Val(key))
 
-Base.getproperty(card::FitsCard, ::Val{:pair}) = Pair(card)
-Base.getproperty(card::FitsCard, ::Val{:parsed}) = parsed_value(card)
-Base.getproperty(card::FitsCard, ::Val{:type}) = get_type(card)
-Base.getproperty(card::FitsCard, ::Val{:name}) = FitsCardName(card)
-Base.getproperty(card::FitsCard, ::Val{:value}) = FitsCardValue(card)
-Base.getproperty(card::FitsCard, ::Val{:comment}) = FitsCardComment(card)
+Base.getproperty(card::FITSCard, ::Val{:pair}) = Pair(card)
+Base.getproperty(card::FITSCard, ::Val{:parsed}) = parsed_value(card)
+Base.getproperty(card::FITSCard, ::Val{:type}) = get_type(card)
+Base.getproperty(card::FITSCard, ::Val{:name}) = FITSCardName(card)
+Base.getproperty(card::FITSCard, ::Val{:value}) = FITSCardValue(card)
+Base.getproperty(card::FITSCard, ::Val{:comment}) = FITSCardComment(card)
 for key in (:logical, :integer, :float, :complex, :string)
-    @eval @inline Base.getproperty(card::FitsCard, ::$(Val{key})) = card.value.$key
+    @eval @inline Base.getproperty(card::FITSCard, ::$(Val{key})) = card.value.$key
 end
 for key in (:units, :unitless)
-    @eval @inline Base.getproperty(card::FitsCard, ::$(Val{key})) = card.comment.$key
+    @eval @inline Base.getproperty(card::FITSCard, ::$(Val{key})) = card.comment.$key
 end
 
-Base.propertynames(::FitsCardComment) = (:units, :unitless)
+Base.propertynames(::FITSCardComment) = (:units, :unitless)
 
-@inline Base.getproperty(A::FitsCardComment, key::Symbol) =
+@inline Base.getproperty(A::FITSCardComment, key::Symbol) =
     key === :units ? units(A) :
     key === :unitless ? unitless(A) :
     invalid_property(A, key)
 
-function find_units_marks(A::FitsCardComment)
+function find_units_marks(A::FITSCardComment)
     i_first, i_last = firstindex(A), lastindex(A)
     i = i_first
     # FIXME: @inbounds
@@ -463,7 +467,7 @@ function empty_substring(s::AbstractString)
     return SubString(s, i, prevind(s, i))
 end
 
-function units(A::FitsCardComment)
+function units(A::FITSCardComment)
     r = find_units_marks(A)
     if !isempty(r)
         i = nextind(A, first(r)) # skip opening [
@@ -477,7 +481,7 @@ function units(A::FitsCardComment)
     return empty_substring(A)
 end
 
-function unitless(A::FitsCardComment)
+function unitless(A::FITSCardComment)
     r = find_units_marks(A)
     i_last = lastindex(A)
     isempty(r) && return SubString(A, firstindex(A), i_last)
@@ -490,12 +494,12 @@ function unitless(A::FitsCardComment)
     return empty_substring(A)
 end
 
-Base.convert(::Type{T}, card::FitsCard) where {T<:Pair} = T(card)
+Base.convert(::Type{T}, card::FITSCard) where {T<:Pair} = T(card)
 
-Base.Pair(card::FitsCard) = card.name => (parsed_value(card), card.comment)
-Base.Pair{K}(card::FitsCard) where {K<:AbstractString} =
+Base.Pair(card::FITSCard) = card.name => (parsed_value(card), card.comment)
+Base.Pair{K}(card::FITSCard) where {K<:AbstractString} =
     convert(K, card.name) => (parsed_value(card), card.comment)
-Base.Pair{K,Tuple{T,S}}(card::FitsCard) where {K<:AbstractString,T,S} =
+Base.Pair{K,Tuple{T,S}}(card::FITSCard) where {K<:AbstractString,T,S} =
     convert(K, card.name) => (convert(T, card.value),
                               convert_comment(S, card.comment))
 
@@ -504,9 +508,9 @@ convert_comment(::Type{T}, comment::AbstractString) where {T<:AbstractString} = 
 convert_comment(::Type{T}, comment::Nothing) where {T<:AbstractString} = convert(T, "")
 convert_comment(::Type{T}, comment::OptionalString) where {T<:Nothing} = nothing
 
-Base.propertynames(::FitsCardValue) = (:complex, :float, :integer, :logical, :parsed, :string, :type)
+Base.propertynames(::FITSCardValue) = (:complex, :float, :integer, :logical, :parsed, :string, :type)
 
-@inline Base.getproperty(A::FitsCardValue, key::Symbol) =
+@inline Base.getproperty(A::FITSCardValue, key::Symbol) =
     key === :logical ? convert(Bool,             A) :
     key === :integer ? convert(Int,              A) :
     key === :float   ? convert(Cdouble,          A) :
@@ -516,11 +520,11 @@ Base.propertynames(::FitsCardValue) = (:complex, :float, :integer, :logical, :pa
     key === :type    ? get_type(A)                  :
     invalid_property(A, key)
 
-@noinline convert_value_error(::Type{T}, A::FitsCardValue) where {T} =
+@noinline convert_value_error(::Type{T}, A::FITSCardValue) where {T} =
     error("cannot parse value of $(type_name(A)) FITS card as $T")
 
 """
-    EasyFITS.parsed_value(A::Union{FitsCard,FitsCardValue})
+    EasyFITS.parsed_value(A::Union{FITSCard,FITSCardValue})
 
 yields the parsed value of `A`, a FITS card or a FITS card value.
 
@@ -528,8 +532,8 @@ yields the parsed value of `A`, a FITS card or a FITS card value.
     This function is not type-stable.
 
 """
-parsed_value(card::FitsCard) = parsed_value(card.value)
-parsed_value(value::FitsCardValue) =
+parsed_value(card::FITSCard) = parsed_value(card.value)
+parsed_value(value::FITSCardValue) =
     value.type == FITS_LOGICAL   ? value.logical :
     value.type == FITS_INTEGER   ? value.integer :
     value.type == FITS_FLOAT     ? value.float   :
@@ -538,8 +542,8 @@ parsed_value(value::FitsCardValue) =
     value.type == FITS_COMMENT   ? nothing       :
     value.type == FITS_UNDEFINED ? missing       : error("unknown type of FITS card value")
 
-type_name(A::Union{FitsCard,FitsCardValue}) = type_name(get_type(A))
-type_name(type::FitsCardType) =
+type_name(A::Union{FITSCard,FITSCardValue}) = type_name(get_type(A))
+type_name(type::FITSCardType) =
     type == FITS_LOGICAL   ? "LOGICAL"   :
     type == FITS_INTEGER   ? "INTEGER"   :
     type == FITS_FLOAT     ? "FLOAT"     :
@@ -552,13 +556,13 @@ for T in (:Bool, :UInt8, :Int8, :UInt16, :Int16, :UInt32, :Int32, :UInt64, :Int6
           :UInt128, :Int128, :BigInt, :Float32, :Float64, :BigFloat, :String)
     if isdefined(Base, T)
         @eval begin
-            Base.$T(A::FitsCardValue) = convert($T, A)
-            Base.$T(A::FitsCard) = convert($T, FitsCardValue(A))
+            Base.$T(A::FITSCardValue) = convert($T, A)
+            Base.$T(A::FITSCard) = convert($T, FITSCardValue(A))
         end
     end
 end
 
-function Base.convert(::Type{T}, A::FitsCardValue) where {T<:Number}
+function Base.convert(::Type{T}, A::FITSCardValue) where {T<:Number}
     type = A.type
     if type == FITS_LOGICAL
         val = _try_parse_logical(A)
@@ -576,7 +580,7 @@ function Base.convert(::Type{T}, A::FitsCardValue) where {T<:Number}
     convert_value_error(T, A)
 end
 
-function Base.convert(::Type{T}, A::FitsCardValue) where {T<:String}
+function Base.convert(::Type{T}, A::FITSCardValue) where {T<:String}
     if A.type == FITS_STRING
         val = _try_parse_string(A)
         val !== nothing && return val
@@ -584,23 +588,23 @@ function Base.convert(::Type{T}, A::FitsCardValue) where {T<:String}
     convert_value_error(T, A)
 end
 
-function Base.convert(::Type{T}, A::FitsCardValue) where {T<:Nothing}
+function Base.convert(::Type{T}, A::FITSCardValue) where {T<:Nothing}
     A.type == FITS_COMMENT && return T()
     convert_value_error(T, A)
 end
 
-function Base.convert(::Type{T}, A::FitsCardValue) where {T<:UndefinedValue}
+function Base.convert(::Type{T}, A::FITSCardValue) where {T<:UndefinedValue}
     A.type == FITS_UNDEFINED && return T()
     convert_value_error(T, A)
 end
 
 # Private functions to convert the value of a FITS card. It is the caller's
 # responsibility to check that the card type is correct.
-_try_parse_logical(A::FitsCardValue) = first(A) == 'T'
+_try_parse_logical(A::FITSCardValue) = first(A) == 'T'
 
-_try_parse_integer(A::FitsCardValue) = tryparse(Int, A)
+_try_parse_integer(A::FITSCardValue) = tryparse(Int, A)
 
-function _try_parse_float(A::FitsCardValue)
+function _try_parse_float(A::FITSCardValue)
     io = IOBuffer()
     # FIXME: @inbounds
     for c in A
@@ -609,7 +613,7 @@ function _try_parse_float(A::FitsCardValue)
     return tryparse(Cdouble, String(take!(io)))
 end
 
-function _try_parse_complex(A::FitsCardValue)
+function _try_parse_complex(A::FITSCardValue)
     i = firstindex(A)
     i_last = lastindex(A)
     state = 0
@@ -665,7 +669,7 @@ function _try_parse_complex(A::FitsCardValue)
     return complex(re, im)
 end
 
-function _try_parse_string(A::FitsCardValue)
+function _try_parse_string(A::FITSCardValue)
     i_first = firstindex(A)
     length(A) > 0 && A[i_first] == '\'' || return nothing
     i_last = lastindex(A)
@@ -704,7 +708,7 @@ function _try_parse_string(A::FitsCardValue)
 end
 
 """
-    FitsCardType(T)
+    FITSCardType(T)
 
 yields the FITS header card type code corresponding to Julia type `T`. The
 returned value is one of: `FITS_UNDEFINED`, `FITS_LOGICAL`, `FITS_INTEGER`,
@@ -713,18 +717,18 @@ The latter indicates unsupported type of card value.
 
 ---
 
-    FitsCardType(x::Union{FitsCard,FitsCardValue})
+    FITSCardType(x::Union{FITSCard,FITSCardValue})
     x.type
 
 yield the type code of the FITS header card or value `x`.
 
 """
-FitsCardType(::Type)                   = FITS_UNKNOWN
-FitsCardType(::Type{<:UndefinedValue}) = FITS_UNDEFINED
-FitsCardType(::Type{<:Bool})           = FITS_LOGICAL
-FitsCardType(::Type{<:Integer})        = FITS_INTEGER
-FitsCardType(::Type{<:AbstractFloat})  = FITS_FLOAT
-FitsCardType(::Type{<:Complex})        = FITS_COMPLEX
-FitsCardType(::Type{<:AbstractString}) = FITS_STRING
-FitsCardType(::Type{<:Nothing})        = FITS_COMMENT
-FitsCardType(x::Union{FitsCard,FitsCardValue}) = get_type(x)
+FITSCardType(::Type)                   = FITS_UNKNOWN
+FITSCardType(::Type{<:UndefinedValue}) = FITS_UNDEFINED
+FITSCardType(::Type{<:Bool})           = FITS_LOGICAL
+FITSCardType(::Type{<:Integer})        = FITS_INTEGER
+FITSCardType(::Type{<:AbstractFloat})  = FITS_FLOAT
+FITSCardType(::Type{<:Complex})        = FITS_COMPLEX
+FITSCardType(::Type{<:AbstractString}) = FITS_STRING
+FITSCardType(::Type{<:Nothing})        = FITS_COMMENT
+FITSCardType(x::Union{FITSCard,FITSCardValue}) = get_type(x)

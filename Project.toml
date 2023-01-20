@@ -6,6 +6,7 @@ version = "1.0.0-alpha"
 [deps]
 CFITSIO_jll = "b3e40c51-02ae-5482-8a39-3ace5868dcf4"
 Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
+FITSCards = "74412db6-434d-4bd9-a98b-356cb7d43f10"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"

@@ -1,10 +1,3 @@
-# According to FITS standard, the comment separator (a space followed by a '/'
-# character) is strongly recommended but not mandatory.
-const MANDATORY_COMMENT_SEPARATOR = false
-
-# Encoding for FITS cards should be ASCII but UTF8 is also supported.
-const CARD_ENCODING = :utf8
-
 const Status = Cint
 const OptionalString = Union{AbstractString,Nothing}
 
@@ -18,7 +11,7 @@ const CardName = Union{Symbol,AbstractString}
 # Acceptable types for the value of a FITS header card.
 const CardValue = Union{Nothing,UndefinedValue,Real,Complex,AbstractString}
 
-# The different ways to represent a FITS header card data.
+# The different ways to represent a FITS header card value + comment.
 const CardData = Union{CardValue,
                        Tuple{CardValue},
                        Tuple{CardValue,OptionalString}}
@@ -90,52 +83,82 @@ header.
 """
 const Header = Union{NamedTuple,VectorOfCardPairs}
 
-# String decoration to represent a FITS file name.
-struct FitsFile <: AbstractString
-    path::String
+"""
+    EasyFITS.ImageData{T,N}
+
+"""
+const ImageData{T,N} = AbstractArray{T,N}
+
+"""
+    EasyFITS.TableData
+
+is the union of types of arguments that can be specified to represent data in a
+FITS table extension.
+
+A loop through all columns of `dat::TableData` writes:
+
+    for k in keys(dat)
+        name, vals = EasyFITS.get_column(dat, k)
+    end
+
+where non-exported method `get_column(dat,k)` yields a pair `name => vals` of
+the name and the values of the `k`-th column in dat.
+
+"""
+const TableData = Union{AbstractVector{<:Pair{<:ColumnName,<:AbstractArray}},
+                        Tuple{Vararg{<:Pair{<:ColumnName,<:AbstractArray}}},
+                        NamedTuple{<:Any,<:Tuple{Vararg{<:AbstractArray}}},
+                        AbstractDict{<:ColumnName,<:AbstractArray}}
+
+ncols(dat::TableData) = length(dat)
+
+function get_column(dat::AbstractVector{<:Pair{<:ColumnName,<:AbstractArray}}, k::Int)
+    key, vals = dat[k]
+    String(key) => vals
+end
+function get_column(dat::Tuple{Vararg{<:Pair{<:ColumnName,<:AbstractArray}}}, k::Int)
+    key, vals = dat[k]
+    String(key) => vals
+end
+function get_column(dat::NamedTuple{<:Any,<:Tuple{Vararg{<:AbstractArray}}}, key::Symbol)
+    vals = dat[key]
+    String(key) => vals
+end
+function get_column(dat::AbstractDict{K,<:AbstractArray}, key::K) where {K<:ColumnName}
+    vals = dat[key]
+    String(key) => vals
 end
 
-abstract type FitsHDU end
+abstract type FITSHDU end
 
 # Enumeration of HDU type identifiers.
-@enum FitsHDUType::Cint begin
+@enum FITSHDUType::Cint begin
     FITS_IMAGE_HDU = CFITSIO.IMAGE_HDU
     FITS_BINARY_TABLE_HDU = CFITSIO.BINARY_TBL
     FITS_ASCII_TABLE_HDU = CFITSIO.ASCII_TBL
     FITS_ANY_HDU = CFITSIO.ANY_HDU
 end
 
-# Enumeration of keyword value type identifiers.
-@enum FitsCardType::Cint begin
-    FITS_UNKNOWN   = -1
-    FITS_UNDEFINED =  0 # no value given
-    FITS_LOGICAL   =  1
-    FITS_INTEGER   =  2
-    FITS_FLOAT     =  3
-    FITS_COMPLEX   =  4
-    FITS_STRING    =  5
-    FITS_COMMENT   =  6
-end
-
 """
-    FitsIO(path, mode="r"; extended=false) -> io
+    FITSFile(filename, mode="r"; extended=false) -> file
 
-opens FITS file `path` for reading if `mode` is `"r"`, for reading and writing
-if mode is "r+", or creates a new file if mode is `"w"` or `"w!"`. File must
-not exists if mode is `"w"`. File is overwritten if it exists and mode is
-`"w!"`. The file is automatically closed when the `io` object is finalized so
-it is not necessary to call `close(io)`.
+opens FITS file `filename` for reading if `mode` is `"r"`, for reading and
+writing if mode is "r+", or creates a new file if mode is `"w"` or `"w!"`. File
+must not exists if mode is `"w"`. File is overwritten if it exists and mode is
+`"w!"`. The file is automatically closed when the `file` object is finalized so
+it is not necessary to call `close(file)`.
 
 Keyword `extended` specifies whether to use extended file name syntax featured
-by CFITSIO library.
+by the CFITSIO library.
 
 """
-mutable struct FitsIO <: AbstractVector{FitsHDU}
+mutable struct FITSFile <: AbstractVector{FITSHDU}
     handle::Ptr{CFITSIO.fitsfile}
     mode::Symbol
     path::String
     nhdus::Int
-    function FitsIO(path::AbstractString, mode::AbstractString = "r"; extended::Bool=false)
+    function FITSFile(filename::AbstractString, mode::AbstractString = "r";
+                      extended::Bool=false)
         access = mode == "r" ? :r :
             mode == "r+" ? :rw :
             mode == "w" || mode == "w!" ? :w :
@@ -145,30 +168,30 @@ mutable struct FitsIO <: AbstractVector{FitsHDU}
         num = Ref{Cint}(0)
         if access === :w
             if extended
-                prefix = (mode == "w!" && ! startswith(path, '!') ? "!" : "")
-                check(CFITSIO.fits_create_file(handle, prefix*path, status))
+                prefix = (mode == "w!" && ! startswith(filename, '!') ? "!" : "")
+                check(CFITSIO.fits_create_file(handle, prefix*filename, status))
             else
-                if isfile(path)
-                    mode == "w!" || throw_file_already_exists(path, "use mode \"w!\" to overwrite")
-                    rm(path; force=true)
+                if isfile(filename)
+                    mode == "w!" || throw_file_already_exists(filename, "use mode \"w!\" to overwrite")
+                    rm(filename; force=true)
                 end
-                check(CFITSIO.fits_create_diskfile(handle, path, status))
+                check(CFITSIO.fits_create_diskfile(handle, filename, status))
             end
         else
             iomode = (access === :rw ? CFITSIO.READWRITE : CFITSIO.READONLY)
             if extended
-                check(CFITSIO.fits_open_file(handle, path, iomode, status))
+                check(CFITSIO.fits_open_file(handle, filename, iomode, status))
             else
-                check(CFITSIO.fits_open_diskfile(handle, path, iomode, status))
+                check(CFITSIO.fits_open_diskfile(handle, filename, iomode, status))
             end
             if !iszero(CFITSIO.fits_get_num_hdus(handle[], num, status))
                 errcode = status[]
                 status[] = 0
                 CFITSIO.fits_close_file(ptr, status)
-                throw(FitsError(errcode))
+                throw(FITSError(errcode))
             end
         end
-        return finalizer(_close, new(handle[], access, path, num[]))
+        return finalizer(close_handle, new(handle[], access, filename, num[]))
     end
 end
 
@@ -185,88 +208,53 @@ struct Invalid end
 struct BareBuild end
 
 # Any other FITS extension than Image and Table (who knows...).
-struct FitsAnyHDU <: FitsHDU
-    io::FitsIO
+struct FITSAnyHDU <: FITSHDU
+    file::FITSFile
     num::Int
-    FitsAnyHDU(::BareBuild, io::FitsIO, num::Integer) = new(io, num)
+    FITSAnyHDU(::BareBuild, file::FITSFile, num::Integer) = new(file, num)
 end
 
 # FITS Image extension (Array for Julia).
-struct FitsImageHDU{T,N} <: FitsHDU
-    io::FitsIO
+struct FITSImageHDU{T,N} <: FITSHDU
+    file::FITSFile
     num::Int
-    function FitsImageHDU{T,N}(::BareBuild, io::FitsIO, num::Integer) where {T,N}
+    function FITSImageHDU{T,N}(::BareBuild, file::FITSFile, num::Integer) where {T,N}
         isbitstype(T) || bad_argument("parameter T=$T is not a plain type")
-        isa(N, Int) && N ≥ 0 || bad_argument("parameter N=$N is a nonnegative Int")
-        return new{T,N}(io, num)
+        isa(N, Int) && N ≥ 0 || bad_argument("parameter N=$N must be a nonnegative `Int`")
+        return new{T,N}(file, num)
     end
 end
 
 # FITS Table extension.
-struct FitsTableHDU <: FitsHDU
-    io::FitsIO
+struct FITSTableHDU <: FITSHDU
+    file::FITSFile
     num::Int
     ascii::Bool
-    FitsTableHDU(::BareBuild, io::FitsIO, num::Integer, ascii::Bool) =
-        new(io, num, ascii)
+    FITSTableHDU(::BareBuild, file::FITSFile, num::Integer, ascii::Bool) =
+        new(file, num, ascii)
 end
-
-# Object to store a single FITS header card. Must be mutable to have access to
-# its address. It behaves like a vector of bytes.
-mutable struct FitsCard <: AbstractVector{UInt8}
-    data::NTuple{CFITSIO.FLEN_CARD,UInt8}
-    type::FitsCardType
-    name_offset::Int    # offset to the name part
-    name_length::Int    # length of the name part
-    value_offset::Int   # offset to the value part
-    value_length::Int   # length of the value part
-    comment_offset::Int # offset to the comment part
-    comment_length::Int # length of the comment part
-    function FitsCard()
-        card = new()
-        card[firstindex(card)] = zero(eltype(card))
-        set_type!(card, FITS_UNKNOWN)
-        set_name_offset!(card, 0)
-        set_name_length!(card, 0)
-        set_value_offset!(card, 0)
-        set_value_length!(card, 0)
-        set_comment_offset!(card, 0)
-        set_comment_length!(card, 0)
-        return card
-    end
-end
-
-# Any FITS card part (name, value, or comment) is behaving as an abstract
-# string whose encoding is specified by the type parameter E.
-abstract type FitsCardPart{E} <: AbstractString end
-
-# The 3 possible parts of a FITS card are simple decorations behaving as
-# abstract strings.
-struct FitsCardName    <: FitsCardPart{CARD_ENCODING}; parent::FitsCard; end
-struct FitsCardValue   <: FitsCardPart{CARD_ENCODING}; parent::FitsCard; end
-struct FitsCardComment <: FitsCardPart{CARD_ENCODING}; parent::FitsCard; end
 
 """
-    FitsLogic()
+    FITSLogic()
 
 yields a singleton object used to indicate that FITS rules should be applied for some
 logical operation.  For example:
 
-    isequal(FitsLogic(), s1, s2)
+    isequal(FITSLogic(), s1, s2)
 
 compares strings `s1` and `s2` according to FITS rules, that is case of letters
 and trailing spaces are irrelevant.
 
-    isequal(FitsLogic(), x) -> f
+    isequal(FITSLogic(), x) -> f
 
 yields a predicate function `f` such that `f(y)` yields
-`isequal(FitsLogic(),x,y)`.
+`isequal(FITSLogic(),x,y)`.
 
 """
-struct FitsLogic end
+struct FITSLogic end
 
 struct Bit end
 
-struct FitsError <: Exception
+struct FITSError <: Exception
     code::Status
 end

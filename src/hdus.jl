@@ -1,15 +1,15 @@
 # Management of FITS header data units (HDUs) and of FITS header cards.
 
 """
-    FitsHDU(io::FitsIO, i) -> hdu
-    getindex(io::FitsIO, i) -> hdu
+    FITSHDU(io::FITSIO, i) -> hdu
+    getindex(io::FITSIO, i) -> hdu
     io[i] -> hdu
 
 yield the `i`-th FITS header data unit of FITS file `io`.
 
 The returned object has the following read-only properties:
 
-    hdu.io       # same as FitsIO(hdu)
+    hdu.io       # same as FITSIO(hdu)
     hdu.num      # yields the HDU number (the index `i` above)
     hdu.type     # same as FITSHDUType(hdu)
     hdu.xtension # value of the XTENSION card (never nothing)
@@ -17,16 +17,16 @@ The returned object has the following read-only properties:
     hdu.hduname  # value of the HDUNAME card or nothing
 
 """
-function FitsHDU(io::FitsIO, i::Integer)
+function FITSHDU(io::FITSIO, i::Integer)
     ptr = check(pointer(io))
     status = Ref{Status}(0)
     type = Ref{Cint}()
     check(CFITSIO.fits_movabs_hdu(ptr, i, type, status))
-    type = FitsHDUType(type[])
+    type = FITSHDUType(type[])
     if type == FITS_ASCII_TABLE_HDU
-        return FitsTableHDU(BareBuild(), io, i, true)
+        return FITSTableHDU(BareBuild(), io, i, true)
     elseif type == FITS_BINARY_TABLE_HDU
-        return FitsTableHDU(BareBuild(), io, i, false)
+        return FITSTableHDU(BareBuild(), io, i, false)
     elseif type == FITS_IMAGE_HDU
         bitpix = Ref{Cint}()
         check(CFITSIO.fits_get_img_equivtype(ptr, bitpix, status))
@@ -34,45 +34,45 @@ function FitsHDU(io::FitsIO, i::Integer)
         check(CFITSIO.fits_get_img_dim(ptr, ndims, status))
         N = Int(ndims[])::Int
         T = type_from_bitpix(bitpix[])
-        return FitsImageHDU{T,N}(BareBuild(), io, i)
+        return FITSImageHDU{T,N}(BareBuild(), io, i)
     else
-        return FitsAnyHDU(BareBuild(), io, i)
+        return FITSAnyHDU(BareBuild(), io, i)
     end
 end
 
-FitsHDU(io::FitsIO, s::AbstractString) = io[s]
+FITSHDU(io::FITSIO, s::AbstractString) = io[s]
 
-FitsTableHDU(io::FitsIO, i::Union{Integer,AbstractString}) =
-    FitsHDU(io, i)::FitsTableHDU
+FITSTableHDU(io::FITSIO, i::Union{Integer,AbstractString}) =
+    FITSHDU(io, i)::FITSTableHDU
 
-FitsImageHDU(io::FitsIO, i::Union{Integer,AbstractString}) =
-    FitsHDU(io, i)::FitsImageHDU
-FitsImageHDU{T}(io::FitsIO, i::Union{Integer,AbstractString}) where {T} =
-    FitsHDU(io, i)::FitsImageHDU{T}
-FitsImageHDU{T,N}(io::FitsIO, i::Union{Integer,AbstractString}) where {T,N} =
-    FitsHDU(io, i)::FitsImageHDU{T,N}
+FITSImageHDU(io::FITSIO, i::Union{Integer,AbstractString}) =
+    FITSHDU(io, i)::FITSImageHDU
+FITSImageHDU{T}(io::FITSIO, i::Union{Integer,AbstractString}) where {T} =
+    FITSHDU(io, i)::FITSImageHDU{T}
+FITSImageHDU{T,N}(io::FITSIO, i::Union{Integer,AbstractString}) where {T,N} =
+    FITSHDU(io, i)::FITSImageHDU{T,N}
 
-Base.propertynames(::FitsHDU) = (:extname, :hduname, :io, :num, :type, :xtension)
-Base.getproperty(hdu::FitsHDU, sym::Symbol) = getproperty(hdu, Val(sym))
+Base.propertynames(::FITSHDU) = (:extname, :hduname, :io, :num, :type, :xtension)
+Base.getproperty(hdu::FITSHDU, sym::Symbol) = getproperty(hdu, Val(sym))
 
-Base.getproperty(hdu::FitsHDU, ::Val{:extname})  = get_extname(hdu)
-Base.getproperty(hdu::FitsHDU, ::Val{:hduname})  = get_hduname(hdu)
-Base.getproperty(hdu::FitsHDU, ::Val{:io})       = FitsIO(hdu)
-Base.getproperty(hdu::FitsHDU, ::Val{:num})      = getfield(hdu, :num)
-Base.getproperty(hdu::FitsHDU, ::Val{:type})     = FitsHDUType(hdu)
-Base.getproperty(hdu::FitsHDU, ::Val{:xtension}) = get_xtension(hdu)
-Base.getproperty(hdu::FitsHDU, ::Val{sym}) where {sym} = invalid_property(hdu, sym)
+Base.getproperty(hdu::FITSHDU, ::Val{:extname})  = get_extname(hdu)
+Base.getproperty(hdu::FITSHDU, ::Val{:hduname})  = get_hduname(hdu)
+Base.getproperty(hdu::FITSHDU, ::Val{:io})       = FITSIO(hdu)
+Base.getproperty(hdu::FITSHDU, ::Val{:num})      = getfield(hdu, :num)
+Base.getproperty(hdu::FITSHDU, ::Val{:type})     = FITSHDUType(hdu)
+Base.getproperty(hdu::FITSHDU, ::Val{:xtension}) = get_xtension(hdu)
+Base.getproperty(hdu::FITSHDU, ::Val{sym}) where {sym} = invalid_property(hdu, sym)
 
-Base.setproperty!(hdu::FitsHDU, sym::Symbol, x) =
+Base.setproperty!(hdu::FITSHDU, sym::Symbol, x) =
     sym ∈ propertynames(hdu) ? readonly_property(hdu, sym) : invalid_property(hdu, sym)
 
-get_xtension(hdu::FitsHDU) = "ANY"
-get_xtension(hdu::FitsImageHDU) = "IMAGE"
-get_xtension(hdu::FitsTableHDU) = isascii(hdu) ? "TABLE" : "BINTABLE"
+get_xtension(hdu::FITSHDU) = "ANY"
+get_xtension(hdu::FITSImageHDU) = "IMAGE"
+get_xtension(hdu::FITSTableHDU) = isascii(hdu) ? "TABLE" : "BINTABLE"
 
 for (func, key) in ((:get_extname, "EXTNAME"),
                     (:get_hduname, "HDUNAME"))
-    @eval function $func(hdu::FitsHDU)
+    @eval function $func(hdu::FITSHDU)
         card = get(hdu, $key, nothing)
         card === nothing && return nothing
         card.type == FITS_STRING || return nothing
@@ -81,7 +81,7 @@ for (func, key) in ((:get_extname, "EXTNAME"),
 end
 
 """
-    FitsHDUType(hdu)
+    FITSHDUType(hdu)
     hdu.type
 
 yield the type code of the FITS header data unit `hdu`, one of:
@@ -92,35 +92,35 @@ yield the type code of the FITS header data unit `hdu`, one of:
     FITS_BINARY_TABLE_HDU  # FITS Binary Table
 
 """
-FitsHDUType(hdu::FitsHDU)      = FITS_ANY_HDU
-FitsHDUType(hdu::FitsImageHDU) = FITS_IMAGE_HDU
-FitsHDUType(hdu::FitsTableHDU) = isascii(hdu) ? FITS_ASCII_TABLE_HDU : FITS_BINARY_TABLE_HDU
+FITSHDUType(hdu::FITSHDU)      = FITS_ANY_HDU
+FITSHDUType(hdu::FITSImageHDU) = FITS_IMAGE_HDU
+FITSHDUType(hdu::FITSTableHDU) = isascii(hdu) ? FITS_ASCII_TABLE_HDU : FITS_BINARY_TABLE_HDU
 
 """
-    isascii(hdu::FitsHDU) -> bool
+    isascii(hdu::FITSHDU) -> bool
 
 yields whether FITS HDU `hdu` is an ASCII table.
 
 """
-Base.isascii(hdu::FitsHDU) = false
-Base.isascii(hdu::FitsTableHDU) = getfield(hdu, :ascii)
+Base.isascii(hdu::FITSHDU) = false
+Base.isascii(hdu::FITSTableHDU) = getfield(hdu, :ascii)
 
 """
-    FitsIO(hdu::FitsHDU) -> io
+    FITSIO(hdu::FITSHDU) -> io
     hdu.io -> io
 
 yield the FITS file associated with FITS Header Data Unit `hdu` moving the file
 position of `io` to that of `hdu` and checking that the file is still open.
 
 """
-function FitsIO(hdu::FitsHDU)
+function FITSIO(hdu::FITSHDU)
     io = getfield(hdu, :io)
     check(CFITSIO.fits_movabs_hdu(io, getfield(hdu, :num), Ptr{Cint}(0), Ref{Status}(0)))
     return io
 end
 
 """
-    pointer(hdu::FitsHDU)
+    pointer(hdu::FITSHDU)
 
 yields the pointer to the FITS file associated with FITS Header Data Unit `hdu`
 moving the file position to that of `hdu` and checking that the file is still
@@ -128,22 +128,22 @@ open. It is the caller's responsibility to make sure that the pointer remains
 valid, e.g., by wrapping the code in a `GC@preserve` block.
 
 """
-Base.pointer(hdu::FitsHDU) = pointer(FitsIO(hdu))
+Base.pointer(hdu::FITSHDU) = pointer(FITSIO(hdu))
 
 # Extend unsafe_convert to automatically extract and check the FITS file handle
-# from a FitsHDU object. This secures and simplifies calls to
+# from a FITSHDU object. This secures and simplifies calls to
 # functions of the CFITSIO library.
-Base.unsafe_convert(::Type{Ptr{CFITSIO.fitsfile}}, hdu::FitsHDU) = pointer(hdu)
+Base.unsafe_convert(::Type{Ptr{CFITSIO.fitsfile}}, hdu::FITSHDU) = pointer(hdu)
 
 """
-    getindex(hdu::FitsHDU, key) -> card
+    getindex(hdu::FITSHDU, key) -> card
     hdu[key] -> card
 
 yield the FITS header card at index `key` (can be an integer or a string) in
 header data unit `hdu`. The result is a small object with the following
 properties:
 
-    card.type      # card type (an enumeration `FitsCardType`)
+    card.type      # card type (an enumeration `FITSCardType`)
     card.name      # card name as an abstract string
     card.value     # card unparsed value as an abstract string
     card.parsed    # parsed value (FIXME: not type-stable)
@@ -188,22 +188,22 @@ are all equivalent. Which one is to be preferred is a matter of taste and
 readability.
 
 """
-Base.getindex(hdu::FitsHDU, key::Union{CardName,Integer}) = FitsCard(hdu, key)
+Base.getindex(hdu::FITSHDU, key::Union{CardName,Integer}) = FITSCard(hdu, key)
 
 """
-    reset(hdu::FitsHDU) -> hdu
+    reset(hdu::FITSHDU) -> hdu
 
 reset the search by wild card character in FITS header of `hdu` to the first
 record.
 
 """
-function Base.reset(hdu::FitsHDU)
+function Base.reset(hdu::FITSHDU)
     check(CFITSIO.fits_read_record(hdu, 0, Ptr{Cchar}(0), Ref{Status}(0)))
     return hdu
 end
 
 """
-    setindex!(hdu::FitsHDU, dat, key) -> hdu
+    setindex!(hdu::FITSHDU, dat, key) -> hdu
     hdu[key] = dat
 
 updates or appends a record associating the keyword `key` with the data `dat`
@@ -211,11 +211,11 @@ in the header of the FITS header data unit `hdu`. See [`EasyFITS.Header`](@ref)
 for the possible forms of `dat`.
 
 """
-Base.setindex!(hdu::FitsHDU, dat::CardData, key::CardName) =
+Base.setindex!(hdu::FITSHDU, dat::CardData, key::CardName) =
     set_key(hdu, key => dat; update=true)
 
 """
-    push!(hdu::FitsHDU, key => dat) -> hdu
+    push!(hdu::FITSHDU, key => dat) -> hdu
     hdu[key] = dat
 
 appends a new record associating the keyword `key` with the data `dat` in the
@@ -225,22 +225,22 @@ the possible forms of such pairs.
 A vector of pairs or a named tuple may be specified to push more than one
 record in a single call:
 
-    push!(hdu::FitsHDU, ["key1" => dat1, "key2" => val2, ...]) -> hdu
-    push!(hdu::FitsHDU, (key1 = dat1, key2 = val2, ...)) -> hdu
+    push!(hdu::FITSHDU, ["key1" => dat1, "key2" => val2, ...]) -> hdu
+    push!(hdu::FITSHDU, (key1 = dat1, key2 = val2, ...)) -> hdu
 
 """
-Base.push!(hdu::FitsHDU, pair::Pair{<:CardName}) = set_key(hdu, pair; update=false)
+Base.push!(hdu::FITSHDU, pair::Pair{<:CardName}) = set_key(hdu, pair; update=false)
 
-Base.push!(hdu::FitsHDU, ::Nothing) = hdu
+Base.push!(hdu::FITSHDU, ::Nothing) = hdu
 
-function Base.push!(hdu::FitsHDU, cards::VectorOfCardPairs)
+function Base.push!(hdu::FITSHDU, cards::VectorOfCardPairs)
     for card in cards
         push!(hdu, card)
     end
     return hdu
 end
 
-function Base.push!(hdu::FitsHDU, cards::NamedTuple)
+function Base.push!(hdu::FITSHDU, cards::NamedTuple)
     for key in keys(cards)
         push!(hdu, key => cards[key])
     end
@@ -248,18 +248,18 @@ function Base.push!(hdu::FitsHDU, cards::NamedTuple)
 end
 
 """
-    delete!(hdu::FitsHDU, key) -> hdu
+    delete!(hdu::FITSHDU, key) -> hdu
 
 deletes from FITS header data unit `hdu` the header card identified by `key`
 the card name or number.
 
 """
-function Base.delete!(hdu::FitsHDU, key::CardName)
+function Base.delete!(hdu::FITSHDU, key::CardName)
     check(CFITSIO.fits_delete_key(hdu, key, Ref{Status}(0)))
     return hdu
 end
 
-function Base.delete!(hdu::FitsHDU, key::Integer)
+function Base.delete!(hdu::FITSHDU, key::Integer)
     check(CFITSIO.fits_delete_record(hdu, key, Ref{Status}(0)))
     return hdu
 end
@@ -274,16 +274,16 @@ function is_comment_keyword(key::AbstractString)
     len = length(key)
     len == 0 && return true
     c = uppercase(first(key))
-    c == 'C' && return isequal(FitsLogic(), key, "COMMENT")
-    c == 'H' && return isequal(FitsLogic(), key, "HISTORY")
-    c == ' ' && return isequal(FitsLogic(), key, "")
+    c == 'C' && return isequal(FITSLogic(), key, "COMMENT")
+    c == 'H' && return isequal(FITSLogic(), key, "HISTORY")
+    c == ' ' && return isequal(FITSLogic(), key, "")
     return false
 end
 is_comment_keyword(key::Symbol) =
     key === :COMMENT || key === :HISTORY ||
     key === :comment || key === :history
 
-@inline function set_key(hdu::FitsHDU, pair::CardPair; update::Bool)
+@inline function set_key(hdu::FITSHDU, pair::CardPair; update::Bool)
     key = first(pair)
     dat = last(pair)
     type = keyword_type(key)
@@ -527,8 +527,8 @@ If `val` is `nothing` and `com` is a string, the comment of the FITS header
 card is updated to be `com`.
 
 """
-update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::Nothing) = hdu
-function update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::AbstractString)
+update_key(hdu::FITSHDU, key::CardName, val::Nothing, com::Nothing) = hdu
+function update_key(hdu::FITSHDU, key::CardName, val::Nothing, com::AbstractString)
     # BUG: When modifying the comment of an existing keyword which has an
     #      undefined value, the keyword becomes a commentary keyword.
     check(CFITSIO.fits_modify_comment(hdu, key, com, Ref{Status}(0)))
@@ -577,20 +577,20 @@ end
 
 # HDUs are similar to ordered sets (lists) of header cards. NOTE: eltype,
 # ndims, and size are used for the data part not the header part.
-Base.length(hdu::FitsHDU) = get_hdrspace(hdu)[1]
-Base.firstindex(hdu::FitsHDU) = 1
-Base.lastindex(hdu::FitsHDU) = length(hdu)
-Base.keys(hdu::FitsHDU) = Base.OneTo(length(hdu))
-Base.iterate(hdu::FitsHDU, state::Int = firstindex(hdu)) =
+Base.length(hdu::FITSHDU) = get_hdrspace(hdu)[1]
+Base.firstindex(hdu::FITSHDU) = 1
+Base.lastindex(hdu::FITSHDU) = length(hdu)
+Base.keys(hdu::FITSHDU) = Base.OneTo(length(hdu))
+Base.iterate(hdu::FITSHDU, state::Int = firstindex(hdu)) =
     state ≤ length(hdu) ? (hdu[state], state + 1) : nothing
-Base.IteratorSize(::Type{<:FitsHDU}) = Base.HasLength()
-Base.IteratorEltype(::Type{<:FitsHDU}) = Base.HasEltype() # FIXME: not Image HDU
-Base.eltype(::Type{<:FitsHDU}) = FitsCard # FIXME: not Image HDU
+Base.IteratorSize(::Type{<:FITSHDU}) = Base.HasLength()
+Base.IteratorEltype(::Type{<:FITSHDU}) = Base.HasEltype() # FIXME: not Image HDU
+Base.eltype(::Type{<:FITSHDU}) = FITSCard # FIXME: not Image HDU
 
 # FIXME: implement iterator API?
 
 # Yield number of existing and remaining undefined keys in the current HDU.
-function get_hdrspace(hdu::FitsHDU)
+function get_hdrspace(hdu::FITSHDU)
     existing = Ref{Cint}()
     remaining = Ref{Cint}()
     check(CFITSIO.fits_get_hdrspace(hdu, existing, remaining, Ref{Status}(0)))
@@ -626,54 +626,54 @@ for func in (:write_comment, :write_history)
 end
 
 """
-    EasyFITS.write_date(hdu::FitsHDU) -> hdu
+    EasyFITS.write_date(hdu::FITSHDU) -> hdu
 
 creates or updates a FITS comment record of `hdu` with the current date.
 
 """
-function write_date(hdu::FitsHDU)
+function write_date(hdu::FITSHDU)
     check(CFITSIO.fits_write_date(hdu, Ref{Status}(0)))
     return hdu
 end
 
-function write_comment(hdu::FitsHDU, str::AbstractString)
+function write_comment(hdu::FITSHDU, str::AbstractString)
     check(CFITSIO.fits_write_comment(hdu, str, Ref{Status}(0)))
     return hdu
 end
 
-function write_history(hdu::FitsHDU, str::AbstractString)
+function write_history(hdu::FITSHDU, str::AbstractString)
     check(CFITSIO.fits_write_history(hdu, str, Ref{Status}(0)))
     return hdu
 end
 
-function write_record(f::Union{FitsIO,FitsHDU}, card::FitsCard)
+function write_record(f::Union{FITSIO,FITSHDU}, card::FITSCard)
     check(CFITSIO.fits_write_record(f, card, Ref{Status}(0)))
     return f
 end
 
-function update_record(f::Union{FitsIO,FitsHDU}, key::CardName, card::FitsCard)
+function update_record(f::Union{FITSIO,FITSHDU}, key::CardName, card::FITSCard)
     check(CFITSIO.fits_update_card(f, key, card, Ref{Status}(0)))
     return f
 end
 
-Base.show(io::IO, hdu::FitsImageHDU{T,N}) where {T,N} = begin
-    print(io, "FitsImageHDU{")
+Base.show(io::IO, hdu::FITSImageHDU{T,N}) where {T,N} = begin
+    print(io, "FITSImageHDU{")
     print(io, T)
     print(io, ',')
     print(io, N)
     print(io, '}')
 end
-Base.show(io::IO, hdu::FitsTableHDU) = print(io, "FitsTableHDU")
-Base.show(io::IO, hdu::FitsAnyHDU) = print(io, "FitsAnyHDU")
+Base.show(io::IO, hdu::FITSTableHDU) = print(io, "FITSTableHDU")
+Base.show(io::IO, hdu::FITSAnyHDU) = print(io, "FITSAnyHDU")
 
-function Base.show(io::IO, mime::MIME"text/plain", hdu::FitsHDU)
+function Base.show(io::IO, mime::MIME"text/plain", hdu::FITSHDU)
     show(io, hdu)
-    if hdu isa FitsTableHDU
+    if hdu isa FITSTableHDU
         print(io, isascii(hdu) ? " (ASCII)" : " (Binary)")
     end
     print(io, ": num = ")
     print(io, hdu.num)
-    if hdu isa FitsImageHDU || hdu isa FitsTableHDU
+    if hdu isa FITSImageHDU || hdu isa FITSTableHDU
         for name in ("HDUNAME", "EXTNAME")
             card = get(hdu, name, nothing)
             if card !== nothing
@@ -684,7 +684,7 @@ function Base.show(io::IO, mime::MIME"text/plain", hdu::FitsHDU)
             end
         end
     end
-    if hdu isa FitsImageHDU
+    if hdu isa FITSImageHDU
         naxis = hdu["NAXIS"].integer
         if naxis > 0
             print(io, ", size = ")
@@ -696,7 +696,7 @@ function Base.show(io::IO, mime::MIME"text/plain", hdu::FitsHDU)
     end
 end
 
-function Base.isequal(::FitsLogic, s1::AbstractString, s2::AbstractString)
+function Base.isequal(::FITSLogic, s1::AbstractString, s2::AbstractString)
     i1, last1 = firstindex(s1), lastindex(s1)
     i2, last2 = firstindex(s2), lastindex(s2)
     @inbounds while (i1 ≤ last1)&(i2 ≤ last2)
@@ -714,10 +714,10 @@ function Base.isequal(::FitsLogic, s1::AbstractString, s2::AbstractString)
     end
     return true
 end
-Base.isequal(::FitsLogic, x) = y -> isequal(FitsLogic(), x, y)
+Base.isequal(::FITSLogic, x) = y -> isequal(FITSLogic(), x, y)
 
 """
-    nameof(hdu::FitsHDU) -> str
+    nameof(hdu::FITSHDU) -> str
 
 yields the name of the FITS header data unit `hdu`. The name is the value of
 the first card of `"EXTNAME"` or `"HDUNAME"` which exists and has a string
@@ -726,7 +726,7 @@ value. Otherwise, the name is that of the FITS extension of `hdu`, that is
 image, an ASCII table, a binary table, or anything else.
 
 """
-function Base.nameof(hdu::FitsHDU)
+function Base.nameof(hdu::FITSHDU)
     (str = hdu.hduname) === nothing || return str
     (str = hdu.extname) === nothing || return str
     return hdu.xtension
@@ -736,7 +736,7 @@ end
 same_name(s1::Nothing, s2::Nothing) = false
 same_name(s1::AbstractString, s2::Nothing) = false
 same_name(s1::Nothing, s2::AbstractString) = false
-same_name(s1::AbstractString, s2::AbstractString) = isequal(FitsLogic(), s1, s2)
+same_name(s1::AbstractString, s2::AbstractString) = isequal(FITSLogic(), s1, s2)
 
 """
     EasyFITS.is_named(hdu, str) -> bool
@@ -754,7 +754,7 @@ depending on whether `hdu` is an image, an ASCII table, a binary table, or
 anything else.
 
 """
-function is_named(hdu::FitsHDU, str::AbstractString)
+function is_named(hdu::FITSHDU, str::AbstractString)
     # Since a match only fails if no matching name is found, the order of the
     # tests is irrelevant. We therefore start with the costless ones.
     same_name(hdu.xtension, str) && return true
@@ -766,27 +766,27 @@ is_named(str::AbstractString) = x -> is_named(x, str)
 
 for func in (:findfirst, :findlast)
     @eval begin
-        Base.$func(str::AbstractString, hdu::FitsHDU) = $func(str, hdu.io)
-        Base.$func(f::Function, hdu::FitsHDU) = $func(f, hdu.io)
-        Base.$func(str::AbstractString, io::FitsIO) = $func(is_named(str), io)
+        Base.$func(str::AbstractString, hdu::FITSHDU) = $func(str, hdu.io)
+        Base.$func(f::Function, hdu::FITSHDU) = $func(f, hdu.io)
+        Base.$func(str::AbstractString, io::FITSIO) = $func(is_named(str), io)
     end
 end
 
 for func in (:findnext, :findprev)
     @eval begin
-        Base.$func(str::AbstractString, hdu::FitsHDU) = $func(str, hdu.io, hdu)
-        Base.$func(f::Function, hdu::FitsHDU) = $func(f, hdu.io, hdu)
-        Base.$func(str::AbstractString, io::FitsIO, hdu::FitsHDU) =
+        Base.$func(str::AbstractString, hdu::FITSHDU) = $func(str, hdu.io, hdu)
+        Base.$func(f::Function, hdu::FITSHDU) = $func(f, hdu.io, hdu)
+        Base.$func(str::AbstractString, io::FITSIO, hdu::FITSHDU) =
             $func(is_named(str), io, hdu)
     end
 end
 
-Base.findfirst(f::Function, io::FitsIO) = find(f, io, firstindex(io):lastindex(io))
-Base.findlast(f::Function, io::FitsIO) = find(f, io, lastindex(io):-1:firstindex(io))
-Base.findnext(f::Function, io::FitsIO, hdu::FitsHDU) = find(f, io, hdu.num+1:lastindex(io))
-Base.findprev(f::Function, io::FitsIO, hdu::FitsHDU) = find(f, io, hdu.num-1:-1:firstindex(io))
+Base.findfirst(f::Function, io::FITSIO) = find(f, io, firstindex(io):lastindex(io))
+Base.findlast(f::Function, io::FITSIO) = find(f, io, lastindex(io):-1:firstindex(io))
+Base.findnext(f::Function, io::FITSIO, hdu::FITSHDU) = find(f, io, hdu.num+1:lastindex(io))
+Base.findprev(f::Function, io::FITSIO, hdu::FITSHDU) = find(f, io, hdu.num-1:-1:firstindex(io))
 
-function find(f::Function, io::FitsIO, r::OrdinalRange{<:Integer})
+function find(f::Function, io::FITSIO, r::OrdinalRange{<:Integer})
     for num in r
         hdu = io[num]
         f(hdu) && return hdu

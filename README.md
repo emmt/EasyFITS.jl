@@ -18,27 +18,23 @@ To use the `EasyFITS` package:
 using EasyFITS
 ```
 
-This imports a bunch of types (all prefixed by `Fits...`), some constants (all
+This imports a bunch of types (all prefixed by `FITS...`), some constants (all
 prefixed by `FITS_...`), a few methods (`write!`, `readfits`, `openfits`,
 `writefits`, and `writefits!`), and the macro `@fits_str`.
 
 
 ## FITS files
 
-Open FITS files are represented by objects of type `FitsIO`. To open an
+Open FITS files are represented by objects of type `FITSIO`. To open an
 existing FITS file there are several possibilities:
 
 ```julia
-io = FitsIO(path)
-io = openfits(path)
-io = open(FitsFile(path))
-io = open(fits"...")
+file = FITSFile(filename)
+file = openfits(filename)
+file = open(FITSFile, filename)
 ```
 
-where `path` is the name of the FITS file while `"..."` denotes the file name
-as a literal string. In the two latter examples, the file name is wrapped into
-a `FitsFile` structure (a simple *decoration*) to avoid type-piracy. The
-`fits"..."` syntax is equivalent to `FitsFile("...")`.
+where `filename` is the name of the FITS file.
 
 The methods to open a FITS file all take an optional second argument `mode` which
 can be:
@@ -63,13 +59,13 @@ does not end with `".gz"` and a file exists whose name is the same as the
 given one but with an additional `".gz"` extension, this latter file is open
 instead.
 
-It is not mandatory to call `close(io)` to close the FITS file, this is
-automatically done when the `io` object is garbage collected. The do-block
+It is not mandatory to call `close(file)` to close the FITS file, this is
+automatically done when the `file` object is garbage collected. The do-block
 syntax is however supported:
 
 ``` julia
-open(fits"test.fits.gz", "w!") do io
-    write(io, ...)
+open(FITSFile, "test.fits.gz", "w!") do file
+    write(file, ...)
     ...
 end
 ```
@@ -79,192 +75,118 @@ have a header part followed by a data part. Open FITS files can be indexed to
 walk along their HDUs:
 
 ``` julia
-first(io)           # yields the first HDU
-io[firstindex(io)]  # idem
-io[1]               # idem
-io[2]               # yields the second HDU
-last(io)            # yields the last HDU
-io[lastindex(io)]   # idem
-io[end]             # idem
-io[length(io)]      # idem
-io["name"]          # next HDU matching given name or nothing
+first(file)             # yields the first HDU
+file[firstindex(file)]  # idem
+file[1]                 # idem
+file[2]                 # yields the second HDU
+last(file)              # yields the last HDU
+file[lastindex(file)]   # idem
+file[end]               # idem
+file[length(file)]      # idem
+file["name"]            # next HDU matching given name or nothing
 ```
 
 In other words, FITS files behave as vectors of HDUs with 1-based integer
 indices but can also be indexed by strings.
 
 Note that indexation by name yields the next matching HDU. To rewind the search
-of HDUs by their names, just call `seekstart(io)`. This makes easy to travel
+of HDUs by their names, just call `seekstart(file)`. This makes easy to travel
 through all HDUs of a given name:
 
 ``` julia
-seekstart(io)
+seekstart(file)
 while true
-    hdu = io["BINTABLE"]
+    hdu = file["BINTABLE"]
     hdu === nothing && break
+    # do somthing with this HDU
     ...
 end
 ```
 
-Call `seek(io,n)` to move to the `n`-th HDU without retrieving the HDU object.
-`seekstart(io)` and `seekend(io)` are similar but move to the first/last HDU.
-Call `position(io)` to figure out the number of the current HDU.
-
+Call `seek(file,n)` to move to the `n`-th HDU without retrieving the HDU object.
+`seekstart(file)` and `seekend(file)` are similar but move to the first/last HDU.
+Call `position(file)` to figure out the number of the current HDU.
 
 
 ## `EasyFITS` objects
 
-### FITS Image pseudo-arrays
+### FITS file objects
 
-`EasyFITS` provides objects of type `FitsImage` that, like FITS Image extensions,
-combine a data part which is a multi-dimensional array and a header part.  Such
-objects can be indexed by integers or Cartesian indices to get/set array values
-of by strings to get/set keyword values.  Accessing these objects as arrays,
-they should be as fast as ordinary Julia arrays.
-
-To create an `FitsImage` from an existing array `arr`, call:
-
-```julia
-FitsImage(arr, hdr=FitsHeader()) -> A
-```
-
-where optional argument `hdr` is a FITS header.  By default, an empty header is
-used.  If array `arr` is an `Array` instance, its contents is shared by `A`;
-otherwise, `arr` is converted to an `Array` instance.  If a header is provided
-its contents is also shared by `A`.  If you do not want to share the contents
-of `arr`, just make a copy:
-
-```julia
-A = FitsImage(copy(arr))
-```
-
-It is also possible to create an `FitsImage` with a new data part of type
-`T`, dimensions `dims` and an, initially, empty header:
-
-
-```julia
-A = FitsImage{T}(undef, dims)
-```
-
-### FITS header objects
-
-A FITS header instance is created by one of:
-
-```julia
-hdr = FitsHeader(; key1=val1, key2=val2, ...)
-hdr = FitsHeader("key1" => val1, "key2" => val2, ...)
-```
-
-depending whether the initial header contents is specified by keywords or by
-key-value pairs.  Using either of the above syntax is a matter of taste but, to
-avoid ambiguities, the two styles cannot be mixed.  Julia keyword syntax is
-lighter, but FITS keywords with spaces (like the `"HIERARCH ..."` ones) are
-easier to specify with key-value pairs.  Remember that, by convention, FITS
-keywords are in uppercase letters.  Values `val2`, `val1` etc. can be 2-tuples
-providing the value and the comment of the FITS keyword.  For instance:
-
-```julia
-hdr = FitsHeader(; VERSION = (2, "2nd revision of the format"), ...)
-hdr = FitsHeader("VERSION" => (2, "2nd revision of the format"), ...)
-```
-
-An instance `hdr` of `FitsHeader` implements indexation by keywords, as with
-`hdr[key]`, and the `hdr.key` syntax.  The two styles are usable to retrieve or
-to set the value of a keyword.  To retrieve only the comment part:
-
-```julia
-get(FitsComment, hdr, key)
-```
-
-This also works for an instance of `FitsImage`.
-
-To retrieve the whole header from a given HDU of a `FitsIO` instance:
-
-```julia
-FitsHeader(io, ext=1)
-```
-
-with `ext` to specify the name or the number of the HDU.
-
-
-### FITS Input/Output object
-
-An instance of `FitsIO` is a wrapper around a FITS file open for reading or for
+An instance of `FITSIO` is a wrapper around a FITS file open for reading or for
 writing:
 
 ```julia
-io = FitsIO(path, mode)
+file = FITSIO(filename, mode)
 ```
 
-where `path` is the name of the FITS file and `mode` can be:
+where `filename` is the name of the FITS file and `mode` can be:
 
 - `"r"` or `"r+"` to read or append to the contents of and existing FITS file.
-  If file `path` does not exist but `path` does not end with the `".gz"`
-  extension and `"\$path.gz"` does exist, then the compressed file `"$path.gz"`
+  If file `filename` does not exist but `filename` does not end with the `".gz"`
+  extension and `"\$filename.gz"` does exist, then the compressed file `"$filename.gz"`
   is open instead.
 
-- `"w"` to create a new FITS file named `path` that must not already exist. An
+- `"w"` to create a new FITS file named `filename` that must not already exist. An
   error is thrown if the file already exists.
 
-- `"w!"` to open FITS file named `path` for writing. If the file already
+- `"w!"` to open FITS file named `filename` for writing. If the file already
   exists, it is (silently) overwritten.
 
 An alternative is to call `open` as:
 
 ```julia
-io = open(FitsFile(path), mode)
-io = open(fits"...", mode)
+file = open(FITSFile, filename, mode)
+file = openfits(filename, mode)
 ```
 
-where `"..."` is a quoted string to specify the file name literally.
 
-Call `close(io)` to close the FITS file associated with the `FitsIO` instance
-`io`. Call `isopen(io)` to check whether the FITS file associated with the
-`FitsIO` instance `io` is open. Closing the FITS file is automatically done, if
+Call `close(file)` to close the FITS file associated with the `FITSIO` instance
+`file`. Call `isopen(file)` to check whether the FITS file associated with the
+`FITSIO` instance `file` is open. Closing the FITS file is automatically done, if
 needed, when the instance is garbage collected.
 
 The do-block syntax is supported to automatically close the FITS file:
 
 ```julia
-FitsIO(filename, mode="r") do io
-    # use FITS handle io
+FITSIO(filename, mode="r") do file
+    # use FITS handle file
     ...
 end
 ```
 
-An instance of `FitsIO` is a collection of *Header Data Units* (HDU) and
-implements indexation and iteration. Assuming `io` is a `FitsIO` object, then:
+An instance of `FITSIO` is a collection of *Header Data Units* (HDU) and
+implements indexation and iteration. Assuming `file` is a `FITSIO` object, then:
 
-- `io[i]` yields the `i`-th HDU.
+- `file[i]` yields the `i`-th HDU.
 
-- `length(io)` yields the number of HDUs.
+- `length(file)` yields the number of HDUs.
 
-- `io[name]` or `io[name,vers]` yields the HDU whose `EXTNAME` (or `HDUNAME`)
+- `file[name]` or `file[name,vers]` yields the HDU whose `EXTNAME` (or `HDUNAME`)
   keyword is equal to `name` (a string) and, optionally, whose `EXTVER` (or
   `HDUVER`) keyword is equal to `vers` (an integer).
 
-- You can do `for hdu in io; ...; end` to iterate through all HDU's of `io`.
+- You can do `for hdu in file; ...; end` to iterate through all HDU's of `file`.
 
-- Methods `findfirst(p,io)`, `findlast(p,io)`, `findnext(p,io,i)` and
-  `findprev(p,io,i)` can be used on `FitsIO` object `io` to search for a
+- Methods `findfirst(p,file)`, `findlast(p,file)`, `findnext(p,file,i)` and
+  `findprev(p,file,i)` can be used on `FITSIO` object `file` to search for a
   specific HDU. These methods test each HDU (starting at initial index `i` for
   `findnext` and `findprev`) with the predicate function `p` (called with a
-  `FitsHDU` argument) and return the index (an integer) of the first HDU for
+  `FITSHDU` argument) and return the index (an integer) of the first HDU for
   which the predicate yields `true` or `nothing` if this never occurs. These
   methods are build upon `EasyFITS.find` which may be directly called.
 
 
 ## Reading data from FITS files
 
-To load a FITS Image extension as an instance of `FitsImage`, call:
+To load a FITS Image extension as an instance of `FITSImage`, call:
 
 ```julia
-read(FitsImage, src, args...; ext=1) -> A
+read(FITSImage, src, args...; ext=1) -> A
 ```
 
 which yields a pseudo-array `A` with the contents of the extension `ext` read
 from FITS source `src`.  Argument `src` can be the name of a FITS file or a
-FITS handle (an instance of `FitsIO`).  The keyword `ext` is to specify the
+FITS handle (an instance of `FITSIO`).  The keyword `ext` is to specify the
 name or the number of the HDU to consider (the first one by default).  It must
 correspond to a FITS *Image* extension.
 
@@ -272,17 +194,17 @@ Examples:
 
 ```julia
 using EasyFITS
-A = read(FitsImage, "image.fits")  # load the first HDU
+A = read(FITSImage, "image.fits")  # load the first HDU
 A[2,3]                             # get value of data at indices (2,3)
 A["BITPIX"]                        # get FITS bits per pixel
 A.BITPIX                           # idem
-get(FitsComment, A, "BITPIX")      # get the associated comment
+get(FITSComment, A, "BITPIX")      # get the associated comment
 A["STUFF"] = 1                     # set value of FITS keyword STUFF
 A["STUFF"] = (1, "Some value")     # idem with value-comment pair
 A.STUFF = 3                        # set value
 A.STUFF = (3, "Some other value")  # idem
 arr = convert(Array, A)            # get the data part (a regular Julia array)
-hdr = get(FitsHeader, A)           # get the header part
+hdr = get(FITSHeader, A)           # get the header part
 EasyFITS.nkeys(A)                  # get the number of keywords
 EasyFITS.nkeys(hdr)                # get the number of keywords
 keys(A)                            # get the list of keywords
@@ -293,15 +215,15 @@ pop!(hdr, key[, def])              # pop FITS keyword out of header
 pop!(A, key[, def])                # pop FITS keyword out of annotated array
 ```
 
-It is also possible to specify other `Fits*` types as the first argument of
+It is also possible to specify other `FITS*` types as the first argument of
 `read` to constrain the type of the result.  For instance:
 
 ```julia
 using EasyFITS
-read(FitsImage, "data.fits")          # load the first array and header
-read(FitsHeader, "data.fits")         # reads only the header part
-read(FitsImage{T}, "data.fits")       # yields pseudo-array with elements of type T
-read(FitsImage{T,N}, "data.fits")     # yields N-dimensional pseudo-array with elements of type T
+read(FITSImage, "data.fits")          # load the first array and header
+read(FITSHeader, "data.fits")         # reads only the header part
+read(FITSImage{T}, "data.fits")       # yields pseudo-array with elements of type T
+read(FITSImage{T,N}, "data.fits")     # yields N-dimensional pseudo-array with elements of type T
 read(Array, fits"data.fits")          # only load the array part (as a regular array)
 read(Array{T}, fits"data.fits")       # yields regular array with elements of type T
 read(Array{T,N}, fits"data.fits")     # yields N-dimensional regular array with elements of type T
@@ -321,13 +243,13 @@ Array slicing is also possible by specifying additional arguments:
 
 ```julia
 using EasyFITS
-read(FitsImage, "data.fits", :, 3:4)  # load slice A[:,3:4]
+read(FITSImage, "data.fits", :, 3:4)  # load slice A[:,3:4]
 ```
 
 where it has been assumed that `A` is the full contents of the first HDU of
 `"data.fits"`.
 
-Note that the result of `read(FitsHeader,"data.fits")` can be indexed by
+Note that the result of `read(FITSHeader,"data.fits")` can be indexed by
 strings to access FITS keywords and implements the `obj.key` syntax.
 
 
@@ -338,81 +260,81 @@ code.
 
 ### Writing a FITS Image
 
-If `A` is an instance of `FitsImage` (see above), then saving its contents
+If `A` is an instance of `FITSImage` (see above), then saving its contents
 (data and header parts) as a FITS file is as easy as:
 
 ```julia
-write(path, A)
+write(filename, A)
 ```
 
-with `path` the name of the output file.  Keyword `overwrite` may be used to
+with `filename` the name of the output file.  Keyword `overwrite` may be used to
 specify whether overwriting an existing file is allowed.  Another possibility
 to force overwriting is to call:
 
 ```julia
-write!(path, A)
+write!(filename, A)
 ```
 
 
 ### Concise writing of FITS files
 
-The `do ... end` construction is supported for instances of `FitsIO`.  For
+The `do ... end` construction is supported for instances of `FITSIO`.  For
 instance something like:
 
 ```julia
-FitsIO(path, "w!") do io
-    write(io, dat1, hdr1)
-    write(io, hdr2, dat2)
-    write(io, img3)
+FITSIO(filename, "w!") do file
+    write(file, dat1, hdr1)
+    write(file, hdr2, dat2)
+    write(file, img3)
 end
 ```
 
-can be used to create a new FITS file `path` with 3 extensions: `dat1` and
+can be used to create a new FITS file `filename` with 3 extensions: `dat1` and
 `hdr1` are the data and header parts of the 1st extension, `dat2` and `hdr2`
 are those of the 2nd extension and `img3` is stored in the 3rd extension.  If
-`img3` is an instance of `FitsImage`, both its data and header part will be
+`img3` is an instance of `FITSImage`, both its data and header part will be
 used.  Note that the order of the header and data parts is irrelevant, they are
 recognized by their types.  The header part is optional, in the above example,
-if `img3` is another kind of Julia array than `FitsImage`, a minimal FITS
+if `img3` is another kind of Julia array than `FITSImage`, a minimal FITS
 header will be written.  At the end of the `do ... end` block, the FITS file is
 closed so you do not have to worry about this.
 
 The above example can be shortened as:
 
 ```julia
-FitsIO(path, "w!") do io
-    write(io, (dat1, hdr1), (hdr2, dat2), img3)
+FITSIO(filename, "w!") do file
+    write(file, (dat1, hdr1), (hdr2, dat2), img3)
 end
 ```
 
-where each argument after `io` specifies the contents of a given extension.  If
+where each argument after `file` specifies the contents of a given extension.  If
 data and header parts are two distinct instances, they have to be made into a
 tuple so that there are no ambiguities.
 
 Finally an even shorter equivalent of this example is:
 
 ```julia
-write(FitFile, path, (dat1, hdr1), (hdr2, dat2), img3; overwrite=true)
+write(FitFile, filename, (dat1, hdr1), (hdr2, dat2), img3; overwrite=true)
 ```
 
-Note the use of the `overwrite=true` keyword which indicates that if `path`
+Note the use of the `overwrite=true` keyword which indicates that if `filename`
 already exists, it can be overwritten without complaining.  This is the
-counterpart of the `"w!"` mode in the call to `FitsIO`.  If you do not want to
-overwrite an existing file, call `FitsIO` with `"w"` or `write(FitFile,...)`
+counterpart of the `"w!"` mode in the call to `FITSIO`.  If you do not want to
+overwrite an existing file, call `FITSIO` with `"w"` or `write(FitFile,...)`
 without `overwrite=true` or with `overwrite=false` (which is the default).
 
 As you can guess from these examples, the simplest way to save a Julia
 array into a FITS file (as an *image* extension) is:
 
 ```julia
-write(FitsFile, path, arr)
+write(FITSFile, filename, arr)
 ```
 
 and to read it back, one of:
 
 ```julia
-img = read(FitsImage, path)
-arr = read(FitsArray, path)
+img = read(FITSImage, filename)
+arr = read(FITSArray, filename)
 ```
 
 to retrieve the contents of the file (both header and data parts in `img`, only
@@ -422,36 +344,36 @@ the data part in `arr` which is a regular Julia array).
 ### Building header information on the fly
 
 In all previous example, the header parts can be built on the fly in three
-different ways: using the `FitsHeader(...)` constructor, specifying a tuple of
+different ways: using the `FITSHeader(...)` constructor, specifying a tuple of
 `"key" => value` pairs, or specifying a named tuple `(key = value, ...)`.  For
-instance, assuming `path` is a file name and `arr` a Julia array, the following
+instance, assuming `filename` is a file name and `arr` a Julia array, the following
 statements are equivalent:
 
 ```julia
-write(FitsFile, path, arr,
-      FitsHeader("HDUNAME" => ("Custom Extension", "Some comment"),
+write(FITSFile, filename, arr,
+      FITSHeader("HDUNAME" => ("Custom Extension", "Some comment"),
                  "VERSION" => 1.2))
-write(FitsFile, path, arr,
-      FitsHeader(HDUNAME = ("Custom Extension", "Some comment"),
+write(FITSFile, filename, arr,
+      FITSHeader(HDUNAME = ("Custom Extension", "Some comment"),
                  VERSION = 1.2))
-write(FitsFile, path, arr, ("HDUNAME" => ("Custom Extension", "Some comment"),
+write(FITSFile, filename, arr, ("HDUNAME" => ("Custom Extension", "Some comment"),
                             "VERSION" => 1.2))
-write(FitsFile, path, arr, (HDUNAME = ("Custom Extension", "Some comment"),
+write(FITSFile, filename, arr, (HDUNAME = ("Custom Extension", "Some comment"),
                             VERSION = 1.2))
 ```
 
 Note that we followed the convention that FITS keywords are in capital letters
 and that an optional comment can be given for each FITS keyword by specifying
 its value as a 2-tuple `(value,comment)`. Above, the header specifications have
-been wrapped into a single object: a `FitsHeader` or a tuple. Using a named
+been wrapped into a single object: a `FITSHeader` or a tuple. Using a named
 tuple or a tuple of `"key" => value` pairs can also be used for writing
 multiple extensions. When a single extension is written, the tuple can be
 avoided:
 
 ```julia
-write(FitsFile, path, arr, "HDUNAME" => ("Custom Extension", "Some comment"),
+write(FITSFile, filename, arr, "HDUNAME" => ("Custom Extension", "Some comment"),
       "VERSION" => 1.2)
-write(FitsFile, path, arr, HDUNAME = ("Custom Extension", "Some comment"),
+write(FITSFile, filename, arr, HDUNAME = ("Custom Extension", "Some comment"),
       VERSION = 1.2)
 ```
 
@@ -465,36 +387,36 @@ types.   For instance, to benefit from the available methods, it may be possible
 to just extend:
 
 ```julia
-Base.write(io::FitsIO, dat::CustomDataType) = ...
+Base.write(file::FITSIO, dat::CustomDataType) = ...
 ```
 
 to save `dat` appropriately in a FITS file and so that the end user can just call:
 
 ```julia
-write(FitsFile, path, dat)
+write(FITSFile, filename, dat)
 ```
 
 to save `dat` (and deal with compression and overwriting issues).
 
 allowing for extraneous keywords to save in the header requires to extend
-more variants of `write(io,dat,...)`.
+more variants of `write(file,dat,...)`.
 
 
 ## Automatic (de)compression
 
 With `EasyFITS`, file names ending with `.gz` are automatically recognized for
-compressed files. When reading a FITS file, say `path`, if no file named `path`
-exists but there is a file named `"$(path).gz"` this latter file will be
+compressed files. When reading a FITS file, say `filename`, if no file named `filename`
+exists but there is a file named `"$(filename).gz"` this latter file will be
 automatically open. When creating a FITS file, the file is automatically
 compressed if its name ends with `.gz`.
 
 
 ## Lower level methods, types
 
-To check whether a file `path` already exists in the file system, call:
+To check whether a file `filename` already exists in the file system, call:
 
 ```julia
-isfile(path) -> bool
+isfile(filename) -> bool
 ```
 
 ### FITS bits per pixel (BITPIX)
@@ -502,7 +424,7 @@ isfile(path) -> bool
 Call
 
 ```julia
-FitsBitpix(arg)
+FITSBitpix(arg)
 ```
 
 to get a singleton type which encapsulates the FITS *bitpix* (for
@@ -516,7 +438,7 @@ Conversely call `eltype(bpx)` to convert FITS bitpix `bpx` into a Julia type.
 ## Naming conventions
 
 To avoid conflicts such as *type piracy*, all exported methods but `exists` and
-`write!` have their names prefixed by `Fits*`.
+`write!` have their names prefixed by `FITS*`.
 
 [doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [doc-stable-url]: https://emmt.github.io/EasyFITS.jl/stable

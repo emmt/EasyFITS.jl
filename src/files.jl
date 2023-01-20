@@ -1,221 +1,366 @@
-Base.open(path::FitsFile, mode::AbstractString = "r"; kwds...) =
-    FitsIO(path, mode; kwds...)
-Base.open(func::Function, path::FitsFile, mode::AbstractString = "r"; kwds...) =
-    FitsIO(func, path, mode; kwds...)
+"""
+    FITSFile(filename, mode="r"; kwds...) do file
+        ... # use file
+    end
 
-openfits(path::AbstractString, mode::AbstractString = "r"; kwds...) =
-    open(FitsFile(path), mode; kwds...)
-openfits(func::Function, path::AbstractString, mode::AbstractString = "r"; kwds...) =
-    open(func, FitsFile(path), mode; kwds...)
+do-block syntax to open a FITS file which is automatically closed at the end of
+the block.
 
-readfits(path::AbstractString, ext::Union{Integer,AbstractString} = 1; kwds...) =
-    read(FitsFile(path), ext; kwds...)
-
-writefits(path::AbstractString, args...; kwds...) = write(FitsFile(path), args...; kwds...)
-writefits!(path::AbstractString, args...; kwds...) = write!(FitsFile(path), args...; kwds...)
-
-# Implement do-block syntax.
-function FitsIO(f::Function, path::AbstractString, mode::AbstractString = "r"; kwds...)
-    io = FitsIO(path, mode; kwds...)
+"""
+function FITSFile(func::Function, filename::AbstractString,
+                  mode::AbstractString = "r"; kwds...)
+    file = FITSFile(filename, mode; kwds...)
     try
-        return f(io)
+        func(file)
     finally
-        close(io)
+        close(file)
     end
 end
 
 """
-    write!(path::FitsFile, args...; kwds...)
+    open(FITSFile, filename, mode="r"; kwds...)
 
-writes FITS file whose name is given by `path`. If the file already exists, it
-is silently overwritten. This method is a shortcut for:
-
-    write(path, args...; overwrite=true, kwds...)
+opens FITS file named `filename` with access `mode`. See [`FITSFile`](@ref) for
+the different modes and keywords.
 
 """
-write!(path::FitsFile, args...; kwds...) =  write(path, args...; overwrite=true, kwds...)
+function Base.open(::Type{FITSFile}, filename::AbstractString,
+                   mode::AbstractString = "r"; kwds...)
+    FITSFile(filename, mode; kwds...)
+end
 
 """
-    write(path::FitsFile, arr, hdr=nothing)
-    write(path::FitsFile, hdr, arr)
+    open(FITSFile, filename, mode="r"; kwds...) do file
+        ... # use file
+    end
 
-create a new FITS file whose name is given by `path` and writes array `arr`
-whith header `hdr` into this file. If the file already exists, an error is
-thrown if keyword `overwrite` is false; otherwise the file is silently
-overwritten. Order of arguments `arr` and `hdr` is irrelevant.
+do-block syntax to open a FITS file which is automatically closed at the end of
+the block. See [`FITSFile`](@ref) for the different modes and keywords.
+
+"""
+function Base.open(func::Function, ::Type{FITSFile}, filename::AbstractString,
+                   mode::AbstractString = "r"; kwds...)
+    FITSFile(func, filename, mode; kwds...)
+end
+
+"""
+    openfits(filename, mode="r"; kwds...)
+
+opens FITS file named `filename` with access `mode`. See [`FITSFile`](@ref) for
+the different modes and keywords.
+
+"""
+function openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...)
+    open(FITSFile, filename, mode; kwds...)
+end
+
+"""
+    openfits(filename, mode="r"; kwds...) do file
+        ... # use file
+    end
+
+do-block syntax to open a FITS file which is automatically closed at the end of
+the block. See [`FITSFile`](@ref) for the different modes and keywords.
+
+"""
+function openfits(func::Function, filename::AbstractString,
+                  mode::AbstractString = "r"; kwds...)
+    open(func, FITSFile, filename, mode; kwds...)
+end
+
+function readfits(filename::AbstractString, args...; kwds...)
+    read(FITSFile, filename, args...; kwds...)
+end
+
+"""
+    writefits(filename, hdr, dat, args...; overwrite = false, kwds...)
+
+creates a new FITS file named `filename` and with contents specified by `hdr`,
+`dat`, and `args...`. If the file already exists, the method fails unless
+keyword `overwrite` is `true`. See [`FITSFile`](@ref) for other keywords that
+may be specified when opening the file.
+
+Arguments `hdr` and `dat` are the header and the data of a 1st Header Data Unit
+(HDU) to write. Arguments `args...` denotes headers and data for optional
+additional HDUs.
+
+See also [`writefits!`](@ref) and [`FITSFile`](@ref).
+
+"""
+function writefits(filename::AbstractString, args...;
+                   overwrite::Bool = false, kwds...)
+    openfits(filename, overwrite ? "w!" : "w"; kwds...) do file
+        write(file, args...)
+    end
+    nothing
+end
+
+function write(file::FITSFile)
+    # Nothing to do.
+    nothing # FIXME: return file?
+end
+
+function write(file::FITSFile, hdr::Union{Nothing,Header}, A::ImageData)
+    # Write a FITS image extension.
+    # FIXME: write(file, hdr, A)
+end
+
+function write(file::FITSFile, hdr::Union{Nothing,Header}, A::TableData)
+    # Write a FITS binary table extension.
+    # FIXME: write(file, hdr, A)
+end
+
+function write(file::FITSFile, hdr::Union{Nothing,Header},
+               A::Union{ImageData,TableData}, args...)
+    write(file, hdr, A)
+    write(file, args...)
+end
+
+"""
+    writefits!(filename, args...; kwds...)
+
+creates a new FITS file named `filename` and with contents specified by
+`args...`. If the file already exists, it is silently overwritten. This method
+is equivalent to:
+
+    writefits(filename, args...; overwrite = true, kwds...)
+
+See also [`writefits`](@ref) and [`FITSFile`](@ref).
+
+"""
+function writefits!(filename::AbstractString, args...; kwds...)
+    writefits(filename, args...; overwrite = true, kwds...)
+end
+
+"""
+    write(FITSFile, filename, args...; overwrite = false, kwds...)
+
+creates a new FITS file named `filename` and with contents specified `args...`.
+If the file already exists, the method fails unless keyword `overwrite` is
+`true`. See [`FITSFile`](@ref) for other keywords that may be specified when
+opening the file.
+
+Arguments `hdr` and `dat` are the header and the data of a 1st Header Data Unit
+(HDU) to write. Arguments `args...` denotes headers and data for optional
+additional HDUs.
+
+See also [`writefits!`](@ref) and [`FITSFile`](@ref).
+
+    write(FITSFile, filename, args...; kwds...)
+
+creates a new FITS file named `filename` and with contents specified by
+`args...`. If the file already exists, it is silently overwritten. This method
+is equivalent to:
+
+    writefits!(filename, args...; kwds...)
+
+See also [`writefits!`](@ref) and [`FITSFile`](@ref).
+
+"""
+function write(::Type{FITSFile}, filename::AbstractString,
+               A::AbstractArray,
+               hdr::Union{Nothing,Header} = nothing;
+               kwds...)
+    return write(filename, hdr, A; kwds...)
+end
+
+"""
+    write!(FITSFile, filename, args...; kwds...)
+
+creates a new FITS file named `filename` and with contents specified by
+`args...`. If the file already exists, it is silently overwritten. This method
+is equivalent to:
+
+    writefits!(filename, args...; kwds...)
+
+See also [`writefits!`](@ref) and [`FITSFile`](@ref).
+
+"""
+function write!(::Type{FITSFile}, filename::AbstractString, args...; kwds...)
+    writefits!(filename, args...; kwds...)
+end
+
+"""
+    write!(FITSFile, filename, args...; kwds...)
+
+creates a new FITS file named `filename` and with contents specified by
+`args...`. This method is equivalent to:
+
+    writefits(filename, args...; kwds...)
+
+See also: [`writefits`](@ref) and [`FITSFile`](@ref).
+
+    write(FITSFile, filename, arr, hdr=nothing)
+    write(FITSFile, filename, hdr, arr)
+
+create a new FITS file whose name is `filename` and writes array `arr` whith
+header `hdr` into this file. If the file already exists, an error is thrown if
+keyword `overwrite` is false; otherwise the file is silently overwritten. Order
+of arguments `arr` and `hdr` is irrelevant.
 
 Specify keyword `extended = true` to use CFITSIO extended filename syntax.
 
 """
-function write(path::FitsFile,
-               hdr::Union{Nothing,Header},
-               A::AbstractArray;
-               #bitpix::Integer = type_to_bitpix(eltype(A)),
-               overwrite::Bool = false,
-               kwds...)
-    open(path, overwrite ? "w!" : "w"; kwds...) do io
-        write(io, A, hdr)
-    end
-end
-
-function write(path::FitsFile,
-               A::AbstractArray,
-               hdr::Union{Nothing,Header} = nothing;
-               kwds...)
-    return write(path, hdr, A; kwds...)
+function write(::Type{FITSFile}, filename::AbstractString, args...; kwds...)
+    writefits(filename, args...; kwds...)
 end
 
 """
-    read(R::Type{<:Array}=Array, path::FitsFile, ext=1; extended=false) -> arr::R
+    read(R::Type{<:Array}=Array, FITSFile, filename, ext=1; extended=false) -> arr::R
 
 reads image extension `ext` (a header data unit number or name) in FITS file
-`path` and returns its contents as an array of type `R`.
+`filename` and returns its contents as an array of type `R`.
 
-    read(R::Type{<:Array}=Array, path::FitsFile, ext, col; extended=false) -> arr::R
+    read(R::Type{<:Array}=Array, FITSFile, filename, ext, col; extended=false) -> arr::R
 
 reads column `col` in table extension `ext` (a header data unit number or name)
-of FITS file `path` and returns its contents as an array of type `R`.
+of FITS file `filename` and returns its contents as an array of type `R`.
 
 Array type parameters may be specified in `R`. For example, specify `R =
 Array{Float32}` to ensure that the result be a single precision floating-point
 array.
 
 """
-function read(path::FitsFile,
+function read(::Type{FITSFile}, filename::AbstractString,
               ext::Union{AbstractString,Integer} = 1; kwds...)
-    return read(Array, path, ext; kwds...)
+    return read(Array, filename, ext; kwds...)
 end
 
-function read(path::FitsFile,
+function read(::Type{FITSFile}, filename::AbstractString,
               ext::Union{AbstractString,Integer},
               col::Union{AbstractString,Integer}; kwds...)
-    return read(Array, path, ext, col; kwds...)
+    return read(Array, filename, ext, col; kwds...)
 end
 
-function read(R::Type{<:Array}, path::FitsFile,
+function read(R::Type{<:Array}, ::Type{FITSFile}, filename::AbstractString,
               ext::Union{AbstractString,Integer} = 1; kwds...)
-    open(path, "r"; kwds...) do io
-        hdu = io[ext]
-        hdu isa FitsImageHDU || error("not a FITS image extension")
+    open(filename, "r"; kwds...) do file
+        hdu = file[ext]
+        hdu isa FITSImageHDU || error("not a FITS image extension")
         return read(R, hdu)
     end
 end
 
-function read(R::Type{<:Array}, path::FitsFile,
+function read(R::Type{<:Array}, ::Type{FITSFile}, filename::AbstractString,
               ext::Union{AbstractString,Integer},
               col::Union{AbstractString,Integer}; kwds...)
-    open(path, "r"; kwds...) do io
-        hdu = io[ext]
-        hdu isa FitsTableHDU || error("not a FITS table extension")
+    open(filename, "r"; kwds...) do file
+        hdu = file[ext]
+        hdu isa FITSTableHDU || error("not a FITS table extension")
         return read(R, hdu, col)
     end
 end
 
-function read!(arr::DenseArray, path::FitsFile,
+function read!(arr::DenseArray, ::Type{FITSFile}, filename::AbstractString,
                ext::Union{AbstractString,Integer} = 1; kwds...)
-    open(path, "r"; kwds...) do io
-        hdu = io[ext]
-        hdu isa FitsImageHDU || error("not a FITS image extension")
+    open(filename, "r"; kwds...) do file
+        hdu = file[ext]
+        hdu isa FITSImageHDU || error("not a FITS image extension")
         return read!(arr, hdu)
     end
 end
 
-function read!(arr::DenseArray, path::FitsFile,
+function read!(arr::DenseArray, ::Type{FITSFile}, filename::AbstractString,
                ext::Union{AbstractString,Integer},
                col::Union{AbstractString,Integer}; kwds...)
-    open(path, "r"; kwds...) do io
-        hdu = io[ext]
-        hdu isa FitsTableHDU || error("not a FITS table extension")
+    open(filename, "r"; kwds...) do file
+        hdu = file[ext]
+        hdu isa FITSTableHDU || error("not a FITS table extension")
         return read!(arr, hdu, col)
     end
 end
 
 """
-    pointer(io::FitsIO)
+    EasyFITS.get_handle(file::FITSFile)
 
-yields the pointer to the FITS file for `io`. It is the caller responsibility
-to insure that the pointer is valid, for example, by checking that the file is
-open with `isopen(io)`.
+yields the pointer to the opaque FITS file structure for `file`. It is the
+caller responsibility to insure that the pointer is and remains valid as long
+as it is needed.
 
 """
-Base.pointer(io::FitsIO) = getfield(io, :handle)
+get_handle(file::FITSFile) = getfield(file, :handle)
 
 # Extend unsafe_convert to automatically extract and check the FITS file handle
-# from a FitsIO object. This secures and simplifies calls to functions of the
+# from a FITSFile object. This secures and simplifies calls to functions of the
 # CFITSIO library.
-Base.unsafe_convert(::Type{Ptr{CFITSIO.fitsfile}}, io::FitsIO) = check(pointer(io))
+Base.unsafe_convert(::Type{Ptr{CFITSIO.fitsfile}}, file::FITSFile) =
+    check(get_handle(file))
 
 """
-    isopen(io::FitsIO)
+    isopen(file::FITSFile)
 
-returns whether `io` is open.
-
-"""
-Base.isopen(io::FitsIO) = !isnull(pointer(io))
+returns whether `file` is open.
 
 """
-    close(io::FitsIO)
-
-closes the file associated with `io`.
+Base.isopen(file::FITSFile) = !isnull(get_handle(file))
 
 """
-Base.close(io::FitsIO) = (check(_close(io)); nothing)
+    close(file::FITSFile)
 
-function _close(io::FitsIO)
+closes the file associated with `file`.
+
+"""
+function Base.close(file::FITSFile)
+    check(close_handle(file))
+    nothing
+end
+
+# The following method is used to finalize or to close the object.
+function close_handle(file::FITSFile)
     status = Ref{Status}(0)
-    ptr = getfield(io, :handle)
+    ptr = get_handle(file)
     if ! isnull(ptr)
         CFITSIO.fits_close_file(ptr, status)
-        setfield!(io, :handle, null(ptr))
+        setfield!(file, :handle, null(ptr))
     end
     return status[]
 end
 
 """
-    pathof(io::FitsIO) -> str
+    pathof(file::FITSFile) -> str
 
-yields the name of the FITS file associated with `io`.
-
-"""
-Base.pathof(io::FitsIO) = getfield(io, :path)
+yields the name of the FITS file associated with `file`.
 
 """
-    filemode(io::FitsIO)
+Base.pathof(file::FITSFile) = getfield(file, :path)
 
-yields `:r`, `:rw`, or `:w` depending whether `io` is open for reading, reading
+"""
+    filemode(file::FITSFile)
+
+yields `:r`, `:rw`, or `:w` depending whether `file` is open for reading, reading
 and writing, or writing.
 
 """
-Base.filemode(io::FitsIO) = getfield(io, :mode)
+Base.filemode(file::FITSFile) = getfield(file, :mode)
 
 """
-    isreadable(io::FitsIO)
+    isreadable(file::FITSFile)
 
-returns whether `io` is readable.
-
-"""
-Base.isreadable(io::FitsIO) = (filemode(io) !== :w) && isopen(io)
+returns whether `file` is readable.
 
 """
-    isreadonly(io::FitsIO)
-
-returns whether `io` is read-only.
+Base.isreadable(file::FITSFile) = (filemode(file) !== :w) && isopen(file)
 
 """
-Base.isreadonly(io::FitsIO) = (filemode(io) === :r) && isopen(io)
+    isreadonly(file::FITSFile)
+
+returns whether `file` is read-only.
 
 """
-    iswritable(io::FitsIO)
-
-returns whether `io` is writable.
+Base.isreadonly(file::FITSFile) = (filemode(file) === :r) && isopen(file)
 
 """
-Base.iswritable(io::FitsIO) = (filemode(io) !== :r) && isopen(io)
+    iswritable(file::FITSFile)
+
+returns whether `file` is writable.
 
 """
-    seek(io::FitsIO, n) -> type
+Base.iswritable(file::FITSFile) = (filemode(file) !== :r) && isopen(file)
 
-moves to `n`-th HDU of FITS file `io` and returns an integer identifying the
+"""
+    seek(file::FITSFile, n) -> type
+
+moves to `n`-th HDU of FITS file `file` and returns an integer identifying the
 type of the HDU:
 
 * `FITS_IMAGE_HDU` if the `n`-th HDU contains an image.
@@ -228,129 +373,78 @@ type of the HDU:
 
 An error is thrown if the file has been closed.
 
-See also [`seekstart(::FitsIO)`](@ref), [`seekend(::FitsIO)`](@ref), and
-[`position(::FitsIO)`](@ref).
+See also [`seekstart(::FITSFile)`](@ref), [`seekend(::FITSFile)`](@ref), and
+[`position(::FITSFile)`](@ref).
 
 """
-function Base.seek(io::FitsIO, i::Integer)
+function Base.seek(file::FITSFile, i::Integer)
     type = Ref{Cint}()
-    check(CFITSIO.fits_movabs_hdu(io, i, type, Ref{Status}(0)))
+    check(CFITSIO.fits_movabs_hdu(file, i, type, Ref{Status}(0)))
     return Int(type[])
 end
 
 """
-    seekstart(io::FitsIO) -> type
+    seekstart(file::FITSFile) -> type
 
-moves to the first HDU of FITS file `io` and returns an integer identifying the
-type of the HDU. See [`seek(::FitsIO)`](@ref).
-
-"""
-Base.seekstart(io::FitsIO) = seek(io, firstindex(io))
+moves to the first HDU of FITS file `file` and returns an integer identifying
+the type of the HDU. See [`seek(::FITSFile)`](@ref).
 
 """
-    seekend(io::FitsIO) -> type
-
-moves to the last HDU of FITS file `io` and returns an integer identifying the
-type of the HDU. See [`seek(::FitsIO)`](@ref).
+Base.seekstart(file::FITSFile) = seek(file, firstindex(file))
 
 """
-Base.seekend(io::FitsIO) = seek(io, lastindex(io))
+    seekend(file::FITSFile) -> type
+
+moves to the last HDU of FITS file `file` and returns an integer identifying
+the type of the HDU. See [`seek(::FITSFile)`](@ref).
 
 """
-    position(io::FitsIO) -> n
-
-yields the current HDU number of FITS file `io`. An error is thrown if the file
-has been closed. See [`seek(::FitsIO)`](@ref).
+Base.seekend(file::FITSFile) = seek(file, lastindex(file))
 
 """
-function Base.position(io::FitsIO)
+    position(file::FITSFile) -> n
+
+yields the current HDU number of FITS file `file`. An error is thrown if the
+file has been closed. See [`seek(::FITSFile)`](@ref).
+
+"""
+function Base.position(file::FITSFile)
     num = Ref{Cint}()
-    return Int(CFITSIO.fits_get_hdu_num(io, num))
+    return Int(CFITSIO.fits_get_hdu_num(file, num))
 end
 
 """
-    flush(f::Union{FitsIO,FitsHDU})
+    flush(f::Union{FITSFile,FITSHDU})
 
 flushes the internal data buffers of `f` to the associated output FITS file.
 
 """
-Base.flush(f::Union{FitsIO,FitsHDU}) =
+Base.flush(f::Union{FITSFile,FITSHDU}) =
     check(CFITSIO.fits_flush_buffer(f, 0, Ref{Status}(0)))
 
-# Implement abstract array API for FitsIO objects.
-Base.length(io::FitsIO) = getfield(io, :nhdus)
-Base.size(io::FitsIO) = (length(io),)
-Base.axes(io::FitsIO) = (keys(io),)
-Base.IndexStyle(::Type{FitsIO}) = IndexLinear()
-Base.firstindex(::FitsIO) = 1
-Base.lastindex(io::FitsIO) = length(io)
-Base.keys(io::FitsIO) = Base.OneTo(length(io))
-Base.getindex(io::FitsIO, i::Int) = FitsHDU(io, i)
-function Base.getindex(io::FitsIO, s::AbstractString)
-    hdu = findfirst(s, io)
-    hdu === nothing && error("no FITS header data unit named \"$s\"")
+# Implement abstract array API for FITSFile objects.
+Base.length(file::FITSFile) = getfield(file, :nhdus)
+Base.size(file::FITSFile) = (length(file),)
+Base.axes(file::FITSFile) = (keys(file),)
+Base.IndexStyle(::Type{FITSFile}) = IndexLinear()
+Base.firstindex(::FITSFile) = 1
+Base.lastindex(file::FITSFile) = length(file)
+Base.keys(file::FITSFile) = Base.OneTo(length(file))
+Base.getindex(file::FITSFile, i::Int) = FITSHDU(file, i)
+function Base.getindex(file::FITSFile, str::AbstractString)
+    hdu = findfirst(str, file)
+    hdu === nothing && error("no FITS Header Data Unit named \"$str\"")
     return hdu
 end
 
-get_num_hdus(io::FitsIO) = get_num_hdus(pointer(io))
-function get_num_hdus(ptr::Ptr{CFITSIO.fitsfile})
-    isnull(ptr) && return 0
+function get_num_hdus(file::FITSFile)
     num = Ref{Cint}()
-    check(CFITSIO.fits_get_num_hdus(ptr, num, Ref{Status}(0)))
+    check(CFITSIO.fits_get_num_hdus(file, num, Ref{Status}(0)))
     return Int(num[])
 end
 
-function Base.get(io::FitsIO, s::AbstractString, default)
-    hdu = findfirst(s, io)
+function Base.get(file::FITSFile, str::AbstractString, default)
+    hdu = findfirst(str, file)
     hdu === nothing && return default
     return hdu
 end
-
-"""
-    FitsFile(path)
-    fits"path"
-
-yield a decorated string that represents a FITS filename. This is useful to
-have methods `open`, `read`, `write`, and `write!` behave specifically for FITS
-files.
-
-"""
-FitsFile(x::FitsFile) = x
-
-macro fits_str(str)
-    :(FitsFile($str))
-end
-
-Base.String(x::FitsFile) = getfield(x, :path)
-Base.string(x::FitsFile) = String(x)
-Base.string(io::IO, x::FitsFile) = string(io, string(x))
-Base.convert(::Type{String}, x::FitsFile) = String(x)
-Base.show(io::IO, ::MIME"text/plain", x::FitsFile) = show(io, x)
-Base.show(io::IO, x::FitsFile) = begin
-    print(io, "fits")
-    show(io, String(x))
-    print(io, '"')
-end
-
-# Extend AbstractString API (see start of base/strings/basic.jl) plus methods
-# specialized for String (see base/strings/string.jl).
-Base.ncodeunits(s::FitsFile) = ncodeunits(String(s))
-Base.codeunit(s::FitsFile) = codeunit(String(s))
-Base.codeunit(s::FitsFile, i::Integer) = codeunit(String(s), i)
-Base.isvalid(s::FitsFile, i::Integer) = isvalid(String(s), i)
-Base.length(s::FitsFile) = length(String(s))
-Base.pointer(s::FitsFile) = pointer(String(s))
-Base.pointer(s::FitsFile, i::Integer) = pointer(String(s), i)
-Base.iterate(s::FitsFile) = iterate(String(s))
-Base.iterate(s::FitsFile, i::Int) = iterate(String(s), i)
-@inline @propagate_inbounds Base.thisind(s::FitsFile, i::Int) = thisind(String(s), i)
-@inline @propagate_inbounds Base.nextind(s::FitsFile, i::Int) = nextind(String(s), i)
-@inline @propagate_inbounds Base.getindex(x::FitsFile, i::Int) = getindex(String(x), i)
-Base.getindex(s::FitsFile, r::AbstractUnitRange{<:Integer}) = getindex(String(s), r)
-Base.isascii(s::FitsFile) = isascii(String(s))
-Base.cmp(a::FitsFile, b::AbstractString) = cmp(String(a), b)
-Base.cmp(a::AbstractString, b::FitsFile) = cmp(a, String(b))
-Base.cmp(a::FitsFile, b::FitsFile) = cmp(String(a), String(b))
-Base.:(==)(a::FitsFile, b::AbstractString) = String(a) == b
-Base.:(==)(a::AbstractString, b::FitsFile) = a == String(b)
-Base.:(==)(a::FitsFile, b::FitsFile) = String(a) == String(b)

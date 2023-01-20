@@ -6,20 +6,20 @@ function errmsg(status::Integer)
     return unsafe_string(ptr)
 end
 
-function Base.show(io::IO, err::FitsError)
-    print(io, "FitsError(")
+function Base.show(io::IO, err::FITSError)
+    print(io, "FITSError(")
     print(io, err.code)
     print(io, ')')
 end
 
-function Base.show(io::IO, ::MIME"text/plain", err::FitsError)
+function Base.show(io::IO, ::MIME"text/plain", err::FITSError)
     show(io, err)
     print(io, ": \"")
     print(io, errmsg(err.code))
     print(io, "\"")
 end
 
-Base.showerror(io::IO, err::FitsError) = show(io, MIME("text/plain"), err)
+Base.showerror(io::IO, err::FITSError) = show(io, MIME("text/plain"), err)
 
 # Yield whether a pointer is null.
 isnull(ptr::Ptr) = (ptr === null(ptr))
@@ -31,7 +31,7 @@ null(::Type{Ptr{T}}) where {T} = Ptr{T}(0)
 # Check argument whether it is a status code returned by one the CFITSIO
 # library function or a pointer to a FITS file.
 check(status::Ref{Status}) = check(status[])
-check(status::Status) = status == 0 ? nothing : throw(FitsError(status))
+check(status::Status) = status == 0 ? nothing : throw(FITSError(status))
 check(ptr::Ptr{CFITSIO.fitsfile}) = isnull(ptr) ? bad_argument("FITS file has been closed") : ptr
 
 bad_argument(str::ArgumentError.types[1]) = throw(ArgumentError(str))
