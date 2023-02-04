@@ -1,7 +1,7 @@
 using Requires
 
 """
-    EasyFits.library_version()
+    EasyFITS.library_version()
 
 yields the version number of the CFITSIO library.
 

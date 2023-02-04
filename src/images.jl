@@ -2,36 +2,36 @@
 # FITS IMAGES PROPERTIES
 
 Base.propertynames(::FitsImageHDU) = (:data_eltype, :data_size, :data_ndims,
-                                      :extname, :hduname, :io, :num, :type,
+                                      :extname, :hduname, :file, :number, :type,
                                       :xtension)
 
 Base.getproperty(hdu::FitsImageHDU{T,N}, ::Val{:data_eltype}) where {T,N} = T
 Base.getproperty(hdu::FitsImageHDU{T,N}, ::Val{:data_ndims}) where {T,N} = N
 Base.getproperty(hdu::FitsImageHDU,      ::Val{:data_size}) = get_img_size(hdu)
 
-function get_img_type(f::Union{FitsIO,FitsImageHDU})
+function get_img_type(f::Union{FitsFile,FitsImageHDU})
     bitpix = Ref{Cint}()
     check(CFITSIO.fits_get_img_type(f, bitpix, Ref{Status}(0)))
     return Int(bitpix[])
 end
 
-function get_img_equivtype(f::Union{FitsIO,FitsImageHDU})
+function get_img_equivtype(f::Union{FitsFile,FitsImageHDU})
     bitpix = Ref{Cint}()
     check(CFITSIO.fits_get_img_equivtype(f, bitpix, Ref{Status}(0)))
     return Int(bitpix[])
 end
 
-function get_img_dim(f::Union{FitsIO,FitsImageHDU})
+function get_img_dim(f::Union{FitsFile,FitsImageHDU})
     naxis = Ref{Cint}()
     check(CFITSIO.fits_get_img_dim(f, naxis, Ref{Status}(0)))
     return Int(naxis[])
 end
 
 function get_img_size(hdu::FitsImageHDU{T,N}) where {T,N}
-    io = hdu.io # small optimization to avoid multiple seeks
-    N == get_img_dim(io) || error("number of dimensions has changed, rebuild the HDU")
+    file = get_file_at(hdu) # small optimization to avoid multiple seeks
+    N == get_img_dim(file) || error("number of dimensions has changed, rebuild the HDU")
     dims = Ref{NTuple{N,Clong}}()
-    check(CFITSIO.fits_get_img_size(hdu, N, dims, Ref{Status}(0)))
+    check(CFITSIO.fits_get_img_size(file, N, dims, Ref{Status}(0)))
     return Dims{N}(dims[])
 end
 
@@ -266,9 +266,9 @@ end
 # WRITING FITS IMAGES
 
 """
-    write(io::FitsIO, FitsImageHDU, T=UInt8, dims=()) -> hdu
+    write(file::FitsFile, FitsImageHDU, T=UInt8, dims=()) -> hdu
 
-creates a new primary array or image extension in FITS file `io` with a
+creates a new primary array or image extension in FITS file `file` with a
 specified pixel type `T` and size `dims`. If the FITS file is currently empty
 then a primary array is created, otherwise a new image extension is appended to
 the file. Pixel type `T` may be a numeric type or an integer BITPIX code.
@@ -276,7 +276,7 @@ the file. Pixel type `T` may be a numeric type or an integer BITPIX code.
 An object to manage the new extension is returned which can be used to push
 header cards and then to write the data. For example:
 
-    hdu = write(io, FitsImageHDU, eltype(arr), size(arr))
+    hdu = write(file, FitsImageHDU, eltype(arr), size(arr))
     hdu["KEY1"] = val1
     hdu["KEY2"] = (val2, str2)
     hdu["KEY3"] = (nothing, str3)
@@ -291,68 +291,68 @@ associated, only a comment string, say `str` which can be specified as `str` or
 as `(,str)`.
 
 """
-function Base.write(io::FitsIO, ::Type{FitsImageHDU},
+function Base.write(file::FitsFile, ::Type{FitsImageHDU},
                     ::Type{T} = UInt8, dims::NTuple{N,Integer} = ()) where {T,N}
     # NOTE: All variants end up calling this type-stable version.
-    check(CFITSIO.fits_create_img(io, type_to_bitpix(T), N,
+    check(CFITSIO.fits_create_img(file, type_to_bitpix(T), N,
                                   Ref(convert(NTuple{N,Clong}, dims)),
                                   Ref{Status}(0)))
     # The number of HDUs as returned by fits_get_num_hdus is only incremented
     # after writing data.
-    n = position(io)
-    if length(io) < n
-        setfield!(io, :nhdus, n)
+    n = position(file)
+    if length(file) < n
+        setfield!(file, :nhdus, n)
     end
-    return FitsImageHDU{T,N}(BareBuild(), io, n)
+    return FitsImageHDU{T,N}(BareBuild(), file, n)
 end
 
 # Just convert bitpix to type.
-function Base.write(io::FitsIO, ::Type{FitsImageHDU}, bitpix::Integer,
+function Base.write(file::FitsFile, ::Type{FitsImageHDU}, bitpix::Integer,
                     dims::Tuple{Vararg{Integer}} = ())
-    return write(io, FitsImageHDU, type_from_bitpix(bitpix), dims)
+    return write(file, FitsImageHDU, type_from_bitpix(bitpix), dims)
 end
 
 # Just pack the dimensions.
-function Base.write(io::FitsIO, ::Type{FitsImageHDU}, T::Union{Integer,Type},
+function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
                     dims::Integer...)
-    return write(io, FitsImageHDU, T, dims)
+    return write(file, FitsImageHDU, T, dims)
 end
 
 # Just convert the dimensions.
-function Base.write(io::FitsIO, ::Type{FitsImageHDU}, T::Union{Integer,Type},
+function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
                     dims::AbstractVector{<:Integer})
     off = firstindex(dims) - 1
-    return write(io, FitsImageHDU, T, ntuple(i -> Clong(dims[i+off]), length(dims)))
+    return write(file, FitsImageHDU, T, ntuple(i -> Clong(dims[i+off]), length(dims)))
 end
 
 """
-    write(io::FitsIO, hdr, arr::AbstractArray, args...) -> io
+    write(file::FitsFile, hdr, arr::AbstractArray, args...) -> file
 
-    write(io::FitsIO, arr::AbstractArray, hdr=nothing) -> io
+    write(file::FitsFile, arr::AbstractArray, hdr=nothing) -> file
 
 """
-function Base.write(io::FitsIO, hdr::Union{Header,Nothing},
+function Base.write(file::FitsFile, hdr::Union{Header,Nothing},
                     arr::AbstractArray{T,N}) where {T<:Number,N}
     # FIXME: improve type-stability
-    write(push!(write(io, FitsImageHDU, T, size(arr)), hdr), arr)
-    return io
+    write(push!(write(file, FitsImageHDU, T, size(arr)), hdr), arr)
+    return file
 end
 
-function Base.write(io::FitsIO, arr::AbstractArray{<:Number},
+function Base.write(file::FitsFile, arr::AbstractArray{<:Number},
                     hdr::Union{Header,Nothing} = nothing)
-    return write(io, hdr, arr)
+    return write(file, hdr, arr)
 end
 
-function Base.write(io::FitsIO, hdr::Union{Header,Nothing},
+function Base.write(file::FitsFile, hdr::Union{Header,Nothing},
                     arr::AbstractArray{<:Number}, args...)
-    write(io, hdr, arr)
-    return write(io, args...)
+    write(file, hdr, arr)
+    return write(file, args...)
 end
 
-function Base.write(io::FitsIO, arr::AbstractArray{<:Number},
+function Base.write(file::FitsFile, arr::AbstractArray{<:Number},
                     hdr::Union{Header,Nothing}, args...)
-    write(io, hdr, arr)
-    return write(io, args...)
+    write(file, hdr, arr)
+    return write(file, args...)
 end
 
 """

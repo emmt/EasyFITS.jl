@@ -5,30 +5,29 @@ Base.propertynames(::FitsTableHDU) = (:nrows, :ncols, :column_names,
                                       :first_row, :last_row,
                                       :first_column, :last_column,
                                       :data_size, :data_ndims, :data_axes,
-                                      :extname, :hduname, :io, :num, :type, :xtension)
+                                      :extname, :hduname, :file, :num, :type, :xtension)
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:data_ndims}) = 2
-Base.getproperty(hdu::FitsTableHDU, ::Val{:data_size}) = (get_num_rows(hdu),
-                                                          get_num_cols(hdu))
-Base.getproperty(hdu::FitsTableHDU, ::Val{:data_axes}) = (Base.OneTo(get_num_rows(hdu)),
-                                                          Base.OneTo(get_num_cols(hdu)))
+Base.getproperty(hdu::FitsTableHDU, ::Val{:data_size}) = (get_nrows(hdu),
+                                                          get_ncols(hdu))
+Base.getproperty(hdu::FitsTableHDU, ::Val{:data_axes}) = (Base.OneTo(get_nrows(hdu)),
+                                                          Base.OneTo(get_ncols(hdu)))
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:first_row}) = 1
-Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = get_num_rows(hdu)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = get_nrows(hdu)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:nrows}) = get_nrows(hdu)
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:first_column}) = 1
-Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = get_num_cols(hdu)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = get_ncols(hdu)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:ncols}) = get_ncols(hdu)
 
-Base.getproperty(hdu::FitsTableHDU, ::Val{:nrows}) = get_num_rows(hdu)
-
-function get_num_rows(f::Union{FitsIO,FitsTableHDU})
+function get_nrows(f::Union{FitsFile,FitsTableHDU})
     nrows = Ref{Clonglong}()
     check(CFITSIO.fits_get_num_rowsll(f, nrows, Ref{Status}(0)))
     return to_type(Int, nrows[])
 end
 
-Base.getproperty(hdu::FitsTableHDU, ::Val{:ncols}) = get_num_cols(hdu)
-function get_num_cols(f::Union{FitsIO,FitsTableHDU})
+function get_ncols(f::Union{FitsFile,FitsTableHDU})
     ncols = Ref{Cint}()
     check(CFITSIO.fits_get_num_cols(f, ncols, Ref{Status}(0)))
     return to_type(Int, ncols[])
@@ -106,11 +105,11 @@ end
 
 for func in (:get_coltype, :get_eqcoltype)
     local cfunc = Symbol("fits_",func,"ll")
-    @eval function $func(f::Union{FitsIO,FitsTableHDU}, col::ColumnName,
+    @eval function $func(f::Union{FitsFile,FitsTableHDU}, col::ColumnName,
                          case::Bool = false)
         return $func(f, get_colnum(f, col, case))
     end
-    @eval function $func(f::Union{FitsIO,FitsTableHDU}, col::Integer)
+    @eval function $func(f::Union{FitsFile,FitsTableHDU}, col::Integer)
         type = Ref{Cint}()
         repeat = Ref{Clonglong}()
         width = Ref{Clonglong}()
@@ -119,10 +118,10 @@ for func in (:get_coltype, :get_eqcoltype)
     end
 end
 
-read_tdim(f::Union{FitsIO,FitsTableHDU}, col::ColumnName, case::Bool=false) =
+read_tdim(f::Union{FitsFile,FitsTableHDU}, col::ColumnName, case::Bool=false) =
     read_tdim(f, get_colnum(f, col, case))
 
-function read_tdim(f::Union{FitsIO,FitsTableHDU}, col::Integer)
+function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
     1 ≤ col ≤ 999 || error("invalid column number")
     naxis = Ref{Cint}()
     naxes = Vector{Clonglong}(undef, 5)
@@ -605,7 +604,7 @@ end
 column_tunit(def::ColumnDefinition) = column_units(def)
 
 # Write TDIM header card.
-function write_tdim(f::Union{FitsIO,FitsTableHDU}, colnum::Integer,
+function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
                     dims::Tuple{Vararg{Integer}})
     if Clong === Clonglong || maximum(dims) ≤ typemax(Clong)
         write_tdim(f, colnum, convert(Tuple{Vararg{Clong}}, dims))
@@ -613,7 +612,7 @@ function write_tdim(f::Union{FitsIO,FitsTableHDU}, colnum::Integer,
         write_tdim(f, colnum, convert(Tuple{Vararg{Clonglong}}, dims))
     end
 end
-function write_tdim(f::Union{FitsIO,FitsTableHDU}, colnum::Integer,
+function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
                     dims::AbstractVector{<:Integer})
     if Clong === Clonglong || maximum(dims) ≤ typemax(Clong)
         write_tdim(f, colnum, convert(Vector{Clong}, dims))
@@ -624,11 +623,11 @@ end
 for T in (Clong === Clonglong ? (Clong,) : (Clong, Clonglong))
     local cfunc = (T === Clong ? :fits_write_tdim : :fits_write_tdimll)
     @eval begin
-        function write_tdim(f::Union{FitsIO,FitsTableHDU}, colnum::Integer,
+        function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
                             dims::DenseVector{$T})
             check(CFITSIO.$cfunc(f, colnum, length(dims), dims, Ref{Status}(0)))
         end
-        function write_tdim(f::Union{FitsIO,FitsTableHDU}, colnum::Integer,
+        function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
                             dims::NTuple{N,$T}) where {N}
             check(CFITSIO.$cfunc(f, colnum, N, Ref(dims), Ref{Status}(0)))
         end
@@ -636,9 +635,9 @@ for T in (Clong === Clonglong ? (Clong,) : (Clong, Clonglong))
 end
 
 """
-    write(io, FitsTableHDU, cols) -> hdu
+    write(file, FitsTableHDU, cols) -> hdu
 
-creates a new FITS table extension in FITS file `io` with columns defined by
+creates a new FITS table extension in FITS file `file` with columns defined by
 `cols`. Each column definition is a pair `name => format` where `name` is the
 column name while `format` specifies the type of the column values and,
 optionally, their units and the size of the column cells. The following
@@ -653,7 +652,7 @@ definitions are possible:
 
 where `type` is either a Julia type (`Number` or `String`) or a letter (see
 table below), `dims` is an integer or a tuple of integers, and `units` is a
-string. By default, `dims = 1` and `units = ""`.
+string. By default, `dims = (1,)` and `units = ""`.
 
 | Type               | Letter | Remarks          |
 |:-------------------|:-------|:-----------------|
@@ -676,7 +675,7 @@ string. By default, `dims = 1` and `units = ""`.
 The returned object can be used to add FITS keywords to the header of the table
 and, then, to write column data. Typically:
 
-    hdu = write(io, FitsTableHDU, cols)
+    hdu = write(file, FitsTableHDU, cols)
     push!(hdu, key1 => val1) # add a first header keyword
     ...                      # add other header keywords
     write(hdu, col1 => arr1) # write a first column
@@ -684,13 +683,13 @@ and, then, to write column data. Typically:
 
 Such a table may be created in a single call:
 
-    write(io, [key1 => val1, key2 => val2, ...], [col1 => arr1, col2 => arr2, ...])
+    write(file, [key1 => val1, key2 => val2, ...], [col1 => arr1, col2 => arr2, ...])
 
 where `key1 => val1`, `key2 => val2`, etc. specify header cards, while `col1 =>
 arr1`, `col2 => arr2`, etc. specify columns names and associated data.
 
 """
-function Base.write(io::FitsIO, ::Type{FitsTableHDU},
+function Base.write(file::FitsFile, ::Type{FitsTableHDU},
                     cols::AbstractVector{Pair{K,V}};
                     ascii::Bool=false, nrows::Integer=0) where {K<:AbstractString,V}
     ascii && error("only creating binary tables is supported")
@@ -707,23 +706,23 @@ function Base.write(io::FitsIO, ::Type{FitsTableHDU},
         tform[k] = column_tform(def)
         tunit[k] = column_tunit(def)
     end
-    check(CFITSIO.fits_create_tbl(io, tbl, nrows, ncols, ttype, tform, tunit,
+    check(CFITSIO.fits_create_tbl(file, tbl, nrows, ncols, ttype, tform, tunit,
                                   C_NULL, Ref{Status}(0)))
     k = 0
     for (name, def) in cols
         k += 1
         dims = column_dims(def)
         if length(dims) > 1
-            write_tdim(io, k, dims)
+            write_tdim(file, k, dims)
         end
     end
     # The number of HDUs as returned by fits_get_num_hdus is only incremented
     # after writing data.
-    n = position(io)
-    if length(io) < n
-        setfield!(io, :nhdus, n)
+    n = position(file)
+    if length(file) < n
+        setfield!(file, :nhdus, n)
     end
-    return FitsTableHDU(BareBuild(), io, n, ascii)
+    return FitsTableHDU(BareBuild(), file, n, ascii)
 end
 
 """

@@ -27,6 +27,8 @@ const IndexRange = OrdinalRange{<:Integer,<:Integer}
 const SubArrayIndex = Union{Colon,Integer,IndexRange}
 const SubArrayIndices{N} = NTuple{N,SubArrayIndex}
 
+const ColumnName = Union{AbstractString,Symbol}
+
 """
     EasyFITS.Header
 
@@ -129,10 +131,10 @@ function get_column(dat::AbstractDict{K,<:AbstractArray}, key::K) where {K<:Colu
     String(key) => vals
 end
 
-abstract type FITSHDU end
+abstract type FitsHDU end
 
 # Enumeration of HDU type identifiers.
-@enum FITSHDUType::Cint begin
+@enum FitsHDUType::Cint begin
     FITS_IMAGE_HDU = CFITSIO.IMAGE_HDU
     FITS_BINARY_TABLE_HDU = CFITSIO.BINARY_TBL
     FITS_ASCII_TABLE_HDU = CFITSIO.ASCII_TBL
@@ -140,7 +142,7 @@ abstract type FITSHDU end
 end
 
 """
-    FITSFile(filename, mode="r"; extended=false) -> file
+    FitsFile(filename, mode="r"; extended=false) -> file
 
 opens FITS file `filename` for reading if `mode` is `"r"`, for reading and
 writing if mode is "r+", or creates a new file if mode is `"w"` or `"w!"`. File
@@ -152,12 +154,12 @@ Keyword `extended` specifies whether to use extended file name syntax featured
 by the CFITSIO library.
 
 """
-mutable struct FITSFile <: AbstractVector{FITSHDU}
+mutable struct FitsFile <: AbstractVector{FitsHDU}
     handle::Ptr{CFITSIO.fitsfile}
     mode::Symbol
     path::String
     nhdus::Int
-    function FITSFile(filename::AbstractString, mode::AbstractString = "r";
+    function FitsFile(filename::AbstractString, mode::AbstractString = "r";
                       extended::Bool=false)
         access = mode == "r" ? :r :
             mode == "r+" ? :rw :
@@ -188,7 +190,7 @@ mutable struct FITSFile <: AbstractVector{FITSHDU}
                 errcode = status[]
                 status[] = 0
                 CFITSIO.fits_close_file(ptr, status)
-                throw(FITSError(errcode))
+                throw(FitsError(errcode))
             end
         end
         return finalizer(close_handle, new(handle[], access, filename, num[]))
@@ -196,7 +198,7 @@ mutable struct FITSFile <: AbstractVector{FITSHDU}
 end
 
 """
-    EasyFits.Invalid
+    EasyFITS.Invalid
 
 is the singleton type of the object used to indicate invalid arguments while
 sparing throwing an exception.
@@ -208,17 +210,17 @@ struct Invalid end
 struct BareBuild end
 
 # Any other FITS extension than Image and Table (who knows...).
-struct FITSAnyHDU <: FITSHDU
-    file::FITSFile
+struct FitsAnyHDU <: FitsHDU
+    file::FitsFile
     num::Int
-    FITSAnyHDU(::BareBuild, file::FITSFile, num::Integer) = new(file, num)
+    FitsAnyHDU(::BareBuild, file::FitsFile, num::Integer) = new(file, num)
 end
 
 # FITS Image extension (Array for Julia).
-struct FITSImageHDU{T,N} <: FITSHDU
-    file::FITSFile
+struct FitsImageHDU{T,N} <: FitsHDU
+    file::FitsFile
     num::Int
-    function FITSImageHDU{T,N}(::BareBuild, file::FITSFile, num::Integer) where {T,N}
+    function FitsImageHDU{T,N}(::BareBuild, file::FitsFile, num::Integer) where {T,N}
         isbitstype(T) || bad_argument("parameter T=$T is not a plain type")
         isa(N, Int) && N ≥ 0 || bad_argument("parameter N=$N must be a nonnegative `Int`")
         return new{T,N}(file, num)
@@ -226,35 +228,35 @@ struct FITSImageHDU{T,N} <: FITSHDU
 end
 
 # FITS Table extension.
-struct FITSTableHDU <: FITSHDU
-    file::FITSFile
+struct FitsTableHDU <: FitsHDU
+    file::FitsFile
     num::Int
     ascii::Bool
-    FITSTableHDU(::BareBuild, file::FITSFile, num::Integer, ascii::Bool) =
+    FitsTableHDU(::BareBuild, file::FitsFile, num::Integer, ascii::Bool) =
         new(file, num, ascii)
 end
 
 """
-    FITSLogic()
+    FitsLogic()
 
 yields a singleton object used to indicate that FITS rules should be applied for some
 logical operation.  For example:
 
-    isequal(FITSLogic(), s1, s2)
+    isequal(FitsLogic(), s1, s2)
 
 compares strings `s1` and `s2` according to FITS rules, that is case of letters
 and trailing spaces are irrelevant.
 
-    isequal(FITSLogic(), x) -> f
+    isequal(FitsLogic(), x) -> f
 
 yields a predicate function `f` such that `f(y)` yields
-`isequal(FITSLogic(),x,y)`.
+`isequal(FitsLogic(),x,y)`.
 
 """
-struct FITSLogic end
+struct FitsLogic end
 
 struct Bit end
 
-struct FITSError <: Exception
+struct FitsError <: Exception
     code::Status
 end
