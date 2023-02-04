@@ -18,25 +18,24 @@ The returned object has the following read-only properties:
 
 """
 function FitsHDU(file::FitsFile, i::Integer)
-    ptr = check(get_handle(file))
     status = Ref{Status}(0)
     type = Ref{Cint}()
-    check(CFITSIO.fits_movabs_hdu(ptr, i, type, status))
+    check(CFITSIO.fits_movabs_hdu(file, i, type, status))
     type = FitsHDUType(type[])
     if type == FITS_ASCII_TABLE_HDU
-        return FitsTableHDU(BareBuild(), ptr, i, true)
+        return FitsTableHDU(BareBuild(), file, i, true)
     elseif type == FITS_BINARY_TABLE_HDU
-        return FitsTableHDU(BareBuild(), ptr, i, false)
+        return FitsTableHDU(BareBuild(), file, i, false)
     elseif type == FITS_IMAGE_HDU
         bitpix = Ref{Cint}()
-        check(CFITSIO.fits_get_img_equivtype(ptr, bitpix, status))
+        check(CFITSIO.fits_get_img_equivtype(file, bitpix, status))
         ndims = Ref{Cint}()
-        check(CFITSIO.fits_get_img_dim(ptr, ndims, status))
+        check(CFITSIO.fits_get_img_dim(file, ndims, status))
         N = Int(ndims[])::Int
         T = type_from_bitpix(bitpix[])
-        return FitsImageHDU{T,N}(BareBuild(), ptr, i)
+        return FitsImageHDU{T,N}(BareBuild(), file, i)
     else
-        return FitsAnyHDU(BareBuild(), ptr, i)
+        return FitsAnyHDU(BareBuild(), file, i)
     end
 end
 
@@ -609,7 +608,6 @@ function get_hdrspace(hdu::FitsHDU)
     check(CFITSIO.fits_get_hdrspace(hdu, existing, remaining, Ref{Status}(0)))
     return (Int(existing[]), Int(remaining[]))
 end
-
 
 """
     EasyFITS.write_comment(dst, str) -> dst

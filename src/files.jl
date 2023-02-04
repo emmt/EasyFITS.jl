@@ -1,5 +1,6 @@
 #------------------------------------------------------------------------------
 # Open FITS files.
+
 """
     openfits(filename, mode="r"; kwds...) -> file
 
@@ -33,7 +34,7 @@ the block.
 
 """
 function FitsFile(func::Function, filename::AbstractString,
-                   mode::AbstractString = "r"; kwds...)
+                  mode::AbstractString = "r"; kwds...)
     file = FitsFile(filename, mode; kwds...)
     try
         func(file)
@@ -67,7 +68,7 @@ modes and keywords.
 
 """
 function Base.open(func::Function, ::Type{FitsFile}, filename::AbstractString,
-                  mode::AbstractString = "r"; kwds...)
+                   mode::AbstractString = "r"; kwds...)
     return openfits(func, filename, mode; kwds...)
 end
 
@@ -103,8 +104,7 @@ function readfits(R::Type, filename::AbstractString;
             hdu isa FitsTableHDU || error(
                 "column(s) may only be specified for a FITS table extension")
             return read(R, hdu, col)
-end
-
+        end
     end
 end
 
@@ -267,12 +267,24 @@ yields the pointer to the opaque FITS file structure for `file`. It is the
 caller responsibility to insure that the pointer is and remains valid as long
 as it is needed.
 
+!!! warning
+    This function should never be directly called. When calling a function of
+    the CFITSIO library (with `ccall` or equivalent), directly pass the
+    `FitsFile` object so that (1) the validity of the pointer is checked and
+    (2) the `FitsFile` object is preserved to not be garbage collected before
+    the C function be called thus eliminating the risk of the file being closed
+    and the pointer becoming invalid. `EasyFITS` simply achieves this by
+    properly extending `Base.cconvert` and `Base.unsafe_convert`. In fact there
+    are only 2 functions in `EasyFITS` which calls `get_handle`: `Base.isopen`
+    which amounts to just checking whether the pointer is not null and, of
+    course, `Base.unsafe_convert`.
+
 """
 get_handle(file::FitsFile) = getfield(file, :handle)
 
 # Extend Base.unsafe_convert to automatically extract and check the FITS file
 # handle from a FitsFile object. This secures and simplifies calls to functions
-# of the CFITSIO library.
+# of the CFITSIO library. See `EasyFITS.get_handle` doc.
 Base.unsafe_convert(::Type{Ptr{CFITSIO.fitsfile}}, file::FitsFile) =
     check(get_handle(file))
 
@@ -298,10 +310,9 @@ end
 # The following method is used to finalize or to close the object.
 function close_handle(file::FitsFile)
     status = Ref{Status}(0)
-    ptr = get_handle(file)
-    if ! isnull(ptr)
-        CFITSIO.fits_close_file(ptr, status)
-        setfield!(file, :handle, null(ptr))
+    if isopen(file)
+        CFITSIO.fits_close_file(file, status)
+        setfield!(file, :handle, Ptr{CFITSIO.fitsfile}(0))
     end
     return status[]
 end
@@ -408,6 +419,7 @@ function get_nhdus(file::FitsFile)
     check(CFITSIO.fits_get_num_hdus(file, num, Ref{Status}(0)))
     return Int(num[])
 end
+
 """
     flush(f::Union{FitsFile,FitsHDU})
 
