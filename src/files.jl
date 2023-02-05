@@ -439,13 +439,18 @@ Base.lastindex(file::FitsFile) = length(file)
 Base.keys(file::FitsFile) = Base.OneTo(length(file))
 Base.getindex(file::FitsFile, i::Int) = FitsHDU(file, i)
 function Base.getindex(file::FitsFile, str::AbstractString)
-    hdu = findfirst(str, file)
-    hdu === nothing && error("no FITS Header Data Unit named \"$str\"")
-    return hdu
+    i = findfirst(str, file)
+    i === nothing && error("no FITS Header Data Unit named \"$str\"")
+    return file[i]
 end
 
-function Base.get(file::FitsFile, str::AbstractString, default)
-    hdu = findfirst(str, file)
-    hdu === nothing && return default
-    return hdu
+function Base.get(file::FitsFile, i::Integer, def)
+    i = to_type(keytype(file), i)
+    checkbounds(Bool, file, i) ? file[i] : def
+end
+
+function Base.get(file::FitsFile, str::AbstractString, def)
+    i = findfirst(str, file)
+    i === nothing && return def
+    return file[i]
 end

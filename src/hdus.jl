@@ -226,7 +226,7 @@ end
 """
     reset(hdu::FitsHDU) -> hdu
 
-reset the search by wild card character in FITS header of `hdu` to the first
+reset the search by wild card characters in FITS header of `hdu` to the first
 record.
 
 """
@@ -284,8 +284,8 @@ end
 """
     delete!(hdu::FitsHDU, key) -> hdu
 
-deletes from FITS header data unit `hdu` the header card identified by `key`
-the card name or number.
+deletes from FITS header data unit `hdu` the header card identified by the name
+or number `key`.
 
 """
 function Base.delete!(hdu::FitsHDU, key::CardName)
@@ -729,31 +729,11 @@ function Base.show(io::IO, mime::MIME"text/plain", hdu::FitsHDU)
     end
 end
 
-function Base.isequal(::FitsLogic, s1::AbstractString, s2::AbstractString)
-    i1, last1 = firstindex(s1), lastindex(s1)
-    i2, last2 = firstindex(s2), lastindex(s2)
-    @inbounds while (i1 ≤ last1)&(i2 ≤ last2)
-        uppercase(s1[i1]) == uppercase(s2[i2]) || return false
-        i1 = nextind(s1, i1)
-        i2 = nextind(s2, i2)
-    end
-    @inbounds while i1 ≤ last1
-        isspace(s1[i1]) || return false
-        i1 = nextind(s1, i1)
-    end
-    @inbounds while i2 ≤ last2
-        isspace(s1[i2]) || return false
-        i2 = nextind(s2, i2)
-    end
-    return true
-end
-Base.isequal(::FitsLogic, x) = y -> isequal(FitsLogic(), x, y)
-
 """
     nameof(hdu::FitsHDU) -> str
 
 yields the name of the FITS header data unit `hdu`. The name is the value of
-the first card of `"EXTNAME"` or `"HDUNAME"` which exists and has a string
+the first keyword of `"EXTNAME"` or `"HDUNAME"` which exists and has a string
 value. Otherwise, the name is that of the FITS extension of `hdu`, that is
 `"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"` depending on whether `hdu` is an
 image, an ASCII table, a binary table, or anything else.
@@ -765,17 +745,18 @@ function Base.nameof(hdu::FitsHDU)
     return hdu.xtension
 end
 
-# Compare 2 HDU names, `nothing` can never be considered as a success.
-same_name(s1::Nothing, s2::Nothing) = false
-same_name(s1::AbstractString, s2::Nothing) = false
-same_name(s1::Nothing, s2::AbstractString) = false
-same_name(s1::AbstractString, s2::AbstractString) = isequal(FitsLogic(), s1, s2)
+# Compare HDU name with some pattern , HDU name may be `nothing` which can
+# never be considered as a success.
+same_name(name::Nothing, pat::Union{AbstractString,Regex}) = false
+same_name(name::AbstractString, pat::AbstractString) = isequal(FitsLogic(), name, pat)
+same_name(name::AbstractString, pat::Regex) = match(pat, name) !== nothing
 
 """
-    EasyFITS.is_named(hdu, str) -> bool
+    EasyFITS.is_named(hdu, pat) -> bool
 
-yields whether string `str` is equal (in the FITS sense) to the extension of
-the FITS header data unit `hdu`, or to the value of one of its `"EXTNAME"` or
+yields whether pattern `pat` is equal to (in the FITS sense if `pat` is a
+string) or matches (if `pat` is a regular expression) the extension of the FITS
+header data unit `hdu`, or to the value of one of its `"EXTNAME"` or
 `"HDUNAME"` keywords. These are respectively given by `hdu.xtension`,
 `hdu.extname`, or `hdu.hduname`.
 
@@ -787,42 +768,52 @@ depending on whether `hdu` is an image, an ASCII table, a binary table, or
 anything else.
 
 """
-function is_named(hdu::FitsHDU, str::AbstractString)
+is_named(hdu::FitsHDU, pat::Union{AbstractString,Regex}) =
     # Since a match only fails if no matching name is found, the order of the
     # tests is irrelevant. We therefore start with the costless ones.
-    same_name(hdu.xtension, str) && return true
-    same_name(hdu.hduname, str) && return true
-    same_name(hdu.extname, str) && return true
-    return false
-end
-is_named(str::AbstractString) = x -> is_named(x, str)
+    same_name(hdu.xtension, pat) ||
+    same_name(hdu.hduname, pat) ||
+    same_name(hdu.extname, pat)
+is_named(pat::Union{AbstractString,Regex}) = Base.Fix2(is_named, pat)
 
 for func in (:findfirst, :findlast)
-    @eval begin
-        Base.$func(str::AbstractString, hdu::FitsHDU) = $func(str, hdu.file)
-        Base.$func(f::Function, hdu::FitsHDU) = $func(f, hdu.file)
-        Base.$func(str::AbstractString, file::FitsFile) = $func(is_named(str), file)
-    end
+    @eval Base.$func(pat::Union{AbstractString,Regex}, file::FitsFile) =
+        $func(is_named(pat), file)
 end
 
 for func in (:findnext, :findprev)
-    @eval begin
-        Base.$func(str::AbstractString, hdu::FitsHDU) = $func(str, hdu.file, hdu)
-        Base.$func(f::Function, hdu::FitsHDU) = $func(f, hdu.file, hdu)
-        Base.$func(str::AbstractString, file::FitsFile, hdu::FitsHDU) =
-            $func(is_named(str), file, hdu)
-    end
+    @eval Base.$func(pat::Union{AbstractString,Regex}, file::FitsFile, start::Integer) =
+        $func(is_named(pat), file, start)
 end
 
-Base.findfirst(f::Function, file::FitsFile) = find(f, file, firstindex(file):lastindex(file))
-Base.findlast(f::Function, file::FitsFile) = find(f, file, lastindex(file):-1:firstindex(file))
-Base.findnext(f::Function, file::FitsFile, hdu::FitsHDU) = find(f, file, hdu.number+1:lastindex(file))
-Base.findprev(f::Function, file::FitsFile, hdu::FitsHDU) = find(f, file, hdu.number-1:-1:firstindex(file))
+function Base.findfirst(f::Function, file::FitsFile)
+    @inbounds for i ∈ keys(file)
+        f(file[i]) && return i
+    end
+    return nothing
+end
 
-function find(f::Function, file::FitsFile, r::OrdinalRange{<:Integer})
-    for num in r
-        hdu = file[num]
-        f(hdu) && return hdu
+function Base.findlast(f::Function, file::FitsFile)
+    @inbounds for i ∈ reverse(keys(file))
+        f(file[i]) && return i
+    end
+    return nothing
+end
+
+function Base.findnext(f::Function, file::FitsFile, start::Integer)
+    start = to_type(keytype(file), start)
+    start < firstindex(file) && throw(BoundsError(file, start))
+    @inbounds for i ∈ start:lastindex(file)
+        f(file[i]) && return i
+    end
+    return nothing
+end
+
+function Base.findprev(f::Function, file::FitsFile, start::Integer)
+    start = to_type(keytype(file), start)
+    start > lastindex(file) && throw(BoundsError(file, start))
+    @inbounds for i ∈ start:-1:firstindex(file)
+        f(file[i]) && return i
     end
     return nothing
 end

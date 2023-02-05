@@ -52,6 +52,26 @@ file_already_exists(path::AbstractString) =
 file_already_exists(path::AbstractString, usage::AbstractString) =
     string(file_already_exists(path), ", ", usage)
 
+function Base.isequal(::FitsLogic, s1::AbstractString, s2::AbstractString)
+    i1, last1 = firstindex(s1), lastindex(s1)
+    i2, last2 = firstindex(s2), lastindex(s2)
+    @inbounds while (i1 ≤ last1)&(i2 ≤ last2)
+        uppercase(s1[i1]) == uppercase(s2[i2]) || return false
+        i1 = nextind(s1, i1)
+        i2 = nextind(s2, i2)
+    end
+    @inbounds while i1 ≤ last1
+        isspace(s1[i1]) || return false
+        i1 = nextind(s1, i1)
+    end
+    @inbounds while i2 ≤ last2
+        isspace(s1[i2]) || return false
+        i2 = nextind(s2, i2)
+    end
+    return true
+end
+Base.isequal(::FitsLogic, x) = y -> isequal(FitsLogic(), x, y)
+
 """
     EasyFITS.get_field_index(T::Type, name::Union{AbstractSring,Symbol}) -> i::Int
 
