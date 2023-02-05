@@ -156,7 +156,7 @@ function Base.getindex(hdu::FitsHDU, key::Union{CardName,Integer})
     buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
     status = @inbounds try_read!(buf, hdu, key)
     if iszero(status)
-        return FitsCard(buf)
+        return parse_cstring(FitsCard, buf)
     elseif status == (key isa Integer ? CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST)
         throw(KeyError(key))
     else
@@ -168,7 +168,7 @@ function Base.get(hdu::FitsHDU, key::Union{CardName,Integer}, def)
     buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
     status = @inbounds try_read!(buf, hdu, key)
     if iszero(status)
-        return FitsCard(buf)
+        return parse_cstring(FitsCard, buf)
     elseif status == (key isa Integer ? CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST)
         return def
     else
@@ -187,6 +187,23 @@ end
         CFITSIO.fits_read_record(hdu, key, buf, Ref{Status}(0))
 end
 
+# This function is needed to truncate C-string at 1st null, we take the
+# opportunity of thsi filtering to strip trailing spaces.
+function parse_cstring(::Type{FitsCard}, buf::AbstractVector{UInt8})
+    first = firstindex(buf)
+    last = first - 1
+    @inbounds for i ∈ eachindex(buf)
+        b = buf[i]
+        if b != 0x20 # not a space
+            if b == 0x00
+                break
+            end
+            last = i
+        end
+    end
+    return FitsCard(@inbounds view(buf, first:last))
+end
+
 """
     FitsHeader(hdu::FitsHDU)
 
@@ -201,7 +218,7 @@ function FITSBase.FitsHeader(hdu::FitsHDU)
     status = Ref{Status}(0)
     @inbounds for i in 1:len
         check(CFITSIO.fits_read_record(file, i, buf, status))
-        push!(hdr, FitsCard(buf))
+        push!(hdr, parse_cstring(FitsCard, buf))
     end
     return hdr
 end
