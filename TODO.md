@@ -8,21 +8,20 @@
 
 - Use `@inbounds` to optimize some more loops.
 
-- Optimize conversion to `String` of card parts and make `FitsCardPart`
-  equivalent to `SubString{String}`.
+- Make `push!(hdu::FitsHDU,args...)` consistent with
+  `push!(hdr::FitsHeader,args...)`.
 
-- Implement `read!(arr,hdu,inds...)`.
+- Extend `Base.merge!(hdu::FitsHDU,hdr::FitsHeader)`.
 
-- Implement `io[f::Function]` to search:
+- Move search code in `files.jl` and make the naming of HDUs to be tested from
+  the most specific to the least one: first `HDUNAME`, then `EXTNAME`, and
+  finally `XTENSION`.
 
-  ``` julia
-  function Base.getindex(io::FitsIo, f::Function)
-      for hdu in io
-          f(hdu) && return hdu
-      end
-      return nothing
-  end
-  ```
+- Cleanup code in `hdus.jl` to use `FITSBase.Parser`.
+
+- In `utils.jl` use a more elegant and secure way to deal with FITS booleans
+  which are implemented as `Cchar` in CFITSIO and thus arrays of booleans are
+  unfortunately thought as `CString` by Julia code wrapper.
 
 - FITS cards are (restricted) ASCII strings. The FITS standard states that FITS
   header cards exclusively consist in the characters whose hexadecimal values

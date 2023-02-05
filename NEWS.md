@@ -1,8 +1,8 @@
 # User visible changes for EasyFITS
 
-## Version 1.0.0
+## Version 0.4.0
 
-This version has a lots of changes in the API. The syntax should be more
+This version introduces lots of changes in the API. The syntax should be more
 intuitive and consistent. To reduce the number of exported functions and avoid
 using non-exported ones, *properties* are used extensively.
 
