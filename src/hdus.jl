@@ -194,11 +194,16 @@ reads all records of the header of `hdu`.
 
 """
 function FITSBase.FitsHeader(hdu::FitsHDU)
-    vec = Vector{FitsCard}(undef, length(hdu))
-    for i in eachindex(vec)
-        vec[i] = hdu[i]
+    file = get_file_at(hdu)
+    len = length(hdu)
+    hdr = sizehint!(FitsHeader(), len)
+    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    status = Ref{Status}(0)
+    @inbounds for i in 1:len
+        check(CFITSIO.fits_read_record(file, i, buf, status))
+        push!(hdr, FitsCard(buf))
     end
-    return FitsHeader(vec)
+    return hdr
 end
 
 """
