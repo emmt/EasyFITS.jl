@@ -386,7 +386,7 @@ function fix_booleans!(arr::AbstractArray{Bool})
 end
 
 """
-    EasyFITS.map_to_longest(f, r, a1, a2; missing=missing)
+    EasyFITS.map_recursively(f, r, a1, a2; missing=missing)
 
 yields the result of applying function `f` recursively to update result `r` for
 each pair of values of tuples `a1` and `a2`. The recursion stops when the
@@ -402,13 +402,13 @@ specified by the keyword `missing`. This is equivalent to:
 except that in-lining is used to unroll the loop.
 
 """
-@inline map_to_longest(f::Function, r, a1::Tuple{}, a2::Tuple{}; missing=missing) = r
-@inline map_to_longest(f::Function, r, a1::Tuple, a2::Tuple{}; missing=missing) =
-    map_to_longest(f, f(r, first(a1), missing), Base.tail(a1), (); missing=missing)
-@inline map_to_longest(f::Function, r, a1::Tuple{}, a2::Tuple; missing=missing) =
-    map_to_longest(f, f(r, missing, first(a2)), (), Base.tail(a2); missing=missing)
-@inline map_to_longest(f::Function, r, a1::Tuple, a2::Tuple; missing=missing) =
-    map_to_longest(f, f(r, first(a1), first(a2)), Base.tail(a1), Base.tail(a2);
+@inline map_recursively(f::Function, r, a1::Tuple{}, a2::Tuple{}; missing=missing) = r
+@inline map_recursively(f::Function, r, a1::Tuple, a2::Tuple{}; missing=missing) =
+    map_recursively(f, f(r, first(a1), missing), Base.tail(a1), (); missing=missing)
+@inline map_recursively(f::Function, r, a1::Tuple{}, a2::Tuple; missing=missing) =
+    map_recursively(f, f(r, missing, first(a2)), (), Base.tail(a2); missing=missing)
+@inline map_recursively(f::Function, r, a1::Tuple, a2::Tuple; missing=missing) =
+    map_recursively(f, f(r, first(a1), first(a2)), Base.tail(a1), Base.tail(a2);
                    missing=missing)
 
 """
@@ -421,7 +421,7 @@ values.
 
 """
 subarray_params(dims::Dims, inds::SubArrayIndices) =
-    map_to_longest(_update_subarray_params, ((),(),(),()), dims, inds)
+    map_recursively(_update_subarray_params, ((),(),(),()), dims, inds)
 
 # More dimensions than sub-indices is forbidden.
 _update_subarray_params(p, d::Integer, i::Missing) = too_few_subindices()
