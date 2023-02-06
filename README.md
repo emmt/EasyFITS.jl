@@ -26,8 +26,8 @@ prefixed by `FITS_...`), a few methods (`write!`, `readfits`, `openfits`,
 
 ## FITS files
 
-Open FITS files are represented by objects of type `FitsFile`. To open an
-existing FITS file there are several possibilities:
+Open FITS files are represented by objects of type `FitsFile` in `EasyFITS`.
+There are several possibilities to open an existing FITS file:
 
 ```julia
 file = FitsFile(filename)
@@ -37,29 +37,30 @@ file = open(FitsFile, filename)
 
 where `filename` is the name of the FITS file.
 
-The methods to open a FITS file all take an optional argument `mode` after
-`filename` which can be:
+The methods to open a FITS file all take an optional additional `mode` argument
+which can be:
 
 - `"r"` (the default mode) to open an existing file for reading only.
 
-- `"r+"` to read an existing file for reading and appending to its contents.
+- `"r+"` to open an existing file for reading and appending to its contents.
 
-- `"w"` to create a new FITS file that must not already exist. An error is
-  thrown if the file already exists.
+- `"w"` to create a new FITS file. An error is thrown if the file already
+  exists unless keyword `overwrite` is set to `true`.
 
-- `"w!"` to open the file for writing. If the file already exists, it is
+- `"w!"` to create a new FITS file. If the file already exists, it is
   (silently) overwritten.
 
-The keyword `extended` can be used to specify whether to use the [extended file
-name
+In these methods, the `extended` keyword specifies whether to use the [extended
+file name
 syntax](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/c/c_user/node83.html)
 implemented by the `FITSIO` library.
 
 It is not mandatory to call `close(file)` to close the FITS file, this is
 automatically done when the `file` object is garbage collected. Calling
-`close(file)` is however needed in order to ensure that a FITS file open for
-writing is up to date before `file` be garbage collected. To automatically
-close a FITS file, use the do-block syntax:
+`close(file)` is however needed to ensure that a FITS file open for writing is
+up to date before `file` be garbage collected. To make the file contents up to
+date without closing it, call `flush(file)` instead. To automatically close a
+FITS file, use the do-block syntax:
 
 ``` julia
 open(FitsFile, "test.fits.gz", "w!") do file
@@ -67,6 +68,9 @@ open(FitsFile, "test.fits.gz", "w!") do file
     ...
 end
 ```
+
+
+### Indexation of FITS files
 
 FITS files consist in a concatenation of header data units (HDUs) which each
 have a header part followed by a data part. Open FITS files can be indexed to
@@ -85,7 +89,10 @@ file["name"]            # next HDU matching given name or nothing
 ```
 
 In other words, FITS files behave as vectors of HDUs with 1-based integer
-indices but can also be indexed by strings.
+indices but can also be indexed by strings. A string is considered to match the
+name of a HDU if it is equal to any of the values of the header keywords
+`XTENSION`, `EXTNAME`, or `HDUNAME`. For the primary HDU, `XTENSION` is assumed
+to be `"IMAGE"` in this context.
 
 Note that indexation by name yields the next matching HDU. To rewind the search
 of HDUs by their names, just call `seekstart(file)`. This makes easy to travel
@@ -101,9 +108,27 @@ while true
 end
 ```
 
-Call `seek(file,n)` to move to the `n`-th HDU without retrieving the HDU object.
-`seekstart(file)` and `seekend(file)` are similar but move to the first/last HDU.
-Call `position(file)` to figure out the number of the current HDU.
+Call `seek(file,n)` to move to the `n`-th HDU without retrieving the HDU
+object. `seekstart(file)` and `seekend(file)` are similar but move to the
+first/last HDU. Call `position(file)` to figure out the number of the current
+HDU.
+
+
+### Searching in FITS files
+
+For more flexibility in the search, the standard methods `findfirst(pat,file)`,
+`findnext(pat,file,start)`, `findlast(pat,file)`, and
+`findprev(pat,file,start)` can be used with `pat` a string or a regular
+expression to be matched against the names (given by header keywords
+`XTENSION`, `EXTNAME`, and `HDUNAME`) of the HDUs of `file`. These methods
+return an (integer) index in case of success and `nothing` otherwise. When
+using [regular
+expressions](https://docs.julialang.org/en/v1/manual/strings/#man-regex-literals),
+a `i` should be specified in the pattern options to indicate that matching
+should be case insensitive.
+
+Instead of `pat` a predicate function can be also be used, it will be called
+with a FITS HDU to tell whether this HDU is matching.
 
 
 ## `EasyFITS` objects
