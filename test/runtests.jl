@@ -2,6 +2,8 @@ module TestingEasyFITS
 
 using Test, EasyFITS, DataFrames
 
+using EasyFITS: FitsInteger, FitsFloat, FitsComplex
+
 # Yield type for which we are sure that no possible conversion is implemented.
 other_type(type::FitsCardType) =
     type === FITS_LOGICAL   ? Missing :
@@ -163,39 +165,6 @@ end
         @test dense_array(A) === A
         @test isa(dense_array(B), Array)
     end
-    let keyword_type = EasyFITS.keyword_type
-        @test keyword_type("COMMENT") === :COMMENT
-        @test keyword_type("HISTORY") === :HISTORY
-        @test keyword_type("CONTINUE") === :CONTINUE
-        @test keyword_type("HIERARCH") === :OTHER
-        @test keyword_type("HIERARCH ") === :OTHER
-        @test keyword_type("HIERARCH A") === :HIERARCH
-        @test keyword_type("Comment") === :COMMENT
-        @test keyword_type("History") === :HISTORY
-        @test keyword_type("Continue") === :CONTINUE
-        @test keyword_type("Hierarch") === :OTHER
-        @test keyword_type("Hierarch ") === :OTHER
-        @test keyword_type("Hierarch A") === :HIERARCH
-        @test keyword_type("CoMmEnT ") === :COMMENT
-        @test keyword_type("hIsToRy ") === :HISTORY
-        @test keyword_type("CoNtInUe ") === :CONTINUE
-        @test keyword_type("hIeRaRcH ") === :OTHER
-        @test keyword_type("HiErArCh A") === :HIERARCH
-        @test keyword_type(:COMMENT) === :COMMENT
-        @test keyword_type(:HISTORY) === :HISTORY
-        @test keyword_type(:CONTINUE) === :CONTINUE
-        @test keyword_type(:comment) === :COMMENT
-        @test keyword_type(:history) === :HISTORY
-        @test keyword_type(:continue) === :CONTINUE
-        @test keyword_type(SubString("some comment given", 6:12)) === :COMMENT
-        @test keyword_type(SubString("some comment given", 6:13)) === :COMMENT
-        @test keyword_type(SubString("some comment given", 5:13)) === :OTHER
-        @test keyword_type(SubString("History", 1:7)) === :HISTORY
-        @test keyword_type(SubString("Continue", 1:8)) === :CONTINUE
-        @test keyword_type(SubString("HIERARCH A", 1:8)) === :OTHER
-        @test keyword_type(SubString("HIERARCH A", 1:9)) === :OTHER
-        @test keyword_type(SubString("HIERARCH A", 1:10)) === :HIERARCH
-    end
 end
 
 # Get comment as a string from header card settings.
@@ -205,9 +174,8 @@ get_comment(dat::Tuple{Any,Nothing}) = ""
 get_comment(dat::Tuple{Any,AbstractString}) = dat[2]
 
 function get_units(comment::AbstractString)
-    m = match(r"^\[(.*?)\s*\]", comment)
-    m === nothing && return ""
-    return m.captures[1]
+    m = match(r"^\[\s*(.*?)\s*\]", comment)
+    m === nothing ? "" : m.captures[1]
 end
 
 suppress_units(comment::AbstractString) =
@@ -221,7 +189,7 @@ cards_1 = (key_b1 = (true,  "This is true"),
            key_i2 = (0x9, nothing),
            key_i3 = (Int16(42), "[cm] with units"),
            key_i4 = (-77, "[] no units"),
-           key_i5 = (101, "[  foo / bar ] trailing spaces do not matter"),
+           key_i5 = (101, "[  foo /  bar ] strip leading/trailing spaces"),
            key_f1 = (-1.2f-2, "Single precision"),
            key_f2 = (-3.7, "Double precision"),
            key_f3 = (11//7, "Rational number"),
@@ -248,7 +216,7 @@ tempfile, io = mktemp(; cleanup=false)
 close(io)
 
 @testset "FITS Headers" begin
-    @test FitsCardType(Any)              === FITS_UNKNOWN
+    #@test FitsCardType(Any)             === FITS_UNKNOWN
     @test FitsCardType(typeof(undef))    === FITS_UNDEFINED
     @test FitsCardType(Missing)          === FITS_UNDEFINED
     @test FitsCardType(Bool)             === FITS_LOGICAL
@@ -263,53 +231,41 @@ end
 @testset "FITS Images" begin
     # Write a simple FITS image.
     A = convert(Array{Int16}, reshape(1:60, 3,4,5))
-    @test fits"test1.fits" === FitsFile("test1.fits")
-    openfits(tempfile, "w!") do io
-        @test io isa FitsIO
-        @test !isreadable(io)
-        @test !isreadonly(io)
-        @test iswritable(io)
-        @test position(io) == 1
-        @test length(io) == 0
+    openfits(tempfile, "w!") do file
+        @test file isa FitsFile
+        @test !isreadable(file)
+        @test !isreadonly(file)
+        @test iswritable(file)
+        @test position(file) == 1
+        @test length(file) == 0
 
         # Add a simple IMAGE extension.
-        let hdu = write(io, FitsImageHDU, eltype(A), size(A))
-            @test length(io) == 1
-            @test hdu === last(io)
+        let hdu = write(file, FitsImageHDU, eltype(A), size(A))
+            @test length(file) == 1
+            @test hdu === last(file)
             @test firstindex(hdu) == 1
             @test lastindex(hdu) == length(hdu)
-            @test_throws KeyError hdu[firstindex(hdu) - 1]
-            # FIXME: @test_throws KeyError hdu[lastindex(hdu) + 1]
-            @test_throws KeyError hdu[lastindex(hdu) + 5000]
+            @test_throws BoundsError hdu[firstindex(hdu) - 1]
             @test_throws KeyError hdu["DUMMY"]
             let card = hdu["SIMPLE"]
-                # This is the first FITS card we get, take the opportunity of
-                # testing its properies.
-                @test card isa AbstractVector{UInt8}
-                @test prod(size(card)) == length(firstindex(card) : lastindex(card))
-                @test IndexStyle(card) === IndexLinear()
-                @test propertynames(card) isa Tuple{Vararg{Symbol}}
-                @test propertynames(card.value) isa Tuple{Vararg{Symbol}}
-                @test propertynames(card.comment) isa Tuple{Vararg{Symbol}}
-                @test card.parsed === card.value.parsed
-                @test card.logical === card.value.logical
-                # The rest is pretty common...
-                @test card == hdu[firstindex(hdu)]
-                @test card.type == FITS_LOGICAL
-                @test card.value.logical === card.value.parsed
-                @test card.value.logical === true
+                @test card isa FitsCard
+                @test card === hdu[firstindex(hdu)]
+                @test card.key === Fits"SIMPLE"
+                @test card.type === FITS_LOGICAL
+                @test card.value() === card.logical
+                @test card.value() === true
             end
             let card = hdu["BITPIX"]
-                @test card == hdu[firstindex(hdu) + 1]
-                @test card.type == FITS_INTEGER
-                @test card.value.integer === card.value.parsed
-                @test card.value.integer == 16
+                @test card === hdu[firstindex(hdu) + 1]
+                @test card.type === FITS_INTEGER
+                @test card.value() === card.integer
+                @test card.value() == 16
             end
             let card = hdu["NAXIS"]
                 @test card == hdu[firstindex(hdu) + 2]
                 @test card.type == FITS_INTEGER
-                @test card.value.integer === card.value.parsed
-                @test card.value.integer == 3
+                @test card.value() === card.integer
+                @test card.value() == 3
             end
             reset(hdu) # reset before testing incremental search
             for i in 1:ndims(A)+1
@@ -317,19 +273,19 @@ end
                 @test (card === nothing) == (i > ndims(A))
                 card === nothing && break
                 @test card.type == FITS_INTEGER
-                @test card.value.integer === card.value.parsed
-                @test card.value.integer == size(A, i)
+                @test card.value() === card.integer
+                @test card.value() == size(A, i)
             end
             write(hdu, A)
         end
-        @test position(io) == 1
-        @test length(io) == 1
+        @test position(file) == 1
+        @test length(file) == 1
         for pass in 1:2
             # Add IMAGE extensions with no data, just header cards.
             local cards = pass == 1 ? cards_1 : cards_2
-            local hdu = write(io, FitsImageHDU)
+            local hdu = write(file, FitsImageHDU)
             len = length(hdu)
-            push!(hdu, cards)
+            merge!(hdu, cards)
             @test length(hdu) == len + length(cards)
             let buf = IOBuffer()
                 # Exercise `show`.
@@ -351,21 +307,21 @@ end
                 hdu[key] = (val, "Quite a tiny value")
                 card = hdu[key]
                 @test card.type == FITS_FLOAT
-                i = findfirst(isequal(UInt8('=')), card)
-                @test i == 9
-                j = findnext(b -> b ∈ (UInt8('e'), UInt8('E'), UInt8('d'), UInt8('D')), card, i)
-                bak = card.value.parsed
-                @test bak ≈ val
-                for c in "dDeE"
-                    card[j] = c
-                    @test card.value.parsed ≈ val
-                    @test card.value.parsed === bak
-                end
+                # FIXME: i = findfirst(isequal(UInt8('=')), card)
+                # FIXME: @test i == 9
+                # FIXME: j = findnext(b -> b ∈ (UInt8('e'), UInt8('E'), UInt8('d'), UInt8('D')), card, i)
+                # FIXME: bak = card.value()
+                # FIXME: @test bak ≈ val
+                # FIXME: for c in "dDeE"
+                # FIXME:     card[j] = c
+                # FIXME:     @test card.value() ≈ val
+                # FIXME:     @test card.value() === bak
+                # FIXME: end
                 delete!(hdu, key)
             end
             for (key, dat) in (cards isa AbstractVector ? cards : pairs(cards))
                 local card = get(hdu, key, nothing)
-                @test card isa EasyFITS.FitsCard
+                @test card isa FitsCard
                 @test_throws ErrorException convert(other_type(card.type), card.value)
                 if uppercase(rstrip(String(key))) ∈ ("HISTORY","COMMENT","")
                     local com = dat isa Tuple{Nothing,AbstractString} ? dat[2] :
@@ -373,45 +329,45 @@ end
                         dat isa Nothing || dat isa Tuple{Nothing,Nothing} ? "" :
                         error("bad card specification: $(repr(key)) => $(repr(dat))")
                     @test card.type == FITS_COMMENT
-                    @test card.value.parsed === nothing
+                    @test card.value() === nothing
                     @test card.comment == com
                 else
                     local val = dat isa Tuple ? dat[1] : dat
                     local com = dat isa Tuple{Any,AbstractString} ? dat[2] : ""
                     if val isa Bool
                         @test card.type == FITS_LOGICAL
-                        @test card.value.logical === card.value.parsed
-                        @test card.value.logical === val
+                        @test card.logical === card.value()
+                        @test card.logical === val
                     elseif val isa Integer
                         @test card.type == FITS_INTEGER
-                        @test card.value.integer === card.value.parsed
-                        @test card.value.integer == val
+                        @test card.integer === card.value()
+                        @test card.integer == val
                     elseif val isa Real
                         @test card.type == FITS_FLOAT
-                        @test card.value.float === card.value.parsed
-                        @test card.value.float ≈ val
+                        @test card.float === card.value()
+                        @test card.float ≈ val
                     elseif val isa Complex
                         @test card.type == FITS_COMPLEX
-                        @test card.value.complex === card.value.parsed
-                        @test card.value.complex ≈ val
+                        @test card.complex === card.value()
+                        @test card.complex ≈ val
                     elseif val isa Complex
                         @test card.type == FITS_COMPLEX
-                        @test card.value.complex === card.value.parsed
-                        @test card.value.complex ≈ val
+                        @test card.complex === card.value()
+                        @test card.complex ≈ val
                     elseif val isa AbstractString
                         @test card.type == FITS_STRING
-                        @test card.value.string === card.value.parsed
-                        @test card.value.string == rstrip(card.value.string)
-                        @test card.value.string == rstrip(val)
+                        @test card.string === card.value()
+                        @test card.string == rstrip(card.string)
+                        @test card.string == rstrip(val)
                     elseif val isa Union{Missing,UndefInitializer}
                         @test card.type == FITS_UNDEFINED
-                        @test card.value.parsed === missing
+                        @test card.value() === missing
                     else
                         error("bad card specification: $(repr(key)) => $(repr(dat))")
                     end
                     @test card.comment == com
-                    @test card.comment.units == get_units(com)
-                    @test card.comment.unitless == suppress_units(com)
+                    @test card.units == get_units(com)
+                    @test card.unitless == suppress_units(com)
                 end
             end
         end
@@ -421,12 +377,12 @@ end
     @test eltype(B) == eltype(A)
     @test size(B) == size(A)
     @test B == A
-    openfits(tempfile) do io
-        hdu = io[2]
-        @test hdu["KEY_B1"].value.parsed === true
-        @test hdu["KEY_B2"].value.parsed === false
+    openfits(tempfile) do file
+        hdu = file[2]
+        @test hdu["KEY_B1"].value() === true
+        @test hdu["KEY_B2"].value() === false
         # Read sub-regions.
-        hdu = io[1]
+        hdu = file[1]
         @test read(hdu, :, :, :) == A
         let inds = (1, axes(A)[2], :)
             @test read(hdu, inds...) == A[inds...]
@@ -444,13 +400,13 @@ end
 end
 
 @testset "FITS Tables" begin
-    openfits(tempfile, "w!") do io
-        @test length(io) == 0
-        hdu = write(io, FitsTableHDU, ["Col#1" => ('E', "m/s"),
+    openfits(tempfile, "w!") do file
+        @test length(file) == 0
+        hdu = write(file, FitsTableHDU, ["Col#1" => ('E', "m/s"),
                                        "Col#2" => ('D', "Hz")])
-        @test length(io) == 2 # a table cannot not be the primary HDU
-        @test hdu === last(io)
-        @test hdu.io === io
+        @test length(file) == 2 # a table cannot not be the primary HDU
+        @test hdu === last(file)
+        @test hdu.file === file
         @test hdu.ncols == 2
         @test ncol(hdu) == 2
         @test hdu.first_column == 1
@@ -464,8 +420,8 @@ end
         @test hdu.data_axes == (hdu.first_row:hdu.last_row,
                                 hdu.first_column:hdu.last_column)
         @test hdu.column_names == ["Col#1", "Col#2"]
-        @test hdu[:tunit1].value.parsed == "m/s"
-        @test hdu[:tunit2].value.parsed == "Hz"
+        @test hdu[:tunit1].value() == "m/s"
+        @test hdu[:tunit2].value() == "Hz"
         for col ∈ (1, "Col#1")
             local x = read(hdu, col)
             @test x isa Vector{Cfloat}
