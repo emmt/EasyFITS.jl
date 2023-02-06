@@ -45,6 +45,7 @@ using FITSBase:
     FitsFloat
 
 using Base: @propagate_inbounds, string_index_err
+using Base.Order: Ordering, Forward, Reverse
 import Base: open, read, read!, write
 
 include("../deps/deps.jl")

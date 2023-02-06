@@ -454,3 +454,87 @@ function Base.get(file::FitsFile, str::AbstractString, def)
     i === nothing && return def
     return file[i]
 end
+
+"""
+    eachmatch(pat, file::FitsFile)
+
+yields an iterator over the Header Data Units (HDUs) of FITS `file` matching
+pattern `pat`. Pattern `pat` can be a string or a regular expression to be
+matched against the name of the HDUs of `file` or a predicate function taking
+a HDU as argument and returning whether it matches.
+
+For example:
+
+    @inbounds for hdu in eachmatch(pat, file)
+        ... # do something
+    end
+
+is a shortcut for:
+
+    i = findfirst(pat, file)
+    @inbounds while i !== nothing
+        hdu = file[i]
+        ... # do something
+        i = findnext(pat, file, i+1)
+    end
+
+while:
+
+    @inbounds for hdu in reverse(eachmatch(pat, file))
+        ... # do something
+    end
+
+is equivalent to:
+
+    i = findlast(pat, file)
+    @inbounds while i !== nothing
+        hdu = file[i]
+        ... # do something
+        i = findprev(pat, file, i-1)
+    end
+
+"""
+Base.eachmatch(pat, file::FitsFile) = FileIterator(pat, file)
+
+struct FileIterator{O<:Ordering,P}
+    pattern::P
+    file::FitsFile
+    FileIterator(ord::O, pat::P, file::FitsFile) where {O,P} =
+        new{O,P}(pat, file)
+end
+FileIterator(pat, file::FitsFile) = FileIterator(Forward, pat, file)
+FileIterator(ord::Ordering, pat::AbstractString, file::FitsFile) =
+    FileIterator(ord, is_named(pat), file)
+FileIterator(ord::Ordering, pat::Regex, file::FitsFile) =
+    FileIterator(ord, is_named(pat), file)
+
+Base.IteratorEltype(::Type{<:FileIterator}) = Base.HasEltype()
+Base.eltype(::Type{<:FileIterator}) = FitsCard
+
+Base.IteratorSize(::Type{<:FileIterator}) = Base.HasLength()
+Base.length(iter::FileIterator) = length(iter.file)
+
+Base.reverse(iter::FileIterator{typeof(Forward)}) =
+    FileIterator(Reverse, iter.pattern, iter.file)
+Base.reverse(iter::FileIterator{typeof(Reverse)}) =
+    FileIterator(Forward, iter.pattern, iter.file)
+
+# Iterate over entries in forward order.
+function Base.iterate(iter::FileIterator{typeof(Forward)})
+    j = findfirst(iter.pattern, iter.file)
+    j === nothing ? nothing : ((@inbounds iter.file[j]), j+1)
+end
+function Base.iterate(iter::FileIterator{typeof(Forward)}, i::Int)
+    j = findnext(iter.pattern, iter.file, i)
+    j === nothing ? nothing : ((@inbounds iter.file[j]), j+1)
+end
+
+# Iterate over entries in reverse order.
+function Base.iterate(iter::FileIterator{typeof(Reverse)})
+    j = findlast(iter.pattern, iter.file)
+    j === nothing ? nothing : ((@inbounds iter.file[j]), j-1)
+end
+function Base.iterate(iter::FileIterator{typeof(Reverse)}, i::Int)
+    j = findprev(iter.pattern, iter.file, i)
+    j === nothing ? nothing : ((@inbounds iter.file[j]), j-1)
+end
