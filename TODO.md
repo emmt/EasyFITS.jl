@@ -8,13 +8,6 @@
 
 - Use `@inbounds` to optimize some more loops.
 
-- Make `push!(hdu::FitsHDU,args...)` consistent with
-  `push!(hdr::FitsHeader,args...)`.
-
-- Extend `Base.merge!(hdu::FitsHDU,hdr::FitsHeader)`.
-
-- Cleanup code in `hdus.jl` to use `FITSBase.Parser`.
-
 - In `utils.jl` use a more elegant and secure way to deal with FITS booleans
   which are implemented as `Cchar` in CFITSIO and thus arrays of booleans are
   unfortunately thought as `CString` by Julia code wrapper.
