@@ -46,7 +46,7 @@ function get_colnames(hdu::FitsTableHDU)
     ncols = hdu.ncols
     names = Array{String}(undef, ncols)
     for col in 1:ncols
-        names[col] = hdu["TTYPE$col"].value.string
+        names[col] = hdu["TTYPE$col"].string
     end
     return names
 end
@@ -92,7 +92,7 @@ function get_colname(hdu::FitsTableHDU, col::Integer, case::Bool = false)
     check_colnum(hdu, col)
     card = get(hdu, "TTYPE$col", nothing) # FIXME: optimize?
     (card === nothing || card.type != FITS_STRING) && return ("COL#$col", to_type(Int, col))
-    return (case ? card.value.string : uppercase(card.value.string), to_type(Int, col))
+    return (case ? card.string : uppercase(card.string), to_type(Int, col))
 end
 
 function get_colname(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
