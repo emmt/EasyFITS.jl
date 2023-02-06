@@ -236,47 +236,119 @@ function Base.reset(hdu::FitsHDU)
 end
 
 """
-    setindex!(hdu::FitsHDU, dat, key) -> hdu
-    hdu[key] = dat
+    setindex!(hdu::FitsHDU, x, key) -> hdu
+    hdu[key] = x
+    push!(hdu, key => x)
 
 updates or appends a record associating the keyword `key` with the data `dat`
-in the header of the FITS header data unit `hdu`. See [`EasyFITS.Header`](@ref)
-for the possible forms of `dat`.
+in the header of the FITS header data unit `hdu` (see `push!`). Depending on
+the type of the FITS keyword `key`, the argument `x` can be `val`, `com` or
+`(val,com)` with `val` and `com` the value and the comment of the FITS card.
 
 """
 Base.setindex!(hdu::FitsHDU, dat::CardData, key::CardName) =
-    set_key(hdu, key => dat; update=true)
+    push!(hdu, key => dat)
 
 """
-    push!(hdu::FitsHDU, key => dat) -> hdu
-    hdu[key] = dat
+    push!(hdu::FitsHDU, rec; append=false) -> hdu
 
-appends a new record associating the keyword `key` with the data `dat` in the
-header of the FITS header data unit `hdu`. See [`EasyFITS.Header`](@ref) for
-the possible forms of such pairs.
+updates or appends header record `rec` to FITS Header Data Units `hdu`. If the
+name of `rec` does not yet exist in the header part of `hdu` or if it is a
+commentary or continuation FITS keyword (`"COMMENT"`, `"HISTORY"`, `""`, or
+`"CONTINUE"`), a new record is appended to the header part of `hdu`; otherwise,
+the existing record in `hdu` is updated. If keyword `append` is set true, the
+record is appended whether another record with the same name already exists or
+not. Forcing append is not recommended as it may result in an invalid header.
 
-A vector of pairs or a named tuple may be specified to push more than one
-record in a single call:
+Argument `rec` may be a FITS card (of type `FitsCard`) or anything that can be
+converted into a FITS card. This includes a pair `key => val`, `key => com`, or
+`key => (val,com)` with `key` the keyword of the record, `val` its value and
+`com` its comment.
 
-    push!(hdu::FitsHDU, ["key1" => dat1, "key2" => dat2, ...]) -> hdu
-    push!(hdu::FitsHDU, (key1 = dat1, key2 = dat2, ...)) -> hdu
+To push more than one record, call `merge!` instead of `push!`.
 
 """
-Base.push!(hdu::FitsHDU, pair::Pair{<:CardName}) =
-    set_key(hdu, pair; update=false)
+function Base.push!(hdu::FitsHDU, rec::Pair{<:CardName}; append::Bool = false)
+    key = normalize_card_name(first(rec))
+    _push!(hdu, key, last(rec), append)
+end
 
-Base.push!(hdu::FitsHDU, ::Nothing) = hdu
-
-function Base.push!(hdu::FitsHDU, cards::VectorOfCardPairs)
-    for card in cards
-        push!(hdu, card)
+# Like push! but name has been normalized (that is trailing spaces removed and
+# converted to uppercase letters).
+function _push!(hdu::FitsHDU, key::String, x, append::Bool)
+    quick_key = FitsKey(key)
+    if quick_key == Fits"COMMENT"
+        write_comment(hdu, extract_comment_only(key, x))
+    elseif quick_key == Fits"HISTORY"
+        write_history(hdu, extract_comment_only(key, x))
+    elseif quick_key == Fits""
+        write_key(hdu, key, Nothing, extract_comment_only(key, x))
+    else
+        val, com = extract_value_and_comment_parts(key, x)
+        if append || quick_key == Fits"CONTINUE"
+            write_key(hdu, key, val, com)
+        else
+            update_key(hdu, key, val, com)
+        end
     end
     return hdu
 end
 
-function Base.push!(hdu::FitsHDU, cards::NamedTuple)
-    for key in keys(cards)
-        push!(hdu, key => cards[key])
+function Base.push!(hdu::FitsHDU, rec::FitsCard; append::Bool = false)
+    if card.type === FITS_COMMENT
+        if card.key == Fits"COMMENT"
+            write_comment(hdu, card.comment)
+            return hdu
+        elseif card.key == Fits"HISTORY"
+            write_history(hdu, card.comment)
+            return hdu
+        elseif card.key == Fits""
+            append = true
+        end
+    elseif card.key == Fits"CONTINUE"
+        append = true
+    end
+    # FIXME: Improve type stability.
+    if append
+        write_key(hdu, card.name, card.value(), card.comment)
+    else
+        update_key(hdu, card.name, card.value(), card.comment)
+    end
+    return hdu
+end
+
+Base.push!(hdu::FitsHDU, rec; kwds...) =
+    push!(hdu, FitsCard(rec); kwds...)
+
+"""
+    merge!(hdu::FitsHDU, recs) -> hdu
+
+pushes all FITS header cards in `recs` into FITS Header Data Units `hdu` and
+returns it. Examples:
+
+    merge!(hdu::FitsHDU, ["key1" => dat1, "key2" => dat2, ...]) -> hdu
+    merge!(hdu::FitsHDU, (key1 = dat1, key2 = dat2, ...)) -> hdu
+
+In most cases, calling `merge!` is a shortcut to:
+
+    for rec in recs
+        push!(hdu, rec)
+    end
+
+"""
+Base.merge!(hdu::FitsHDU, recs::Nothing; append::Bool = false) = hdu
+
+function Base.merge!(hdu::FitsHDU, recs::NamedTuple; append::Bool = false)
+    for key in keys(recs)
+        push!(hdu, key => recs[key]; append = append)
+    end
+    return hdu
+end
+
+# By default, assume an iterable object.
+function Base.merge!(hdu::FitsHDU, recs; append::Bool = false)
+    for rec in recs
+        push!(hdu, rec; append = append)
     end
     return hdu
 end
@@ -316,30 +388,6 @@ end
 is_comment_keyword(key::Symbol) =
     key === :COMMENT || key === :HISTORY ||
     key === :comment || key === :history
-
-@inline function set_key(hdu::FitsHDU, pair::CardPair; update::Bool)
-    key = first(pair)
-    dat = last(pair)
-    type = keyword_type(key)
-    if type === :COMMENT || type === :HISTORY
-        com = dat isa AbstractString ? dat :
-            dat isa Nothing ? "" : invalid_card_value(key, dat, true)
-        if type === :HISTORY
-            write_history(hdu, com)
-        else
-            write_comment(hdu, com)
-        end
-    else
-        val, com = normalize_card_data(dat)
-        val === Invalid() && invalid_card_value(key, dat, false)
-        if update
-            update_key(hdu, key, val, com)
-        else
-            write_key(hdu, key, val, com)
-        end
-    end
-    return hdu
-end
 
 """
     @eq b c
@@ -507,12 +555,6 @@ _load(str::AbstractString, i::Int) = @inbounds codeunit(str, i)
     end
 end
 
-# Convert card data (e.g., from a key=>dat pair) into a 2-tuple (val,com).
-# NOTE: An empty comment "" is the same as unspecified comment (nothing).
-normalize_card_data(val::Any) = (normalize_card_value(val), nothing)
-normalize_card_data(val::Tuple{Any}) = (normalize_card_value(val[1]), nothing)
-normalize_card_data(val::Tuple{Any,OptionalString}) = (normalize_card_value(val[1]), val[2])
-
 """
    EasyFITS.normalize_card_value(val)
 
@@ -530,15 +572,33 @@ normalize_card_value(val::Complex) = to_type(Complex{Cdouble}, val)
 normalize_card_value(val::AbstractString) = val
 normalize_card_value(val::Any) = Invalid() # means error
 
-unsafe_optional_string(s::AbstractString) = s
-unsafe_optional_string(s::Nothing) = Ptr{Cchar}(0)
+extract_comment_only(key, x::Nothing) = ""
+extract_comment_only(key, x::AbstractString) = x
+extract_comment_only(key, x::Tuple{Nothing,Nothing}) = ""
+extract_comment_only(key, x::Tuple{Nothing,AbstractString}) = last(x)
+extract_comment_only(key, x) = invalid_card_value(key, x; commentary=true)
 
-@noinline invalid_card_value(key::CardName, val::Any, commentary::Bool=false) = bad_argument(
-    "invalid value of type ", typeof(val), " for ", (commentary ? "commentary " : ""),
-    "FITS keyword \"", normalize_card_name(key), "\"")
+extract_value_and_comment_parts(key, x::CardValue) =
+    (normalize_card_value(x), nothing)
+extract_value_and_comment_parts(key, x::Tuple{CardValue}) =
+    (normalize_card_value(first(x)), nothing)
+extract_value_and_comment_parts(key, x::Tuple{CardValue,Nothing}) =
+    (normalize_card_value(first(x)), nothing)
+extract_value_and_comment_parts(key, x::Tuple{CardValue,AbstractString}) =
+    (normalize_card_value(first(x)), last(x))
+extract_value_and_comment_parts(key, x) = invalid_card_value(key, x)
 
+@noinline invalid_card_value(key::String, x; commentary::Bool=false) =
+    bad_argument("invalid value of type ", typeof(x), " for ",
+                 (commentary ? "commentary " : ""), "FITS keyword \"",
+                 key, "\"")
+
+# NOTE: Always yields a String.
 normalize_card_name(key::Symbol) = normalize_card_name(String(key))
 normalize_card_name(key::AbstractString) = uppercase(rstrip(key))
+
+unsafe_optional_string(s::AbstractString) = s
+unsafe_optional_string(s::Nothing) = Ptr{Cchar}(0)
 
 """
     EasyFITS.write_key(dst, key, val, com=nothing) -> dst
