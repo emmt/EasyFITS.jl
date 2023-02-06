@@ -8,6 +8,9 @@
 
 - Use `@inbounds` to optimize some more loops.
 
+- Abstract type `FitsHDU` and `FitsHeader(hdu::FitsHDU)` should be defined in
+  `BaseFITS`.
+
 - In `utils.jl` use a more elegant and secure way to deal with FITS booleans
   which are implemented as `Cchar` in CFITSIO and thus arrays of booleans are
   unfortunately thought as `CString` by Julia code wrapper.

@@ -268,10 +268,8 @@ converted into a FITS card. This includes a pair `key => val`, `key => com`, or
 To push more than one record, call `merge!` instead of `push!`.
 
 """
-function Base.push!(hdu::FitsHDU, rec::Pair{<:CardName}; append::Bool = false)
-    key = normalize_card_name(first(rec))
-    _push!(hdu, key, last(rec), append)
-end
+Base.push!(hdu::FitsHDU, rec::Pair{<:CardName}; append::Bool = false) =
+    _push!(hdu, normalize_card_name(first(rec)), last(rec), append)
 
 # Like push! but name has been normalized (that is trailing spaces removed and
 # converted to uppercase letters).
@@ -484,19 +482,13 @@ for func in (:update_key, :write_key),
     end
 end
 
-# HDUs are similar to ordered sets (lists) of header cards. NOTE: eltype,
-# ndims, and size are used for the data part not the header part.
+# Implement abstract vector API for HDUs.
 Base.length(hdu::FitsHDU) = get_hdrspace(hdu)[1]
+Base.size(hdu::FitsHDU) = (length(hdu),)
+Base.axes(hdu::FitsHDU) = (keys(hdu),)
 Base.firstindex(hdu::FitsHDU) = 1
 Base.lastindex(hdu::FitsHDU) = length(hdu)
 Base.keys(hdu::FitsHDU) = Base.OneTo(length(hdu))
-Base.iterate(hdu::FitsHDU, state::Int = firstindex(hdu)) =
-    state ≤ length(hdu) ? (hdu[state], state + 1) : nothing
-Base.IteratorSize(::Type{<:FitsHDU}) = Base.HasLength()
-Base.IteratorEltype(::Type{<:FitsHDU}) = Base.HasEltype() # FIXME: not Image HDU
-Base.eltype(::Type{<:FitsHDU}) = FitsCard # FIXME: not Image HDU
-
-# FIXME: implement iterator API?
 
 # Yield number of existing and remaining undefined keys in the current HDU.
 function get_hdrspace(hdu::FitsHDU)

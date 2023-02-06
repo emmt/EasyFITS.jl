@@ -1,4 +1,5 @@
 const Status = Cint
+
 const OptionalString = Union{AbstractString,Nothing}
 
 # Types indicating an undefined card value, Nothing is used for the value of
@@ -83,7 +84,7 @@ header.
     may appear more than once.
 
 """
-const Header = Union{NamedTuple,VectorOfCardPairs}
+const Header = Union{FitsHeader,NamedTuple,VectorOfCardPairs}
 
 """
     EasyFITS.ImageData{T,N}
@@ -131,7 +132,21 @@ function get_column(dat::AbstractDict{K,<:AbstractArray}, key::K) where {K<:Colu
     String(key) => vals
 end
 
-abstract type FitsHDU end
+"""
+    FitsHDU
+
+is the abstract type of FITS Header Data Units which consists in a header and a
+data parts. Concrete instances of `FitsHDU` behave as vectors whose elements
+are FITS header records, a.k.a. FITS cards, and which can be indexed by
+integers or by names.
+
+For faster access to the records of a header, consider creating a FITS header
+object from a HDU object:
+
+    hdr = FitsHeader(hdu::FitsHDU)
+
+"""
+abstract type FitsHDU <: AbstractVector{FitsCard} end
 
 # Enumeration of HDU type identifiers.
 @enum FitsHDUType::Cint begin
