@@ -40,9 +40,13 @@ export
 
 using BaseFITS
 using BaseFITS:
+    CardName,
+    CardValue,
+    CardComment,
     FitsComplex,
     FitsInteger,
-    FitsFloat
+    FitsFloat,
+    Undefined
 
 using Base: @propagate_inbounds, string_index_err
 using Base.Order: Ordering, Forward, Reverse

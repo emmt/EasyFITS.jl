@@ -376,7 +376,7 @@ value type. Argument `val` shall be the bare value of a non-commentary FITS
 keyword without the comment part.
 
 """
-normalize_card_value(val::UndefinedValue) = missing
+normalize_card_value(val::Undefined) = missing
 normalize_card_value(val::Nothing) = nothing
 normalize_card_value(val::Bool) = val
 normalize_card_value(val::Integer) = to_type(Int, val)
@@ -448,31 +448,31 @@ for func in (:update_key, :write_key),
                (Integer,        Int),
                (Real,           Cdouble),
                (Complex,        Complex{Cdouble}),
-               (UndefinedValue, Missing))
+               (Undefined,      Missing))
     if T === Missing
         # Commentary (nothing) card or undefined value (undef or missing).
-        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
+        @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             _com = unsafe_optional_string(com)
             check(CFITSIO.$(Symbol("fits_",func,"_null"))(
                 dst, key, _com, Ref{Status}(0)))
             return dst
         end
     elseif T === String
-        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
+        @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             _com = unsafe_optional_string(com)
             check(CFITSIO.$(Symbol("fits_",func,"_str"))(
                 dst, key, val, _com, Ref{Status}(0)))
             return dst
         end
     elseif T === Bool
-        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
+        @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             _com = unsafe_optional_string(com)
             check(CFITSIO.$(Symbol("fits_",func,"_log"))(
                 dst, key, val, _com, Ref{Status}(0)))
             return dst
         end
     else
-        @eval function $func(dst, key::CardName, val::$V, com::OptionalString=nothing)
+        @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             _com = unsafe_optional_string(com)
             _val = Ref{$T}(val)
             check(CFITSIO.$(Symbol("fits_",func))(

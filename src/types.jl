@@ -1,22 +1,14 @@
 const Status = Cint
 
-const OptionalString = Union{AbstractString,Nothing}
-
-# Types indicating an undefined card value, Nothing is used for the value of
-# commentary cards.
-const UndefinedValue = Union{Missing,UndefInitializer}
-
-# FITS header card name, a.k.a. FITS keyword.
-const CardName = Union{Symbol,AbstractString}
-
-# Acceptable types for the value of a FITS header card.
-const CardValue = Union{Nothing,UndefinedValue,Real,Complex,AbstractString}
-
 # The different ways to represent a FITS header card value + comment.
+# NOTE: CardName, CardValue, and CardComment are defined in BaseFITS.
+# FIXME: Should be in BaseFITS?
 const CardData = Union{CardValue,
                        Tuple{CardValue},
-                       Tuple{CardValue,OptionalString}}
+                       Tuple{CardValue,CardComment}}
 
+# The signature of a Pair that can be converted into a FITS card.
+# FIXME: Should be in BaseFITS?
 const CardPair{K<:CardName,V<:CardData} = Pair{K,V}
 
 # NOTE: The type of the pair values cannot be restricted, it must be `<:Any`,
