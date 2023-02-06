@@ -158,7 +158,7 @@ function Base.getindex(hdu::FitsHDU, key::Union{CardName,Integer})
     if iszero(status)
         return parse_cstring(FitsCard, buf)
     elseif status == (key isa Integer ? CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST)
-        throw(KeyError(key))
+        key isa Integer ? throw(BoundsError(hdu, key)) : throw(KeyError(key))
     else
         throw(FitsError(status))
     end
