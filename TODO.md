@@ -13,10 +13,6 @@
 
 - Extend `Base.merge!(hdu::FitsHDU,hdr::FitsHeader)`.
 
-- Move search code in `files.jl` and make the naming of HDUs to be tested from
-  the most specific to the least one: first `HDUNAME`, then `EXTNAME`, and
-  finally `XTENSION`.
-
 - Cleanup code in `hdus.jl` to use `FITSBase.Parser`.
 
 - In `utils.jl` use a more elegant and secure way to deal with FITS booleans

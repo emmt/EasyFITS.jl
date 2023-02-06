@@ -456,6 +456,95 @@ function Base.get(file::FitsFile, str::AbstractString, def)
 end
 
 """
+    nameof(hdu::FitsHDU) -> str
+
+yields the name of the FITS header data unit `hdu`. The name is the value of
+the first keyword of `"EXTNAME"` or `"HDUNAME"` which exists and has a string
+value. Otherwise, the name is that of the FITS extension of `hdu`, that is
+`"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"` depending on whether `hdu` is an
+image, an ASCII table, a binary table, or anything else.
+
+"""
+function Base.nameof(hdu::FitsHDU)
+    (str = hdu.hduname) === nothing || return str
+    (str = hdu.extname) === nothing || return str
+    return hdu.xtension
+end
+
+"""
+    EasyFITS.is_named(hdu, pat) -> bool
+
+yields whether pattern `pat` is equal to (in the FITS sense if `pat` is a
+string) or matches (if `pat` is a regular expression) the extension of the FITS
+header data unit `hdu`, or to the value of one of its `"EXTNAME"` or
+`"HDUNAME"` keywords. These are respectively given by `hdu.xtension`,
+`hdu.extname`, or `hdu.hduname`.
+
+This method is used as a predicate for the search methods `findfirst`,
+`findlast`, `findnext`, and `findprev`.
+
+The extension `hdu.xtension` is `"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"`
+depending on whether `hdu` is an image, an ASCII table, a binary table, or
+anything else.
+
+"""
+is_named(hdu::FitsHDU, pat::Union{AbstractString,Regex}) =
+    # Since a match only fails if no matching name is found, the order of the
+    # tests is irrelevant. We therefore start with the costless ones.
+    same_name(hdu.xtension, pat) ||
+    same_name(hdu.hduname, pat) ||
+    same_name(hdu.extname, pat)
+is_named(pat::Union{AbstractString,Regex}) = Base.Fix2(is_named, pat)
+
+# Compare HDU name with some pattern , HDU name may be `nothing` which can
+# never be considered as a success.
+same_name(name::Nothing, pat::Union{AbstractString,Regex}) = false
+same_name(name::AbstractString, pat::AbstractString) = isequal(FitsLogic(), name, pat)
+same_name(name::AbstractString, pat::Regex) = match(pat, name) !== nothing
+
+for func in (:findfirst, :findlast)
+    @eval Base.$func(pat::Union{AbstractString,Regex}, file::FitsFile) =
+        $func(is_named(pat), file)
+end
+
+for func in (:findnext, :findprev)
+    @eval Base.$func(pat::Union{AbstractString,Regex}, file::FitsFile, start::Integer) =
+        $func(is_named(pat), file, start)
+end
+
+function Base.findfirst(f::Function, file::FitsFile)
+    @inbounds for i ∈ keys(file)
+        f(file[i]) && return i
+    end
+    return nothing
+end
+
+function Base.findlast(f::Function, file::FitsFile)
+    @inbounds for i ∈ reverse(keys(file))
+        f(file[i]) && return i
+    end
+    return nothing
+end
+
+function Base.findnext(f::Function, file::FitsFile, start::Integer)
+    start = to_type(keytype(file), start)
+    start < firstindex(file) && throw(BoundsError(file, start))
+    @inbounds for i ∈ start:lastindex(file)
+        f(file[i]) && return i
+    end
+    return nothing
+end
+
+function Base.findprev(f::Function, file::FitsFile, start::Integer)
+    start = to_type(keytype(file), start)
+    start > lastindex(file) && throw(BoundsError(file, start))
+    @inbounds for i ∈ start:-1:firstindex(file)
+        f(file[i]) && return i
+    end
+    return nothing
+end
+
+"""
     eachmatch(pat, file::FitsFile)
 
 yields an iterator over the Header Data Units (HDUs) of FITS `file` matching
