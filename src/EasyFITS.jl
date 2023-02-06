@@ -1,7 +1,7 @@
 module EasyFITS
 
 export
-    # Re-export from FITSBase:
+    # Re-export from BaseFITS:
     @Fits_str,
     FitsKey,
     FitsCard,
@@ -38,8 +38,8 @@ export
     writefits,
     writefits!
 
-using FITSBase
-using FITSBase:
+using BaseFITS
+using BaseFITS:
     FitsComplex,
     FitsInteger,
     FitsFloat
