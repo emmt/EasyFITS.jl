@@ -66,6 +66,24 @@ Base.setproperty!(hdu::FitsHDU, sym::Symbol, x) =
     sym ∈ propertynames(hdu) ? readonly_property(hdu, sym) : invalid_property(hdu, sym)
 
 """
+    hdu.hduname
+    EasyFITS.hduname(hdu::FitsHDU)
+
+yield the value of the keyword `HDUNAME` in the FITS Header Data Unit `hdu` or
+`nothing` if no such keyword exists.
+
+It is suggested that foreign packages extend this function so that:
+
+    EasyFITS.hduname(T::Type) -> (name, vers)
+
+yields the name and the version of the FITS Header Data Unit when saving an
+object of type `T` in a FITS file. This is also useful to search for such
+contents in a FITS file.
+
+"""
+hduname(hdu::FitsHDU) = get_hduname(hdu)
+
+"""
     EasyFITS.get_file_at(hdu::FitsHDU) -> file
 
 yields the FITS file associated with FITS Header Data Unit `hdu` checking that

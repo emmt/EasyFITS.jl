@@ -1,6 +1,11 @@
 # User visible changes for EasyFITS
 
-## Version 0.4.0
+## Version 0.5.1
+
+- The function `hduname` imported by some other packages is back.
+
+
+## Version 0.5.0
 
 This version introduces lots of changes in the API. The syntax should be more
 intuitive and consistent. To reduce the number of exported functions and avoid

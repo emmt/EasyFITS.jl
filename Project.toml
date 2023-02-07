@@ -1,7 +1,7 @@
 name = "EasyFITS"
 uuid = "a977f4a2-36a7-4172-89e7-19c2726f82e5"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
 CFITSIO_jll = "b3e40c51-02ae-5482-8a39-3ace5868dcf4"
