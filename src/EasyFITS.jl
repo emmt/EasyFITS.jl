@@ -52,7 +52,14 @@ using Base: @propagate_inbounds, string_index_err
 using Base.Order: Ordering, Forward, Reverse
 import Base: open, read, read!, write
 
-include("../deps/deps.jl")
+let file = joinpath(@__DIR__, "..", "deps", "deps.jl")
+    if !isfile(file)
+        error("File \"$file\" does not exists. You may may generate it by:\n",
+              "    using Pkg\n",
+              "    Pkg.build(\"$(@__MODULE__)\")")
+    end
+    include(file)
+end
 include("types.jl")
 include("SmallVectors.jl")
 using .SmallVectors
