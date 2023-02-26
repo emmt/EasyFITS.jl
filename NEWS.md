@@ -1,5 +1,11 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.2
+
+- Call `write(file::FitsFile,FitsImageHDU{T},dims...)` to create a new FITS image HDU
+  with elements of type `T` and dimensions `dims...`.
+
+
 ## Version 0.5.1
 
 - The function `hduname` imported by some other packages is back.

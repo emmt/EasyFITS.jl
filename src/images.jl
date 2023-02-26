@@ -266,24 +266,29 @@ end
 # WRITING FITS IMAGES
 
 """
-    write(file::FitsFile, FitsImageHDU, T=UInt8, dims=()) -> hdu
+    write(file::FitsFile, FitsImageHDU{T}, dims...=()) -> hdu
+    write(file::FitsFile, FitsImageHDU, T::Type=UInt8, dims...=()) -> hdu
+    write(file::FitsFile, FitsImageHDU, bitpix::Integer, dims=()) -> hdu
 
-creates a new primary array or image extension in FITS file `file` with a
-specified pixel type `T` and size `dims`. If the FITS file is currently empty
-then a primary array is created, otherwise a new image extension is appended to
-the file. Pixel type `T` may be a numeric type or an integer BITPIX code.
+create a new primary array or image extension in FITS file `file` with a
+specified pixel type `T` and size `dims...`. If the FITS file is currently
+empty then a primary array is created, otherwise a new image extension is
+appended to the file. Pixel type can be specified as a numeric type `T` or as
+an integer BITPIX code `bitpix`.
 
 An object to manage the new extension is returned which can be used to push
-header cards and then to write the data. For example:
+header cards and then to write the data.
+
+For example:
 
     hdu = write(file, FitsImageHDU, eltype(arr), size(arr))
-    hdu["KEY1"] = val1
-    hdu["KEY2"] = (val2, str2)
-    hdu["KEY3"] = (nothing, str3)
-    write(hdu, arr)
+    hdu["KEY1"] = val1             # add a 1st header record
+    hdu["KEY2"] = (val2, str2)     # add a 2nd header record
+    hdu["KEY3"] = (nothing, str3)  # add a 3rd header record
+    write(hdu, arr)                # write data
 
-will create a new header data unit storing array `arr` with 3 header additional
-header entries: one named `"KEY1"` with value `val1` and no comments, another
+will create a new Header Data Unit (HDU) storing array `arr` with 3 additional
+header records: one named `"KEY1"` with value `val1` and no comments, another
 named `"KEY2"` with value `val2` and comment string `str2`, and yet another one
 named `"KEY3"` with no value and with comment string `str3`. Note that special
 names `"COMMENT"`, `"HISTORY"`, and `""` indicating commentary entries have no
@@ -291,8 +296,8 @@ associated, only a comment string, say `str` which can be specified as `str` or
 as `(,str)`.
 
 """
-function Base.write(file::FitsFile, ::Type{FitsImageHDU},
-                    ::Type{T} = UInt8, dims::NTuple{N,Integer} = ()) where {T,N}
+function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
+                    dims::NTuple{N,Integer} = ()) where {T,N}
     # NOTE: All variants end up calling this type-stable version.
     check(CFITSIO.fits_create_img(file, type_to_bitpix(T), N,
                                   Ref(convert(NTuple{N,Clong}, dims)),
@@ -306,19 +311,42 @@ function Base.write(file::FitsFile, ::Type{FitsImageHDU},
     return FitsImageHDU{T,N}(BareBuild(), file, n)
 end
 
+function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Type = UInt8,
+                    dims::Union{Tuple{Vararg{Integer}},
+                                AbstractVector{<:Integer}} = ())
+    return write(file, FitsImageHDU{T}, dims)
+end
+
+function Base.write(file::FitsFile, ::Type{FitsImageHDU{T,N}},
+                    dims::Union{Tuple{Vararg{Integer}},
+                                AbstractVector{<:Integer}} = ()) where {T,N}
+    length(dims) == N || throw(DimensionMismatch("incompatible number of dimensions"))
+    return write(file, FitsImageHDU{T}, dims)
+end
+
 # Just convert bitpix to type.
 function Base.write(file::FitsFile, ::Type{FitsImageHDU}, bitpix::Integer,
-                    dims::Tuple{Vararg{Integer}} = ())
+                    dims::Union{Tuple{Vararg{Integer}},
+                                AbstractVector{<:Integer}} = ())
     return write(file, FitsImageHDU, type_from_bitpix(bitpix), dims)
 end
 
 # Just pack the dimensions.
-function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
+function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
+                    dims::Integer...) where {T}
+    return write(file, FitsImageHDU{T}, dims)
+end
+function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Type,
                     dims::Integer...)
     return write(file, FitsImageHDU, T, dims)
 end
 
 # Just convert the dimensions.
+function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
+                    dims::AbstractVector{<:Integer}) where {T}
+    off = firstindex(dims) - 1
+    return write(file, FitsImageHDU{T}, ntuple(i -> Clong(dims[i+off]), length(dims)))
+end
 function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
                     dims::AbstractVector{<:Integer})
     off = firstindex(dims) - 1
