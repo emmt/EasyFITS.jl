@@ -310,7 +310,7 @@ function _push!(hdu::FitsHDU, key::String, x, append::Bool)
     return hdu
 end
 
-function Base.push!(hdu::FitsHDU, rec::FitsCard; append::Bool = false)
+function Base.push!(hdu::FitsHDU, card::FitsCard; append::Bool = false)
     if card.type === FITS_COMMENT
         if card.key == Fits"COMMENT"
             write_comment(hdu, card.comment)
