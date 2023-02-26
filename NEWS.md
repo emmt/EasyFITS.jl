@@ -5,6 +5,8 @@
 - Call `write(file::FitsFile,FitsImageHDU{T},dims...)` to create a new FITS image HDU
   with elements of type `T` and dimensions `dims...`.
 
+- Fix writing image extensions with values of type `Bool`. In CFITSIO library,
+  logical values must be considered as bytes in FITS image extensions.
 
 ## Version 0.5.1
 

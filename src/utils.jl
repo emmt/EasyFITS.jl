@@ -157,10 +157,10 @@ extended by other packages to yield the CFITSIO codes equivalent to their own
 types. The CFITSIO type constants (to be prefixed by `EasyFITS.CFITSIO.`) and
 their corresponding C and Julia types are:
 
-| CFITSIO Constant | C Type               | Julia Type         |
+| CFITSIO Constant | C Types              | Julia Types        |
 |:-----------------|:---------------------|:-------------------|
-| `TLOGICAL`       | `char`               | `Cchar`            |
-| `TBYTE`          | `unsigned char`      | `UInt8`            |
+| `TLOGICAL`       | `char`               | `Cchar`, `Bool`    |
+| `TBYTE`          | `unsigned char`      | `UInt8`, `Bool`    |
 | `TSBYTE`         | `signed char`        | `Int8`             |
 | `TUSHORT`        | `unsigned short`     | `Cushort`          |
 | `TSHORT`         | `short`              | `Cshort`           |
@@ -180,6 +180,22 @@ their corresponding C and Julia types are:
 """
 type_to_code(arr::AbstractArray) = type_to_code(typeof(arr))
 type_to_code(::Type{<:AbstractArray{T}}) where {T} = type_to_code(T)
+
+"""
+    EasyFITS.pixeltype_to_code(T)
+
+yields the CFITSIO type code for an image extension storing an array of
+elements type `T`. Argument can also be an array instance or type.
+
+"""
+pixeltype_to_code(arr::AbstractArray) = pixeltype_to_code(typeof(arr))
+pixeltype_to_code(::Type{<:AbstractArray{T}}) where {T} = pixeltype_to_code(T)
+pixeltype_to_code(T::Type) = type_to_code(T)
+pixeltype_to_code(::Type{Bool}) =
+    # NOTE: For FITS image extension Booleans must be considered as bytes in
+    # CFITSIO library.
+    type_to_code(UInt8)
+
 
 """
     EasyFITS.type_from_code(c) -> T

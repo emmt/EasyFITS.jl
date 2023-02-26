@@ -193,7 +193,7 @@ function Base.read!(arr::DenseArray{T,L},
                     first::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
                     last::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
                     step::Union{NTuple{N,Integer},Nothing} = nothing) where {T<:Number,L,N}
-    type = type_to_code(T) # clash if unsupported element type
+    type = pixeltype_to_code(T) # clash if unsupported pixel type
     dims = get_img_size(hdu)
     len = length(arr)
     anynul = Ref{Cint}(anynull isa Ref{Bool} && len > 0)
@@ -417,7 +417,7 @@ function Base.write(hdu::FitsImageHDU{<:Any,N},
                     first::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
                     last::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
                     null::Union{Number,Nothing} = nothing) where {T<:Number,L,N}
-    type = type_to_code(arr) # clash if unsupported element type
+    type = pixeltype_to_code(arr) # clash if unsupported pixel type
     dims = get_img_size(hdu)
     len = length(arr)
     if first isa Tuple && last isa Tuple && null isa Nothing
