@@ -69,7 +69,7 @@ function Base.read(::Type{Array{T}}, hdu::FitsImageHDU{<:Any,N}; kwds...) where 
     return read(Array{T,N}, hdu; kwds...)
 end
 
-function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU;
+function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU{<:Any,N};
                    null::Union{DenseArray{Bool,N},Ref{T},Nothing} = nothing,
                    anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,N}
     arr = Array{T,N}(undef, get_img_size(hdu))
