@@ -356,7 +356,7 @@ Base.merge!(hdu::FitsHDU, recs::Nothing; append::Bool = false) = hdu
 
 function Base.merge!(hdu::FitsHDU, recs::NamedTuple; append::Bool = false)
     for key in keys(recs)
-        push!(hdu, key => recs[key]; append = append)
+        push!(hdu, key => recs[key]; append)
     end
     return hdu
 end
@@ -364,7 +364,7 @@ end
 # By default, assume an iterable object.
 function Base.merge!(hdu::FitsHDU, recs; append::Bool = false)
     for rec in recs
-        push!(hdu, rec; append = append)
+        push!(hdu, rec; append)
     end
     return hdu
 end

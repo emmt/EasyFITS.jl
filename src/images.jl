@@ -73,7 +73,7 @@ function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU{<:Any,N};
                    null::Union{DenseArray{Bool,N},Ref{T},Nothing} = nothing,
                    anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,N}
     arr = Array{T,N}(undef, get_img_size(hdu))
-    return read!(arr, hdu; null = null, anynull = anynull)
+    return read!(arr, hdu; null, anynull)
 end
 
 """
@@ -119,8 +119,7 @@ function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU, inds::SubArrayIndices;
     arr_dims, first, step, last = subarray_params(img_dims, inds)
     length(arr_dims) == N || throw(DimensionMismatch(
         "given indices yield $(length(arr_dims)) dimension(s) not N=$N"))
-    return read!(new_array(T, arr_dims), hdu; null = null, anynull = anynull,
-                 first = first, step = step, last = last)
+    return read!(new_array(T, arr_dims), hdu; null, anynull, first, step, last)
 end
 
 """
@@ -146,8 +145,7 @@ function Base.read!(arr::DenseArray{T,L}, hdu::FitsImageHDU{<:Any,N},
     img_dims = get_img_size(hdu)
     arr_dims, first, step, last = subarray_params(img_dims, inds)
     size(arr) == arr_dims || throw(DimensionMismatch("output array has invalid dimensions"))
-    return read!(arr, hdu; null = null, anynull = anynull,
-                 irst = first, step = step, last = last)
+    return read!(arr, hdu; null, anynull, first, step, last)
 end
 
 """

@@ -444,8 +444,7 @@ except that in-lining is used to unroll the loop.
 @inline map_recursively(f::Function, r, a1::Tuple{}, a2::Tuple; missing=missing) =
     map_recursively(f, f(r, missing, first(a2)), (), Base.tail(a2); missing=missing)
 @inline map_recursively(f::Function, r, a1::Tuple, a2::Tuple; missing=missing) =
-    map_recursively(f, f(r, first(a1), first(a2)), Base.tail(a1), Base.tail(a2);
-                   missing=missing)
+    map_recursively(f, f(r, first(a1), first(a2)), Base.tail(a1), Base.tail(a2); missing)
 
 """
     EasyFITS.subarray_params(dims, inds) -> (d, f, s, l)

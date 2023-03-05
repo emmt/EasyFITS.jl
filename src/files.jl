@@ -195,7 +195,7 @@ creates a new FITS file named `filename` whose contents is specified by
 `args...`. If the file already exists, the method fails unless keyword
 `overwrite` is `true`. This method is equivalent to:
 
-    writefits(filename, args...; overwrite = overwrite, kwds...)
+    writefits(filename, args...; overwrite = false, kwds...)
 
 See [`writefits`](@ref) for the meaning of `args...` and [`FitsFile`](@ref) for
 other keywords that may be specified when opening the file.

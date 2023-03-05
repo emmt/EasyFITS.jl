@@ -188,11 +188,11 @@ function Base.read(::Type{Array}, hdu::FitsTableHDU, col::Integer;
     type, repeat, width = get_eqcoltype(hdu, col)
     if type == CFITSIO.TSTRING
         return read(Array{String}, hdu, col;
-                    first=first, last=last, kwds...)
+                    first, last, kwds...)
     else
         dims = size_to_read(hdu, col, first, last, true)
         return read!(new_array(type_from_code(type), dims), hdu, col;
-                     first=first, kwds...)
+                     first, kwds...)
     end
 end
 
@@ -201,7 +201,7 @@ function Base.read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer;
                    last::Integer = hdu.last_row,
                    kwds...) where {T<:Number}
     dims = size_to_read(hdu, col, first, last, true)
-    return read!(new_array(T, dims), hdu, col; first=first, kwds...)
+    return read!(new_array(T, dims), hdu, col; first, kwds...)
 end
 
 function Base.read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer;
@@ -210,7 +210,7 @@ function Base.read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer;
                    kwds...) where {T<:Number,N}
     dims = size_to_read(hdu, col, first, last, true)
     length(dims) == N || error("invalid number of dimensions")
-    return read!(new_array(T, Val(N), dims), hdu, col; first=first, kwds...)
+    return read!(new_array(T, Val(N), dims), hdu, col; first, kwds...)
 end
 
 # Read array of strings as bytes. FIXME: null and anynull keywords
@@ -221,7 +221,7 @@ function Base.read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer;
                    kwds...)
     dims = size_to_read(hdu, col, first, last, false)
     return bytes_to_strings(read!(new_array(UInt8, dims), hdu, col;
-                                  first=first, kwds...))
+                                  first, kwds...))
 end
 
 function Base.read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer;
@@ -231,7 +231,7 @@ function Base.read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer;
     dims = size_to_read(hdu, col, first, last, false)
     length(dims) == N+1 || error("invalid number of dimensions")
     return bytes_to_strings(read!(new_array(T, Val(N+1), dims), hdu, col;
-                                  first=first, kwds...))
+                                  first, kwds...))
 end
 
 # Yields size of column data as read.
@@ -345,7 +345,7 @@ function read(::Type{Dict{String,Array}},
             num = get_colnum(hdu, col, case)
         end
         key = names[num]
-        push!(dict, key => read(Array, hdu, num; first = first, last = last, kwds...))
+        push!(dict, key => read(Array, hdu, num; first, last, kwds...))
     end
     return dict
 end
@@ -407,7 +407,7 @@ function read(::Type{Vector{Array}},
         elseif col isa AbstractString || col isa Symbol
             num = get_colnum(hdu, col, case)
         end
-        vect[i] = read(Array, hdu, num; first = first, last = last, kwds...)
+        vect[i] = read(Array, hdu, num; first, last, kwds...)
         i += 1
     end
     return vect
