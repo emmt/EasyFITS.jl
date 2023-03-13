@@ -206,7 +206,8 @@ end
 end
 
 # This function is needed to truncate C-string at 1st null, we take the
-# opportunity of thsi filtering to strip trailing spaces.
+# opportunity of this filtering to strip trailing spaces.
+# FIXME: This maybe done elsewhere?
 function parse_cstring(::Type{FitsCard}, buf::AbstractVector{UInt8})
     first = firstindex(buf)
     last = first - 1

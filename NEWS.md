@@ -2,7 +2,9 @@
 
 ## Version 0.5.3
 
-- Fix writing in a file with a given header and image array. Header is now merged with success.
+- Fix directly writing a FITS image extension in a file with a given header and
+  image array.
+
 
 ## Version 0.5.2
 
