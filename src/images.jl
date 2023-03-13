@@ -360,7 +360,7 @@ end
 function Base.write(file::FitsFile, hdr::Union{Header,Nothing},
                     arr::AbstractArray{T,N}) where {T<:Number,N}
     # FIXME: improve type-stability
-    write(push!(write(file, FitsImageHDU, T, size(arr)), hdr), arr)
+    write(merge!(write(file, FitsImageHDU, T, size(arr)), hdr), arr)
     return file
 end
 
