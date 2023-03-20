@@ -4,12 +4,12 @@
 
 - Use `AsType` package.
 
+- Save arrays of Booleans as bytes in FITS image extensions.
 
 ## Version 0.5.3
 
 - Fix directly writing a FITS image extension in a file with a given header and
   image array.
-
 
 ## Version 0.5.2
 
@@ -22,7 +22,6 @@
 ## Version 0.5.1
 
 - The function `hduname` imported by some other packages is back.
-
 
 ## Version 0.5.0
 

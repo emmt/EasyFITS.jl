@@ -119,6 +119,7 @@ values as explicitely allowed by the FITS Standard (version 4).
 """
 type_to_bitpix(arr::AbstractArray) = type_to_bitpix(typeof(arr))
 type_to_bitpix(::Type{<:AbstractArray{T}}) where {T} = type_to_bitpix(T)
+type_to_bitpix(::Type{Bool}) = type_to_bitpix(UInt8)
 
 """
     EasyFITS.type_from_bitpix(b) -> T
