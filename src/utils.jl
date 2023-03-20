@@ -553,6 +553,3 @@ function to_string!(buf::Vector{UInt8})
     end
     return String(buf)
 end
-
-to_type(::Type{T}, x::T) where {T} = x
-to_type(::Type{T}, x) where {T} = convert(T, x)::T

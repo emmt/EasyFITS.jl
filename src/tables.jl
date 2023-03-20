@@ -24,13 +24,13 @@ Base.getproperty(hdu::FitsTableHDU, ::Val{:ncols}) = get_ncols(hdu)
 function get_nrows(f::Union{FitsFile,FitsTableHDU})
     nrows = Ref{Clonglong}()
     check(CFITSIO.fits_get_num_rowsll(f, nrows, Ref{Status}(0)))
-    return to_type(Int, nrows[])
+    return as(Int, nrows[])
 end
 
 function get_ncols(f::Union{FitsFile,FitsTableHDU})
     ncols = Ref{Cint}()
     check(CFITSIO.fits_get_num_cols(f, ncols, Ref{Status}(0)))
-    return to_type(Int, ncols[])
+    return as(Int, ncols[])
 end
 
 """
@@ -66,14 +66,14 @@ whether upper-/lower-case matters if `col` is a string or a symbol.
 """
 function get_colnum(hdu::FitsTableHDU, col::Integer, case::Bool = false)
     @boundscheck check_colnum(hdu, col)
-    return to_type(Int, col)
+    return as(Int, col)
 end
 
 function get_colnum(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
     colnum = Ref{Cint}()
     check(CFITSIO.fits_get_colnum(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
                                   col, colnum, Ref{Status}(0)))
-    return to_type(Int, colnum[])
+    return as(Int, colnum[])
 end
 
 check_colnum(hdu::FitsTableHDU, col::Integer) =
@@ -91,8 +91,8 @@ specify whether upper-/lower-case matters if `col` is a string or a symbol. If
 function get_colname(hdu::FitsTableHDU, col::Integer, case::Bool = false)
     check_colnum(hdu, col)
     card = get(hdu, "TTYPE$col", nothing) # FIXME: optimize?
-    (card === nothing || card.type != FITS_STRING) && return ("COL#$col", to_type(Int, col))
-    return (case ? card.string : uppercase(card.string), to_type(Int, col))
+    (card === nothing || card.type != FITS_STRING) && return ("COL#$col", as(Int, col))
+    return (case ? card.string : uppercase(card.string), as(Int, col))
 end
 
 function get_colname(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
@@ -100,7 +100,7 @@ function get_colname(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
     colname = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
     check(CFITSIO.fits_get_colname(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
                                    col, pointer(colname), colnum, Ref{Status}(0)))
-    return (to_string!(colname), to_type(Int, colnum[]))
+    return (to_string!(colname), as(Int, colnum[]))
 end
 
 for func in (:get_coltype, :get_eqcoltype)
@@ -114,7 +114,7 @@ for func in (:get_coltype, :get_eqcoltype)
         repeat = Ref{Clonglong}()
         width = Ref{Clonglong}()
         check(CFITSIO.$cfunc(f, col, type, repeat, width, Ref{Status}(0)))
-        return (type[], to_type(Int, repeat[]), to_type(Int, width[]))
+        return (type[], as(Int, repeat[]), as(Int, width[]))
     end
 end
 
@@ -134,7 +134,7 @@ function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
             resize!(naxes, naxis[])
         end
     end
-    return to_type(Vector{Int}, naxes)
+    return as(Vector{Int}, naxes)
 end
 
 """
@@ -340,7 +340,7 @@ function read(::Type{Dict{String,Array}},
     end
     for col in cols
         if col isa Integer
-            num = to_type(Int, col)
+            num = as(Int, col)
         elseif col isa AbstractString || col isa Symbol
             num = get_colnum(hdu, col, case)
         end
@@ -403,7 +403,7 @@ function read(::Type{Vector{Array}},
     i = firstindex(vect)
     for col in cols
         if col isa Integer
-            num = to_type(Int, col)
+            num = as(Int, col)
         elseif col isa AbstractString || col isa Symbol
             num = get_colnum(hdu, col, case)
         end
@@ -457,7 +457,7 @@ function Base.read!(arr::DenseArray{T,N}, hdu::FitsTableHDU, col::Integer;
     if null === nothing
         _null = zero(T)
     elseif null isa Number
-        _null = to_type(T, null)
+        _null = as(T, null)
     else
         _null = null
     end

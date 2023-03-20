@@ -398,9 +398,9 @@ keyword without the comment part.
 normalize_card_value(val::Undefined) = missing
 normalize_card_value(val::Nothing) = nothing
 normalize_card_value(val::Bool) = val
-normalize_card_value(val::Integer) = to_type(Int, val)
-normalize_card_value(val::Real) = to_type(Cdouble, val)
-normalize_card_value(val::Complex) = to_type(Complex{Cdouble}, val)
+normalize_card_value(val::Integer) = as(Int, val)
+normalize_card_value(val::Real) = as(Cdouble, val)
+normalize_card_value(val::Complex) = as(Complex{Cdouble}, val)
 normalize_card_value(val::AbstractString) = val
 normalize_card_value(val::Any) = Invalid() # means error
 

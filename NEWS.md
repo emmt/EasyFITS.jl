@@ -1,5 +1,10 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.4
+
+- Use `AsType` package.
+
+
 ## Version 0.5.3
 
 - Fix directly writing a FITS image extension in a file with a given header and

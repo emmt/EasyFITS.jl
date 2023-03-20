@@ -445,7 +445,7 @@ function Base.getindex(file::FitsFile, str::AbstractString)
 end
 
 function Base.get(file::FitsFile, i::Integer, def)
-    i = to_type(keytype(file), i)
+    i = as(keytype(file), i)
     checkbounds(Bool, file, i) ? file[i] : def
 end
 
@@ -527,7 +527,7 @@ function Base.findlast(f::Function, file::FitsFile)
 end
 
 function Base.findnext(f::Function, file::FitsFile, start::Integer)
-    start = to_type(keytype(file), start)
+    start = as(keytype(file), start)
     start < firstindex(file) && throw(BoundsError(file, start))
     @inbounds for i ∈ start:lastindex(file)
         f(file[i]) && return i
@@ -536,7 +536,7 @@ function Base.findnext(f::Function, file::FitsFile, start::Integer)
 end
 
 function Base.findprev(f::Function, file::FitsFile, start::Integer)
-    start = to_type(keytype(file), start)
+    start = as(keytype(file), start)
     start > lastindex(file) && throw(BoundsError(file, start))
     @inbounds for i ∈ start:-1:firstindex(file)
         f(file[i]) && return i
