@@ -38,6 +38,8 @@ export
     writefits,
     writefits!
 
+using AsType
+
 using BaseFITS
 using BaseFITS:
     CardName,
