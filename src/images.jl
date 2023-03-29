@@ -203,10 +203,10 @@ function Base.read!(arr::DenseArray{T,L},
         if step === nothing
             ipix = NTuple(i -> one(Clong), Val(N))::NTuple{N,Clong}
         else
-            ipix = convert(NTuple{N,Clong}, step)::NTuple{N,Clong}
+            ipix = as(NTuple{N,Clong}, step)
         end
-        fpix = convert(NTuple{N,Clong}, first)::NTuple{N,Clong}
-        lpix = convert(NTuple{N,Clong}, last)::NTuple{N,Clong}
+        fpix = as(NTuple{N,Clong}, first)
+        lpix = as(NTuple{N,Clong}, last)
         npix = 1
         for k in 1:N
             let r = fpix[k]:ipix[k]:lpix[k]
@@ -298,7 +298,7 @@ function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
                     dims::NTuple{N,Integer} = ()) where {T,N}
     # NOTE: All variants end up calling this type-stable version.
     check(CFITSIO.fits_create_img(file, type_to_bitpix(T), N,
-                                  Ref(convert(NTuple{N,Clong}, dims)),
+                                  Ref(as(NTuple{N,Clong}, dims)),
                                   Ref{Status}(0)))
     # The number of HDUs as returned by fits_get_num_hdus is only incremented
     # after writing data.
@@ -423,8 +423,8 @@ function Base.write(hdu::FitsImageHDU{<:Any,N},
         # be specified because it is not possible to guess one given the other
         # and the size of the array to write as it may have fewer dimensions
         # than the image.
-        fpix = convert(NTuple{N,Clong}, first)::NTuple{N,Clong}
-        lpix = convert(NTuple{N,Clong}, last)::NTuple{N,Clong}
+        fpix = as(NTuple{N,Clong}, first)
+        lpix = as(NTuple{N,Clong}, last)
         npix = 1
         for k in 1:N
             let r = fpix[k]:lpix[k]
