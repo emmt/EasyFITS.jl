@@ -15,7 +15,7 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 [compat]
 BaseFITS = "0.3"
 CFITSIO_jll = "3, 4"
-Clang = "0.14, 0.15, 0.16"
+Clang = "0.14, 0.15, 0.16, 0.17"
 Requires = "1.3"
 TOML = "1.0"
 julia = "1.6"
