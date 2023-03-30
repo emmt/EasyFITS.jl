@@ -76,10 +76,10 @@ end
 # Read FITS files.
 
 """
-    read(FitsHeader, filename; ext, kwds...) -> FitsHeader
+    read(FitsHeader, filename; ext=1, kwds...) -> hdr::FitsHeader
 
-opens the FitsFile `filename` in read mode, selects the HDU `ext` (default is 1), parses and returns
-its header part as a `BaseFITS.FitsHeader`. See [`FitsFile`](@ref) for the possible keywords `kwds`.
+yields the header of the `ext` extension of the FITS file `filename`. See
+[`FitsFile`](@ref) for the possible keywords `kwds...`.
 
 """
 function read(::Type{FitsHeader}, filename::AbstractString;
