@@ -397,6 +397,9 @@ end
             @test read(hdu, inds...) == A[inds...]
         end
     end
+    # Write empty image
+    @test_throws MethodError write(openfits(tempfile, "w!"), FitsHeader(), [])
+    write(openfits(tempfile, "w!"), FitsHeader(), Int32[])
 end
 
 @testset "FITS Tables" begin
