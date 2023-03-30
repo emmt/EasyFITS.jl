@@ -82,7 +82,7 @@ const Header = Union{FitsHeader,NamedTuple,VectorOfCardPairs}
     EasyFITS.ImageData{T,N}
 
 """
-const ImageData{T,N} = AbstractArray{T,N}
+const ImageData{T<:Number,N} = AbstractArray{T,N}
 
 """
     EasyFITS.TableData
