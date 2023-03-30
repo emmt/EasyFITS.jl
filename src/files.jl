@@ -76,6 +76,18 @@ end
 # Read FITS files.
 
 """
+    read(FitsHeader, filename; ext, kwds...) -> FitsHeader
+
+opens the FitsFile `filename` in read mode, selects the HDU `ext` (default is 1), parses and returns
+its header part as a `BaseFITS.FitsHeader`. See [`FitsFile`](@ref) for the possible keywords `kwds`.
+
+"""
+function read(::Type{FitsHeader}, filename::AbstractString;
+              ext::Union{AbstractString,Integer} = 1, kwds...)
+    return FitsFile(filename, "r"; kwds...) do file; FitsHeader(file[ext]) end
+end
+
+"""
     readfits(R::Type=Array, filename; ext=1, col=nothing, extended=false) -> data::R
 
 reads some data in extension `ext` (a Header Data Unit number or a name) in
