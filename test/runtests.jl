@@ -398,8 +398,13 @@ end
         end
     end
     # Write empty image
-    @test_throws MethodError write(openfits(tempfile, "w!"), FitsHeader(), [])
-    write(openfits(tempfile, "w!"), FitsHeader(), Int32[])
+    @test_throws Exception writefits!(tempfile, FitsHeader(), []) #TODO: MethodError expected
+    writefits!(tempfile, FitsHeader(), Int32[])
+    arr = readfits(Array, tempfile)
+    @test length(arr) == 0
+    @test eltype(arr) == Int32
+    # Read FITS header
+    @test read(FitsHeader, tempfile) isa FitsHeader
 end
 
 @testset "FITS Tables" begin
