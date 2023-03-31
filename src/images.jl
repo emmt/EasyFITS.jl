@@ -57,21 +57,21 @@ Keywords `anynull` and `null` may be specified to deal with undefined pixel
 values (see documentation for `read!`).
 
 """
-function Base.read(hdu::FitsImageHDU{T,N}; kwds...) where {T,N}
+function read(hdu::FitsImageHDU{T,N}; kwds...) where {T,N}
     return read(Array{T,N}, hdu; kwds...)
 end
 
-function Base.read(::Type{Array}, hdu::FitsImageHDU{T,N}; kwds...) where {T,N}
+function read(::Type{Array}, hdu::FitsImageHDU{T,N}; kwds...) where {T,N}
     return read(Array{T,N}, hdu; kwds...)
 end
 
-function Base.read(::Type{Array{T}}, hdu::FitsImageHDU{<:Any,N}; kwds...) where {T<:Number,N}
+function read(::Type{Array{T}}, hdu::FitsImageHDU{<:Any,N}; kwds...) where {T<:Number,N}
     return read(Array{T,N}, hdu; kwds...)
 end
 
-function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU{<:Any,N};
-                   null::Union{DenseArray{Bool,N},Ref{T},Nothing} = nothing,
-                   anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,N}
+function read(::Type{Array{T,N}}, hdu::FitsImageHDU{<:Any,N};
+              null::Union{DenseArray{Bool,N},Ref{T},Nothing} = nothing,
+              anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,N}
     arr = Array{T,N}(undef, get_img_size(hdu))
     return read!(arr, hdu; null, anynull)
 end
@@ -91,30 +91,30 @@ but may be more efficient as no array other than the result is allocated and
 fewer values are read.
 
 """
-function Base.read(hdu::FitsImageHDU{T}, inds::SubArrayIndex...; kwds...) where {T}
+function read(hdu::FitsImageHDU{T}, inds::SubArrayIndex...; kwds...) where {T}
     return read(Array{T}, hdu, inds; kwds...)
 end
 
-function Base.read(hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T}
+function read(hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T}
     return read(Array{T}, hdu, inds; kwds...)
 end
 
-function Base.read(::Type{R}, hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) where {R<:Array}
+function read(::Type{R}, hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) where {R<:Array}
     return read(R, hdu, inds; kwds...)
 end
 
-function Base.read(::Type{Array}, hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T}
+function read(::Type{Array}, hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T}
     return read(Array{T}, hdu, inds; kwds...)
 end
 
-function Base.read(::Type{Array{T}}, hdu::FitsImageHDU, inds::SubArrayIndices; kwds...) where {T}
+function read(::Type{Array{T}}, hdu::FitsImageHDU, inds::SubArrayIndices; kwds...) where {T}
     N = count(i -> !isa(i, Integer), inds) # count number of output dimensions
     return read(Array{T,N}, hdu, inds; kwds...)
 end
 
-function Base.read(::Type{Array{T,N}}, hdu::FitsImageHDU, inds::SubArrayIndices;
-                   null::Union{DenseArray{Bool,N},Ref{T},Nothing} = nothing,
-                   anynull::Union{Nothing,Ref{Bool}} = nothing) where {T,N}
+function read(::Type{Array{T,N}}, hdu::FitsImageHDU, inds::SubArrayIndices;
+              null::Union{DenseArray{Bool,N},Ref{T},Nothing} = nothing,
+              anynull::Union{Nothing,Ref{Bool}} = nothing) where {T,N}
     img_dims = get_img_size(hdu)
     arr_dims, first, step, last = subarray_params(img_dims, inds)
     length(arr_dims) == N || throw(DimensionMismatch(
@@ -133,15 +133,15 @@ sub-region). Keywords `anynull` and `null` may be specified to deal with
 undefined pixel values.
 
 """
-function Base.read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU,
-                    inds::SubArrayIndex...; kwds...)
+function read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU,
+               inds::SubArrayIndex...; kwds...)
     return read!(arr, hdu, inds; kwds...)
 end
 
-function Base.read!(arr::DenseArray{T,L}, hdu::FitsImageHDU{<:Any,N},
-                    inds::SubArrayIndices{N};
-                    null::Union{DenseArray{Bool,L},Ref{T},Nothing} = nothing,
-                    anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,L,N}
+function read!(arr::DenseArray{T,L}, hdu::FitsImageHDU{<:Any,N},
+               inds::SubArrayIndices{N};
+               null::Union{DenseArray{Bool,L},Ref{T},Nothing} = nothing,
+               anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,L,N}
     img_dims = get_img_size(hdu)
     arr_dims, first, step, last = subarray_params(img_dims, inds)
     size(arr) == arr_dims || throw(DimensionMismatch("output array has invalid dimensions"))
@@ -184,13 +184,13 @@ Output arrays `arr` and `null` must have contiguous elements, in other words,
 they must be *dense arrays*.
 
 """
-function Base.read!(arr::DenseArray{T,L},
-                    hdu::FitsImageHDU{<:Any,N};
-                    null::Union{DenseArray{Bool,L},Ref{T},Nothing} = nothing,
-                    anynull::Union{Nothing,Ref{Bool}} = nothing,
-                    first::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
-                    last::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
-                    step::Union{NTuple{N,Integer},Nothing} = nothing) where {T<:Number,L,N}
+function read!(arr::DenseArray{T,L},
+               hdu::FitsImageHDU{<:Any,N};
+               null::Union{DenseArray{Bool,L},Ref{T},Nothing} = nothing,
+               anynull::Union{Nothing,Ref{Bool}} = nothing,
+               first::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
+               last::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
+               step::Union{NTuple{N,Integer},Nothing} = nothing) where {T<:Number,L,N}
     type = pixeltype_to_code(T) # clash if unsupported pixel type
     dims = get_img_size(hdu)
     len = length(arr)
@@ -294,8 +294,8 @@ associated, only a comment string, say `str` which can be specified as `str` or
 as `(,str)`.
 
 """
-function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
-                    dims::NTuple{N,Integer} = ()) where {T,N}
+function write(file::FitsFile, ::Type{FitsImageHDU{T}},
+               dims::NTuple{N,Integer} = ()) where {T,N}
     # NOTE: All variants end up calling this type-stable version.
     check(CFITSIO.fits_create_img(file, type_to_bitpix(T), N,
                                   Ref(as(NTuple{N,Clong}, dims)),
@@ -309,44 +309,44 @@ function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
     return FitsImageHDU{T,N}(BareBuild(), file, n)
 end
 
-function Base.write(file::FitsFile, ::Type{FitsImageHDU},
-                    ::Type{T} = UInt8, dims::Union{Tuple{Vararg{Integer}},
-                                                   AbstractVector{<:Integer}} = ()) where {T}
+function write(file::FitsFile, ::Type{FitsImageHDU},
+               ::Type{T} = UInt8, dims::Union{Tuple{Vararg{Integer}},
+                                              AbstractVector{<:Integer}} = ()) where {T}
     return write(file, FitsImageHDU{T}, dims)
 end
 
-function Base.write(file::FitsFile, ::Type{FitsImageHDU{T,N}},
-                    dims::Union{Tuple{Vararg{Integer}},
-                                AbstractVector{<:Integer}} = ()) where {T,N}
+function write(file::FitsFile, ::Type{FitsImageHDU{T,N}},
+               dims::Union{Tuple{Vararg{Integer}},
+                           AbstractVector{<:Integer}} = ()) where {T,N}
     length(dims) == N || throw(DimensionMismatch("incompatible number of dimensions"))
     return write(file, FitsImageHDU{T}, dims)
 end
 
 # Just convert bitpix to type.
-function Base.write(file::FitsFile, ::Type{FitsImageHDU}, bitpix::Integer,
-                    dims::Union{Tuple{Vararg{Integer}},
-                                AbstractVector{<:Integer}} = ())
+function write(file::FitsFile, ::Type{FitsImageHDU}, bitpix::Integer,
+               dims::Union{Tuple{Vararg{Integer}},
+                           AbstractVector{<:Integer}} = ())
     return write(file, FitsImageHDU, type_from_bitpix(bitpix), dims)
 end
 
 # Just pack the dimensions.
-function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
-                    dims::Integer...) where {T}
+function write(file::FitsFile, ::Type{FitsImageHDU{T}},
+               dims::Integer...) where {T}
     return write(file, FitsImageHDU{T}, dims)
 end
-function Base.write(file::FitsFile, ::Type{FitsImageHDU}, ::Type{T},
-                    dims::Integer...) where {T}
+function write(file::FitsFile, ::Type{FitsImageHDU}, ::Type{T},
+               dims::Integer...) where {T}
     return write(file, FitsImageHDU, T, dims)
 end
 
 # Just convert the dimensions.
-function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
-                    dims::AbstractVector{<:Integer}) where {T}
+function write(file::FitsFile, ::Type{FitsImageHDU{T}},
+               dims::AbstractVector{<:Integer}) where {T}
     off = firstindex(dims) - 1
     return write(file, FitsImageHDU{T}, ntuple(i -> Clong(dims[i+off]), length(dims)))
 end
-function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
-                    dims::AbstractVector{<:Integer})
+function write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
+               dims::AbstractVector{<:Integer})
     off = firstindex(dims) - 1
     return write(file, FitsImageHDU, T, ntuple(i -> Clong(dims[i+off]), length(dims)))
 end
@@ -357,26 +357,26 @@ end
     write(file::FitsFile, arr::AbstractArray, hdr=nothing) -> file
 
 """
-function Base.write(file::FitsFile, hdr::Union{Header,Nothing},
-                    arr::AbstractArray{T,N}) where {T<:Number,N}
+function write(file::FitsFile, hdr::Union{Header,Nothing},
+               arr::AbstractArray{T,N}) where {T<:Number,N}
     # FIXME: improve type-stability
     write(merge!(write(file, FitsImageHDU, T, size(arr)), hdr), arr)
     return file
 end
 
-function Base.write(file::FitsFile, arr::AbstractArray{<:Number},
-                    hdr::Union{Header,Nothing} = nothing)
+function write(file::FitsFile, arr::AbstractArray{<:Number},
+               hdr::Union{Header,Nothing} = nothing)
     return write(file, hdr, arr)
 end
 
-function Base.write(file::FitsFile, hdr::Union{Header,Nothing},
-                    arr::AbstractArray{<:Number}, args...)
+function write(file::FitsFile, hdr::Union{Header,Nothing},
+               arr::AbstractArray{<:Number}, args...)
     write(file, hdr, arr)
     return write(file, args...)
 end
 
-function Base.write(file::FitsFile, arr::AbstractArray{<:Number},
-                    hdr::Union{Header,Nothing}, args...)
+function write(file::FitsFile, arr::AbstractArray{<:Number},
+               hdr::Union{Header,Nothing}, args...)
     write(file, hdr, arr)
     return write(file, args...)
 end
@@ -410,11 +410,11 @@ keyword doesn't exist). For floating point FITS images the special IEEE NaN
 (Not-a-Number) value will be written into the FITS file.
 
 """
-function Base.write(hdu::FitsImageHDU{<:Any,N},
-                    arr::AbstractArray{T,L};
-                    first::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
-                    last::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
-                    null::Union{Number,Nothing} = nothing) where {T<:Number,L,N}
+function write(hdu::FitsImageHDU{<:Any,N},
+               arr::AbstractArray{T,L};
+               first::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
+               last::Union{Integer,NTuple{N,Integer},Nothing} = nothing,
+               null::Union{Number,Nothing} = nothing) where {T<:Number,L,N}
     type = pixeltype_to_code(arr) # clash if unsupported pixel type
     dims = get_img_size(hdu)
     len = length(arr)

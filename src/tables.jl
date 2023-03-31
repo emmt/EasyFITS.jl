@@ -159,32 +159,32 @@ See [`read!(::DenseArray,::FitsTableHDU,::Integer)`](@ref) for the other
 possible keywords.
 
 """
-Base.read(hdu::FitsTableHDU, col::Union{Integer,AbstractString}; kwds...) =
+read(hdu::FitsTableHDU, col::Union{Integer,AbstractString}; kwds...) =
     read(Array, hdu, col; kwds...)
 
-function Base.read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
-                   rng::AbstractUnitRange{<:Integer}; kwds...)
+function read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
+              rng::AbstractUnitRange{<:Integer}; kwds...)
     return read(Array, hdu, col;
                 first = Int(Base.first(rng)),
                 last = Int(Base.last(rng)), kwds...)
 end
 
-function Base.read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
-                   ::Colon; kwds...)
+function read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
+              ::Colon; kwds...)
     return read(Array, hdu, col;
                 first = hdu.first_row,
                 last = hadu.last_row, kwds...)
 end
 
-function Base.read(::Type{R}, hdu::FitsTableHDU, col::AbstractString;
-                   case::Bool = false, kwds...) where {R<:Array}
+function read(::Type{R}, hdu::FitsTableHDU, col::AbstractString;
+              case::Bool = false, kwds...) where {R<:Array}
     return read(R, hdu, get_colnum(hdu, col, case); kwds...)
 end
 
-function Base.read(::Type{Array}, hdu::FitsTableHDU, col::Integer;
-                   first::Integer = hdu.first_row,
-                   last::Integer = hdu.last_row,
-                   kwds...)
+function read(::Type{Array}, hdu::FitsTableHDU, col::Integer;
+              first::Integer = hdu.first_row,
+              last::Integer = hdu.last_row,
+              kwds...)
     type, repeat, width = get_eqcoltype(hdu, col)
     if type == CFITSIO.TSTRING
         return read(Array{String}, hdu, col;
@@ -196,18 +196,18 @@ function Base.read(::Type{Array}, hdu::FitsTableHDU, col::Integer;
     end
 end
 
-function Base.read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer;
-                   first::Integer = hdu.first_row,
-                   last::Integer = hdu.last_row,
-                   kwds...) where {T<:Number}
+function read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer;
+              first::Integer = hdu.first_row,
+              last::Integer = hdu.last_row,
+              kwds...) where {T<:Number}
     dims = size_to_read(hdu, col, first, last, true)
     return read!(new_array(T, dims), hdu, col; first, kwds...)
 end
 
-function Base.read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer;
-                   first::Integer = hdu.first_row,
-                   last::Integer = hdu.last_row,
-                   kwds...) where {T<:Number,N}
+function read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer;
+              first::Integer = hdu.first_row,
+              last::Integer = hdu.last_row,
+              kwds...) where {T<:Number,N}
     dims = size_to_read(hdu, col, first, last, true)
     length(dims) == N || error("invalid number of dimensions")
     return read!(new_array(T, Val(N), dims), hdu, col; first, kwds...)
@@ -215,19 +215,19 @@ end
 
 # Read array of strings as bytes. FIXME: null and anynull keywords
 
-function Base.read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer;
-                   first::Integer = hdu.first_row,
-                   last::Integer = hdu.last_row,
-                   kwds...)
+function read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer;
+              first::Integer = hdu.first_row,
+              last::Integer = hdu.last_row,
+              kwds...)
     dims = size_to_read(hdu, col, first, last, false)
     return bytes_to_strings(read!(new_array(UInt8, dims), hdu, col;
                                   first, kwds...))
 end
 
-function Base.read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer;
-                   first::Integer = hdu.first_row,
-                   last::Integer = hdu.last_row,
-                   kwds...) where {N}
+function read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer;
+              first::Integer = hdu.first_row,
+              last::Integer = hdu.last_row,
+              kwds...) where {N}
     dims = size_to_read(hdu, col, first, last, false)
     length(dims) == N+1 || error("invalid number of dimensions")
     return bytes_to_strings(read!(new_array(T, Val(N+1), dims), hdu, col;
@@ -440,20 +440,20 @@ Output arrays `arr` and `null` must have contiguous elements, in other words,
 they must be *dense arrays*.
 
 """
-function Base.read!(arr::DenseArray, hdu::FitsTableHDU,
-                    col::AbstractString; case::Bool = false, kwds...)
+function read!(arr::DenseArray, hdu::FitsTableHDU,
+               col::AbstractString; case::Bool = false, kwds...)
     return read!(arr, hdu, get_colnum(hdu, col, case); kwds...)
 end
 
-function Base.read!(arr::DenseArray{String,N}, hdu::FitsTableHDU, col::Integer;
-                    kwds...) where {N}
+function read!(arr::DenseArray{String,N}, hdu::FitsTableHDU, col::Integer;
+               kwds...) where {N}
     error("reading column of strings not yet implemented")
 end
 
-function Base.read!(arr::DenseArray{T,N}, hdu::FitsTableHDU, col::Integer;
-                    null::Union{DenseArray{Bool,N},Number,Nothing} = nothing,
-                    anynull::Union{Ref{Bool},Nothing} = nothing,
-                    first::Integer = hdu.first_row) where {T<:Number,N}
+function read!(arr::DenseArray{T,N}, hdu::FitsTableHDU, col::Integer;
+               null::Union{DenseArray{Bool,N},Number,Nothing} = nothing,
+               anynull::Union{Ref{Bool},Nothing} = nothing,
+               first::Integer = hdu.first_row) where {T<:Number,N}
     if null === nothing
         _null = zero(T)
     elseif null isa Number
@@ -689,9 +689,9 @@ where `key1 => val1`, `key2 => val2`, etc. specify header cards, while `col1 =>
 arr1`, `col2 => arr2`, etc. specify columns names and associated data.
 
 """
-function Base.write(file::FitsFile, ::Type{FitsTableHDU},
-                    cols::AbstractVector{Pair{K,V}};
-                    ascii::Bool=false, nrows::Integer=0) where {K<:AbstractString,V}
+function write(file::FitsFile, ::Type{FitsTableHDU},
+               cols::AbstractVector{Pair{K,V}};
+               ascii::Bool=false, nrows::Integer=0) where {K<:AbstractString,V}
     ascii && error("only creating binary tables is supported")
     tbl = ascii ? CFITSIO.ASCII_TBL : CFITSIO.BINARY_TBL
     ncols = length(cols)
@@ -744,20 +744,20 @@ Any number of columns may be specified as subsequent arguments. The same
 keywords apply to all columns.
 
 """
-function Base.write(hdu::FitsTableHDU,
-                    pair::Pair{<:Integer,<:AbstractArray};
-                    case::Bool = false,
-                    null::Union{Number,Nothing} = nothing,
-                    first::Integer = hdu.first_row)
+function write(hdu::FitsTableHDU,
+               pair::Pair{<:Integer,<:AbstractArray};
+               case::Bool = false,
+               null::Union{Number,Nothing} = nothing,
+               first::Integer = hdu.first_row)
     col = pair.first
     arr = dense_array(pair.second)
     write_col(hdu, col, first, 1, arr, null)
     return hdu
 end
 
-function Base.write(hdu::FitsTableHDU,
-                    pair::Pair{<:AbstractString,<:AbstractArray};
-                    case::Bool = false, kwds...)
+function write(hdu::FitsTableHDU,
+               pair::Pair{<:AbstractString,<:AbstractArray};
+               case::Bool = false, kwds...)
     col = get_colnum(hdu, pair.first, case)
     return write(hdu, col => pair.second; kwds...)
 end
@@ -767,25 +767,25 @@ const ColumnInputData = Union{Pair{<:Integer,<:AbstractArray},
                               Pair{<:AbstractString,<:AbstractArray}}
 
 # Write more than one column at a time.
-@inline function Base.write(hdu::FitsTableHDU, data::ColumnInputData,
-                            args::ColumnInputData...; kwds...)
+@inline function write(hdu::FitsTableHDU, data::ColumnInputData,
+                       args::ColumnInputData...; kwds...)
     write(hdu, data; kwds...)
     return write(hdu, args...; kwds...)
 end
 
-@inline function Base.write(hdu::FitsTableHDU,
-                            data::Tuple{Vararg{ColumnInputData}};
-                            kwds...)
+@inline function write(hdu::FitsTableHDU,
+                       data::Tuple{Vararg{ColumnInputData}};
+                       kwds...)
     write(hdu, Base.first(data); kwds...)
     return write(hdu, Base.tail(data)...; kwds...)
 end
 
-function Base.write(hdu::FitsTableHDU,
-                    # NOTE: For a vector of input column data, it is not
-                    # possible to be more specific for the key type if we want
-                    # to allow for a mixture of key types.
-                    pairs::AbstractVector{<:Pair{<:Any,<:AbstractArray}};
-                    kwds...)
+function write(hdu::FitsTableHDU,
+               # NOTE: For a vector of input column data, it is not possible to
+               # be more specific for the key type if we want to allow for a
+               # mixture of key types.
+               pairs::AbstractVector{<:Pair{<:Any,<:AbstractArray}};
+               kwds...)
     for pair in pairs
         write(hdu, pair)
     end
@@ -793,7 +793,7 @@ function Base.write(hdu::FitsTableHDU,
 end
 
 # No more columns to write.
-Base.write(hdu::FitsTableHDU, ::Tuple{}; kdws...) = hdu
-Base.write(hdu::FitsTableHDU; kdws...) = hdu
+write(hdu::FitsTableHDU, ::Tuple{}; kdws...) = hdu
+write(hdu::FitsTableHDU; kdws...) = hdu
 
 #------------------------------------------------------------------------------
