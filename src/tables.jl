@@ -218,7 +218,7 @@ function read(::Type{Array}, hdu::FitsTableHDU, col::Integer,
     if type == CFITSIO.TSTRING
         return read(Array{String}, hdu, col, rows; kwds...)
     else
-        dims = size_to_read(hdu, col, rows, true)
+        dims = size_to_read(Number, hdu, col, rows)
         return read!(new_array(type_from_code(type), dims), hdu, col;
                      first = first_row_to_read(hdu, rows), kwds...)
     end
@@ -226,14 +226,14 @@ end
 
 function read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer,
               rows::Rows = Colon(); kwds...) where {T<:Number}
-    dims = size_to_read(hdu, col, rows, true)
+    dims = size_to_read(Number, hdu, col, rows)
     return read!(new_array(T, dims), hdu, col;
                  first = first_row_to_read(hdu, rows), kwds...)
 end
 
 function read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer,
               rows::Rows = Colon(); kwds...) where {T<:Number,N}
-    dims = size_to_read(hdu, col, rows, true)
+    dims = size_to_read(Number, hdu, col, rows)
     length(dims) == N || error("invalid number of dimensions")
     return read!(new_array(T, Val(N), dims), hdu, col;
                  first = first_row_to_read(hdu, rows), kwds...)
@@ -243,21 +243,23 @@ end
 
 function read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer,
               rows::Rows = Colon(); kwds...)
-    dims = size_to_read(hdu, col, rows, false)
+    dims = size_to_read(String, hdu, col, rows)
     return bytes_to_strings(read!(new_array(UInt8, dims), hdu, col;
                                   first = first_row_to_read(hdu, rows), kwds...))
 end
 
 function read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer,
               rows::Rows = Colon(); kwds...) where {N}
-    dims = size_to_read(hdu, col, rows, false)
+    dims = size_to_read(String, hdu, col, rows)
     length(dims) == N+1 || error("invalid number of dimensions")
     return bytes_to_strings(read!(new_array(UInt8, Val(N+1), dims), hdu, col;
                                   first = first_row_to_read(hdu, rows), kwds...))
 end
 
-# Yields size of column data as read.
-function size_to_read(hdu::FitsTableHDU, col::Integer, rows::Rows, compress::Bool = true)
+# Yields size of column data as read. If reading numbers and cell has size
+# (1,), an empty size is assumed.
+function size_to_read(::Type{T}, hdu::FitsTableHDU,
+                      col::Integer, rows::Rows) where {T<:Union{String,Number}}
     first = first_row_to_read(hdu, rows)
     last = last_row_to_read(hdu, rows)
     nrows = max(last + 1 - first, 0)
@@ -265,8 +267,14 @@ function size_to_read(hdu::FitsTableHDU, col::Integer, rows::Rows, compress::Boo
         bad_argument("out of bounds first row to read")
     end
     dims = read_tdim(hdu, col)
-    if compress && length(dims) == 1 && Base.first(dims) == 1
-        dims[firstindex(dims)] = nrows
+    if T !== String && length(dims) == 1 && Base.first(dims) == 1
+        # Cells of this column have no dimensions and do not have string
+        # values.
+        if rows isa Integer
+            empty!(dims)
+        else
+            dims[firstindex(dims)] = nrows
+        end
     elseif !(rows isa Integer)
         push!(dims, nrows)
     end

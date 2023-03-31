@@ -11,6 +11,9 @@
   read all rows (the default). The `read!` method keeps its `first` keyword to
   specify the first row to read.
 
+- Reading a single row (e.g. by specifying `rows = 3` but not `rows = 3:3`),
+  for a table yield a 0-dimensional result along the corresponding dimension.
+
 - `read!(dict,hdu[,cols[,rows]])` replaces the contents of dictionary `dict`
   with columns `cols` of the FITS table `hdu` while
   `merge!(dict,hdu[,cols[,rows]])` merges columns `cols` of the FITS table

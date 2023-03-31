@@ -13,7 +13,6 @@ other_type(type::FitsCardType) =
     type === FITS_STRING    ? Missing :
     type === FITS_COMMENT   ? Missing : Int
 
-
 @testset "BITPIX" begin
     let type_to_bitpix = EasyFITS.type_to_bitpix,
         type_from_bitpix = EasyFITS.type_from_bitpix
@@ -524,6 +523,12 @@ end
         @test dict isa Dict{String,<:Array}
         @test dict[hdu.column_names[1]] == cols[1][5:5]
         @test dict[hdu.column_names[2]] == cols[2][5:5]
+        dict = read(hdu, :, 5; rename=identity) # read a single row
+        @test dict isa Dict{String,<:Array}
+        @show dict[hdu.column_names[1]]
+        @show cols[1][5]
+        @test dict[hdu.column_names[1]] == fill(cols[1][5])
+        @test dict[hdu.column_names[2]] == fill(cols[2][5])
     end
 end
 
