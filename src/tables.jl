@@ -54,8 +54,6 @@ end
 #------------------------------------------------------------------------------
 # READING FITS TABLES
 
-const ColumnName = Union{AbstractString,Symbol}
-
 """
     EasyFITS.get_colnum(hdu::FitsTableHDU, col, case=false) -> num
 
