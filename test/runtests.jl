@@ -397,13 +397,13 @@ end
             @test read(hdu, inds...) == A[inds...]
         end
     end
-    # Write empty image
-    @test_throws Exception writefits!(tempfile, FitsHeader(), []) #TODO: MethodError expected
+    # Write empty image.
+    @test_throws Exception writefits!(tempfile, FitsHeader(), []) # TODO: MethodError expected
     writefits!(tempfile, FitsHeader(), Int32[])
     arr = readfits(Array, tempfile)
     @test length(arr) == 0
     @test eltype(arr) == Int32
-    # Read FITS header
+    # Read FITS header.
     @test read(FitsHeader, tempfile) isa FitsHeader
 end
 
@@ -411,7 +411,7 @@ end
     openfits(tempfile, "w!") do file
         @test length(file) == 0
         hdu = write(file, FitsTableHDU, ["Col#1" => ('E', "m/s"),
-                                       "Col#2" => ('D', "Hz")])
+                                         "Col#2" => ('D', "Hz")])
         @test length(file) == 2 # a table cannot not be the primary HDU
         @test hdu === last(file)
         @test hdu.file === file
@@ -494,6 +494,36 @@ end
             @test size(a) == (hdu.nrows,)
             @test a == vcat(y1, y2[1:end-1], y3)
         end
+        # Read table as a dictionary.
+        dict = read(hdu)
+        @test dict isa Dict{String,<:Array}
+        @test sort(collect(keys(dict))) == sort(map(uppercase, hdu.column_names))
+        # Read table as a dictionary (rewriting names) and as a vector.
+        dict = read(hdu; rename=lowercase)
+        @test dict isa Dict{String,<:Array}
+        @test sort(collect(keys(dict))) == sort(map(lowercase, hdu.column_names))
+        vect = read(Vector, hdu)
+        @test vect isa Vector{<:Array}
+        @test length(vect) == length(dict)
+        @test vect[1] == dict[lowercase(hdu.column_names[1])]
+        @test vect[2] == dict[lowercase(hdu.column_names[2])]
+        # Read table with units.
+        dict = read(hdu; units=String, rename=identity)
+        @test dict isa Dict{String,<:Tuple{<:Array,String}}
+        vect = read(Vector, hdu; units=String)
+        @test vect isa Vector{Tuple{<:Array,String}}
+        @test length(vect) == length(dict)
+        @test vect[1] == dict[hdu.column_names[1]]
+        @test vect[2] == dict[hdu.column_names[2]]
+        # Read some columns and some rows.
+        cols = read(Vector, hdu) # to have all columns data
+        dict = read(hdu, (hdu.column_names[2],), 2:3; rename=identity)
+        @test dict isa Dict{String,<:Array}
+        @test dict[hdu.column_names[2]] == cols[2][2:3]
+        dict = read(hdu, reverse(hdu.column_names), 5:5; rename=identity)
+        @test dict isa Dict{String,<:Array}
+        @test dict[hdu.column_names[1]] == cols[1][5:5]
+        @test dict[hdu.column_names[2]] == cols[2][5:5]
     end
 end
 

@@ -5,6 +5,20 @@
 - The `rename` keyword can be used to specify a function to rename column names
   when reading a FITS table in a dictionary.
 
+- Keywords `first` and `last` to specify the range of rows to read in a FITS
+  table with the `read` method have been replaced by a `rows` argument which
+  may be a single row index, a unit range of row numbers, or a colon `:` to
+  read all rows (the default). The `read!` method keeps its `first` keyword to
+  specify the first row to read.
+
+- `read!(dict,hdu[,cols[,rows]])` replaces the contents of dictionary `dict`
+  with columns `cols` of the FITS table `hdu` while
+  `merge!(dict,hdu[,cols[,rows]])` merges columns `cols` of the FITS table
+  `hdu` to the contents the dictionary `dict`.
+
+- Reading column(s) from a FITS table can yield the column(s) values or the
+  column(s) values *and* their units.
+
 ## Version 0.5.5
 
 - `read(FitsHeader,filename;ext=...)` can be used to read the header of FITS

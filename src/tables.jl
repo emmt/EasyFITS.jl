@@ -54,6 +54,55 @@ end
 #------------------------------------------------------------------------------
 # READING FITS TABLES
 
+# The different possibilities to specify a column and a list of columns to read.
+const Column = Union{ColumnName,Integer}
+const Columns = Union{Colon,Integer,
+                      AbstractVector{<:Integer},
+                      Tuple{Vararg{Integer}},
+                      OrdinalRange{<:Integer,<:Integer},
+                      AbstractString,
+                      AbstractVector{<:AbstractString},
+                      Tuple{Vararg{AbstractString}},
+                      Symbol,
+                      AbstractVector{<:Symbol},
+                      Tuple{Vararg{Symbol}}}
+
+# There different possibilities to specify a list of rows to read.
+const Rows = Union{Colon,Integer,AbstractUnitRange{<:Integer}}
+
+columns_to_read(hdu::FitsTableHDU, cols::Columns) = cols
+columns_to_read(hdu::FitsTableHDU, cols::Colon) = hdu.first_column:hdu.last_column
+
+rows_to_read(hdu::FitsTableHDU, rows::Rows) = rows
+rows_to_read(hdu::FitsTableHDU, rows::Colon) =
+    first_row_to_read(hdu,rows):last_row_to_read(hdu,rows)
+
+first_row_to_read(hdu::FitsTableHDU, rows::Rows) = as(Int, first(rows))
+first_row_to_read(hdu::FitsTableHDU, rows::Colon) = hdu.first_row
+
+last_row_to_read(hdu::FitsTableHDU, rows::Rows) = as(Int, last(rows))
+last_row_to_read(hdu::FitsTableHDU, rows::Colon) = hdu.last_row
+
+"""
+    EasyFITS.get_units(hdu, col, case=false) -> str
+
+yields the units for the column `col` of FITS table `hdu`. If `case` is true
+and `col` is a (symbolic) name, the case of the letters is taken into account.
+
+"""
+function get_units(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
+    return get_units(hdu, get_colnum(hdu, col, case), false)
+end
+
+function get_units(hdu::FitsTableHDU, col::Integer, case::Bool = false)
+    card = get(hdu, "TUNIT$col", nothing)
+    if card !== nothing && card.type == FITS_STRING
+        return card.string
+    else
+        return ""
+    end
+end
+
 """
     EasyFITS.get_colnum(hdu::FitsTableHDU, col, case=false) -> num
 
@@ -136,115 +185,89 @@ function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
 end
 
 """
-    read(R::Type{<:Array}=Array, hdu::FitsTableHDU, col; kwds...) -> arr::R
+    read([Array,] hdu::FitsTableHDU, col[, rows]; kwds...) -> vals::Array
 
 reads column `col` of the FITS table extension in `hdu` and returns its values
-as an array `arr` of type `R`.
+as an array `vals`.
 
 The column `col` may be specified by its name or by its number. If `col` is a
 string or a symbol, keyword `case` specifies whether uppercase/lowercase
 matters (`case = false` by default).
 
-Keywords `first` and/or `last` may be specified with the index of the
-first/last row to read. By default, `first = hdu.first_row`, that is reading
-starts at the first row of the table, and `last = hdu.last_row`, that is
-reading stops at the last row of the table. An alternative is to specify the
-row range after the column name/index:
-
-    read([R,] hdu, col, first:last)
+Optional argument `rows` is to specify which rows to read. It can be an integer
+to read a single row, a unit range of integers to read these rows, or a colon
+`:` to read all rows (the default). Properties `hdu.first_row` and
+`hdu.last_row` can be used to retrieve the first and last row numbers.
 
 See [`read!(::DenseArray,::FitsTableHDU,::Integer)`](@ref) for the other
 possible keywords.
 
 """
-read(hdu::FitsTableHDU, col::Union{Integer,AbstractString}; kwds...) =
-    read(Array, hdu, col; kwds...)
-
-function read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
-              rng::AbstractUnitRange{<:Integer}; kwds...)
-    return read(Array, hdu, col;
-                first = Int(Base.first(rng)),
-                last = Int(Base.last(rng)), kwds...)
+function read(hdu::FitsTableHDU, col::Column, rows::Rows = Colon(); kwds...)
+    return read(Array, hdu, col, rows; kwds...)
 end
 
-function read(hdu::FitsTableHDU, col::Union{Integer,AbstractString},
-              ::Colon; kwds...)
-    return read(Array, hdu, col;
-                first = hdu.first_row,
-                last = hadu.last_row, kwds...)
+function read(::Type{A}, hdu::FitsTableHDU, col::ColumnName,
+              rows::Rows = Colon(); case::Bool = false, kwds...) where {A<:Array}
+    return read(A, hdu, get_colnum(hdu, col, case), rows; kwds...)
 end
 
-function read(::Type{R}, hdu::FitsTableHDU, col::AbstractString;
-              case::Bool = false, kwds...) where {R<:Array}
-    return read(R, hdu, get_colnum(hdu, col, case); kwds...)
-end
-
-function read(::Type{Array}, hdu::FitsTableHDU, col::Integer;
-              first::Integer = hdu.first_row,
-              last::Integer = hdu.last_row,
-              kwds...)
+function read(::Type{Array}, hdu::FitsTableHDU, col::Integer,
+              rows::Rows = Colon(); kwds...)
     type, repeat, width = get_eqcoltype(hdu, col)
     if type == CFITSIO.TSTRING
-        return read(Array{String}, hdu, col;
-                    first, last, kwds...)
+        return read(Array{String}, hdu, col, rows; kwds...)
     else
-        dims = size_to_read(hdu, col, first, last, true)
+        dims = size_to_read(hdu, col, rows, true)
         return read!(new_array(type_from_code(type), dims), hdu, col;
-                     first, kwds...)
+                     first = first_row_to_read(hdu, rows), kwds...)
     end
 end
 
-function read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer;
-              first::Integer = hdu.first_row,
-              last::Integer = hdu.last_row,
-              kwds...) where {T<:Number}
-    dims = size_to_read(hdu, col, first, last, true)
-    return read!(new_array(T, dims), hdu, col; first, kwds...)
+function read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer,
+              rows::Rows = Colon(); kwds...) where {T<:Number}
+    dims = size_to_read(hdu, col, rows, true)
+    return read!(new_array(T, dims), hdu, col;
+                 first = first_row_to_read(hdu, rows), kwds...)
 end
 
-function read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer;
-              first::Integer = hdu.first_row,
-              last::Integer = hdu.last_row,
-              kwds...) where {T<:Number,N}
-    dims = size_to_read(hdu, col, first, last, true)
+function read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer,
+              rows::Rows = Colon(); kwds...) where {T<:Number,N}
+    dims = size_to_read(hdu, col, rows, true)
     length(dims) == N || error("invalid number of dimensions")
-    return read!(new_array(T, Val(N), dims), hdu, col; first, kwds...)
+    return read!(new_array(T, Val(N), dims), hdu, col;
+                 first = first_row_to_read(hdu, rows), kwds...)
 end
 
 # Read array of strings as bytes. FIXME: null and anynull keywords
 
-function read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer;
-              first::Integer = hdu.first_row,
-              last::Integer = hdu.last_row,
-              kwds...)
-    dims = size_to_read(hdu, col, first, last, false)
+function read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer,
+              rows::Rows = Colon(); kwds...)
+    dims = size_to_read(hdu, col, rows, false)
     return bytes_to_strings(read!(new_array(UInt8, dims), hdu, col;
-                                  first, kwds...))
+                                  first = first_row_to_read(hdu, rows), kwds...))
 end
 
-function read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer;
-              first::Integer = hdu.first_row,
-              last::Integer = hdu.last_row,
-              kwds...) where {N}
-    dims = size_to_read(hdu, col, first, last, false)
+function read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer,
+              rows::Rows = Colon(); kwds...) where {N}
+    dims = size_to_read(hdu, col, rows, false)
     length(dims) == N+1 || error("invalid number of dimensions")
-    return bytes_to_strings(read!(new_array(T, Val(N+1), dims), hdu, col;
-                                  first, kwds...))
+    return bytes_to_strings(read!(new_array(UInt8, Val(N+1), dims), hdu, col;
+                                  first = first_row_to_read(hdu, rows), kwds...))
 end
 
 # Yields size of column data as read.
-function size_to_read(hdu::FitsTableHDU, col::Integer,
-                      first::Integer = hdu.first_row,
-                      last::Integer = hdu.last_row,
-                      compress::Bool = true)
-    nrows = max(Int(last + 1 - first)::Int, 0)
+function size_to_read(hdu::FitsTableHDU, col::Integer, rows::Rows, compress::Bool = true)
+    first = first_row_to_read(hdu, rows)
+    last = last_row_to_read(hdu, rows)
+    nrows = max(last + 1 - first, 0)
     if nrows > 0 && (first < hdu.first_row || last > hdu.last_row)
         bad_argument("out of bounds first row to read")
     end
     dims = read_tdim(hdu, col)
     if compress && length(dims) == 1 && Base.first(dims) == 1
         dims[firstindex(dims)] = nrows
-    else
+    elseif !(rows isa Integer)
         push!(dims, nrows)
     end
     return dims
@@ -280,124 +303,184 @@ end
 
 reads some columns of the FITS table extension in `hdu` as a dictionary indexed
 by the column names. The columns to read can be specified by `cols` which may
-be a single column name/index or a tuple/range/vector of column namas/indices.
-Column names may be strings or keywords (not a mixture of these). The rows to
-read can be specified by `rows` as a single row index or a unit range of row
-indices. Keywords `first` and `last` may also be used to specify the range of
-rows to read. By default, all columns and all rows are read.
+be a single column name/index, a tuple/range/vector of column names/indices, or
+a colon `:` to read all columns (the default). Column names may be strings or
+symbols (not a mixture of these). The rows to read can be specified by `rows`
+as a single row index, a unit range of row indices, or a colon `:` to read all
+rows (the default).
 
 Keyword `rename` (default is identity) is to specify a function to change
 column names.
 
+Keyword `units` can be used to indicate whether to retrieve the units of the
+columns. If `units` is `String`, the values of the dictionary will be 2-tuples
+`(data,units)` with `data` the column data and `units` the column units as a
+string. Otherwise, if `units=nothing` (the default), the values of the
+dictionary will just be the columns data.
+
+To avoid the `units` keyword, the following 2 calls are provided:
+
+   read(Dict{String,Array},               hdu[, cols[, rows]])
+   read(Dict{String,Tuple{Array,String}}, hdu[, cols[, rows]])
+
+to respectively yields the same result as `read(hdu,...)` with
+`units=nothing` and as with `units=String`.
+
 """
-read(hdu::FitsTableHDU, args...; kwds...) =
-    read(Dict{String,Array}, hdu, args...; kwds...)
-
-read(::Type{Dict}, hdu::FitsTableHDU, args...; kwds...) =
-    read(Dict{String,Array}, hdu, args...; kwds...)
-
-read(::Type{Dict{String}}, hdu::FitsTableHDU, args...; kwds...) =
-    read(Dict{String,Array}, hdu, args...; kwds...)
-
-# Get rid of the selection of rows.
-function read(::Type{Dict{String,Array}}, hdu::FitsTableHDU, cols,
-              rows::Union{Integer,AbstractUnitRange{<:Integer}}; kwds...)
-    return read(Dict{String,Array}, hdu, cols;
-                first = Int(Base.first(rows))::Int,
-                last = Int(Base.last(rows))::Int, kwds...)
+function read(hdu::FitsTableHDU,
+              cols::Columns = Colon(), rows::Rows = Colon(); kwds...)
+    return read(Dict, hdu, cols, rows; kwds...)
 end
 
-# Read all rows.
-function read(::Type{Dict{String,Array}}, hdu::FitsTableHDU, cols,
-              rows::Colon; kwds...)
-    return read(Dict{String,Array}, hdu, cols;
-                first = hdu.first_row,
-                last = hdu.last_row, kwds...)
+function read(::Type{Dict}, hdu::FitsTableHDU,
+              cols::Columns = Colon(), rows::Rows = Colon();
+              units = nothing, kwds...)
+    if units === String
+        return read(Dict{String,Tuple{Array,String}}, hdu, cols, rows; kwds...)
+    elseif units === nothing
+        return read(Dict{String,Array}, hdu, cols, rows; kwds...)
+    else
+        throw(ArgumentError("invalid value for keyword `units`"))
+    end
 end
 
-# Read selection of columns.
-function read(::Type{Dict{String,Array}},
-              hdu::FitsTableHDU,
-              cols::Union{Integer,
-                          AbstractVector{<:Integer},
-                          Tuple{Vararg{Integer}},
-                          OrdinalRange{<:Integer,<:Integer},
-                          AbstractString,
-                          AbstractVector{<:AbstractString},
-                          Tuple{Vararg{AbstractString}},
-                          Symbol,
-                          AbstractVector{<:Symbol},
-                          Tuple{Vararg{Symbol}}} = hdu.first_column:hdu.last_column;
-              first::Integer = hdu.first_row,
-              last::Integer = hdu.last_row,
-              case::Bool = false, rename::Function = (case ? identity : uppercase), kwds...)
-    dict = Dict{String,Array}()
+function read(::Type{D}, hdu::FitsTableHDU,
+              cols::Columns = Colon(), rows::Rows = Colon();
+              kwds...) where {D<:Union{Dict{String,<:AbstractArray},
+                                       Dict{String,<:Tuple{<:AbstractArray,String}}}}
+    return merge!(D(), hdu, cols, rows; kwds...)
+end
+
+"""
+    read!(dict, hdu::FitsTableHDU[, cols[, rows]]) -> dict
+
+overwrites the contents of the dictionary `dict` with the colum(s) `cols` read
+from the FITS table extension in `hdu` and returns the dictionary. Any previous
+contents is erased, call `merge!(dict,hdu,...)` to preserve contents.
+
+"""
+function read!(dict::AbstractDict, hdu::FitsTableHDU,
+               cols::Columns = Colon(), rows::Rows = Colon(); kwds...)
+    return merge!(empty!(dict), hdu, cols, rows; kwds...)
+end
+
+"""
+    merge!(dict, hdu::FitsTableHDU[, cols[, rows]]) -> dict
+
+merges the contents of the dictionary `dict` with the colum(s) `cols` read from
+the FITS table extension in `hdu` and returns the dictionary.
+
+"""
+function merge!(dict::AbstractDict{String,<:Array}, hdu::FitsTableHDU,
+                cols::Columns = Colon(), rows::Rows = Colon();
+                case::Bool = false, rename::Function = (case ? identity : uppercase), kwds...)
     names = hdu.column_names
-    for col in cols
+    for col in columns_to_read(hdu, cols)
         num = get_colnum(hdu, col, case)
         key = rename(names[num])
-        push!(dict, key => read(Array, hdu, num; first, last, kwds...))
+        push!(dict, key => read(Array, hdu, num, rows; kwds...))
+    end
+    return dict
+end
+
+function merge!(dict::AbstractDict{String,Tuple{<:Array,String}}, hdu::FitsTableHDU,
+                cols::Columns = Colon(), rows::Rows = Colon();
+                case::Bool = false, rename::Function = (case ? identity : uppercase), kwds...)
+    names = hdu.column_names
+    for col in columns_to_read(hdu, cols)
+        num = get_colnum(hdu, col, case)
+        key = rename(names[num])
+        push!(dict, key => (read(Array, hdu, num, rows; kwds...),
+                            get_units(hdu, num)))
     end
     return dict
 end
 
 """
-    read(R::Type{<:Union{Vector,Vector{Array}}}, hdu::FitsTableHDU[, cols[, rows]])
+    read(Vector, hdu::FitsTableHDU[, cols[, rows]]) -> vec::Vector
 
 reads some columns of the FITS table extension in `hdu` as a vector. The
 columns to read can be specified by `cols` which may be a single column
-name/index or a tuple/range/vector of column names/indices. Column names may be
-strings or keywords (not a mixture of these). The rows to read can be specified
-by `rows` as a single row index or a unit range of row indices. Keywords
-`first` and `last` may also be used to specify the range of rows to read. By
-default, all columns and all rows are read.
+name/index, a tuple/range/vector of column names/indices, or a colon `:` to
+read all columns (the default). Column names may be strings or symbols (not a
+mixture of these). The rows to read can be specified by `rows` as a single row
+index, a unit range of row indices, or a colon `:` to read all rows (the
+default). `V` is the type of the result.
+
+Keyword `units` can be used to indicate whether to retrieve the units of the
+columns. If `units` is `String`, the values of the dictionary will be 2-tuples
+`(data,units)` with `data` the column data and `units` the column units as a
+string. Otherwise, if `units=nothing` (the default), the values of the
+dictionary will just be the columns data.
+
+To avoid the `units` keyword and allow more control on the type of the result,
+the following 2 calls are provided:
+
+   read(Vector{<:Array},               hdu[, cols[, rows]])
+   read(Vector{Tuple{<:Array,String}}, hdu[, cols[, rows]])
+
+to respectively yields the same result as `read(hdu,...)` with
+`units=nothing` and as with `units=String`.
 
 """
-read(::Type{Vector}, hdu::FitsTableHDU, args...; kwds...) =
-    read(Vector{Array}, hdu, args...; kwds...)
-
-# Get rid of the selection of rows.
-function read(::Type{Vector{Array}}, hdu::FitsTableHDU, cols,
-              rows::Union{Integer,AbstractUnitRange{<:Integer}}; kwds...)
-    return read(Vector{Array}, hdu, cols;
-                first = Int(Base.first(rows))::Int,
-                last = Int(Base.last(rows))::Int, kwds...)
+function read(::Type{Vector}, hdu::FitsTableHDU,
+              cols::Columns = Colon(), rows::Rows = Colon();
+              units = nothing, kwds...)
+    if units === String
+        return read(Vector{Tuple{Array,String}}, hdu, cols, rows; kwds...)
+    elseif units === nothing
+        return read(Vector{Array}, hdu, cols, rows; kwds...)
+    else
+        throw(ArgumentError("invalid value for keyword `units`"))
+    end
 end
 
-# Read all rows.
-function read(::Type{Vector{Array}}, hdu::FitsTableHDU, cols,
-              rows::Colon; kwds...)
-    return read(Vector{Array}, hdu, cols;
-                first = hdu.first_row,
-                last = hdu.last_row, kwds...)
-    return read(Vector{Array}, hdu, cols; kwds...)
-end
-
-# Read selection of columns.
-function read(::Type{Vector{Array}},
-              hdu::FitsTableHDU,
-              cols::Union{Integer,
-                          AbstractVector{<:Integer},
-                          Tuple{Vararg{Integer}},
-                          OrdinalRange{<:Integer,<:Integer},
-                          AbstractString,
-                          AbstractVector{<:AbstractString},
-                          Tuple{Vararg{AbstractString}},
-                          Symbol,
-                          AbstractVector{<:Symbol},
-                          Tuple{Vararg{Symbol}}} = hdu.first_column:hdu.last_column;
-              first::Integer = hdu.first_row,
-              last::Integer = hdu.last_row,
-              case::Bool = false,
-              kwds...)
-    vect = Vector{Array}(undef, length(cols))
-    i = firstindex(vect)
+# Read selection of columns without their units.
+function read(::Type{V}, hdu::FitsTableHDU,
+              cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
+              kwds...) where {A<:AbstractArray, V<:AbstractVector{A}}
+    cols = columns_to_read(hdu, cols)
+    vec = V(undef, length(cols))
+    i = firstindex(vec) - 1
     for col in cols
         num = get_colnum(hdu, col, case)
-        vect[i] = read(Array, hdu, num; first, last, kwds...)
-        i += 1
+        vec[i += 1] = read(A, hdu, num, rows; kwds...)
     end
-    return vect
+    return vec
+end
+
+# Read selection of columns with their units.
+function read(::Type{V}, hdu::FitsTableHDU,
+              cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
+              kwds...) where {A<:AbstractArray, V<:AbstractVector{Tuple{A,String}}}
+    cols = columns_to_read(hdu, cols)
+    vec = V(undef, length(cols))
+    i = firstindex(vec) - 1
+    for col in cols
+        num = get_colnum(hdu, col, case)
+        vec[i += 1] = (read(A, hdu, num, rows; kwds...), get_units(hdu, num))
+    end
+    return vec
+end
+
+function push!(vec::Type{V}, hdu::FitsTableHDU,
+               cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
+               kwds...) where {A<:AbstractArray, V<:AbstractVector{A}}
+    for col in columns_to_read(hdu, cols)
+        num = get_colnum(hdu, col, case)
+        push!(vec, read(A, hdu, num, rows; kwds...))
+    end
+    return vec
+end
+
+function push!(vec::Type{V}, hdu::FitsTableHDU,
+               cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
+               kwds...) where {A<:AbstractArray, V<:AbstractVector{Tuple{A,String}}}
+    for col in columns_to_read(hdu, cols)
+        num = get_colnum(hdu, col, case)
+        push!(vec, (read(A, hdu, num, rows; kwds...), get_units(hdu, num)))
+    end
+    return vec
 end
 
 """
