@@ -276,7 +276,7 @@ function bytes_to_strings(A::AbstractArray{UInt8,N}) where {N}
 end
 
 """
-    read(R::Type{<:Dict} = Dict{String,Array}, hdu::FitsTableHDU[, cols[, rows]])
+    read([Dict,] hdu::FitsTableHDU[, cols[, rows]]) -> dict
 
 reads some columns of the FITS table extension in `hdu` as a dictionary indexed
 by the column names. The columns to read can be specified by `cols` which may
@@ -285,6 +285,9 @@ Column names may be strings or keywords (not a mixture of these). The rows to
 read can be specified by `rows` as a single row index or a unit range of row
 indices. Keywords `first` and `last` may also be used to specify the range of
 rows to read. By default, all columns and all rows are read.
+
+Keyword `rename` (default is identity) is to specify a function to change
+column names.
 
 """
 read(hdu::FitsTableHDU, args...; kwds...) =
@@ -327,18 +330,12 @@ function read(::Type{Dict{String,Array}},
                           Tuple{Vararg{Symbol}}} = hdu.first_column:hdu.last_column;
               first::Integer = hdu.first_row,
               last::Integer = hdu.last_row,
-              case::Bool = false,
-              kwds...)
+              case::Bool = false, rename::Function = (case ? identity : uppercase), kwds...)
     dict = Dict{String,Array}()
     names = hdu.column_names
-    if !case
-        for i in eachindex(names)
-            names[i] = uppercase(names[i])
-        end
-    end
     for col in cols
         num = get_colnum(hdu, col, case)
-        key = names[num]
+        key = rename(names[num])
         push!(dict, key => read(Array, hdu, num; first, last, kwds...))
     end
     return dict

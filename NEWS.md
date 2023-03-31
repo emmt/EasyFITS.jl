@@ -1,5 +1,17 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.6
+
+- The `rename` keyword can be used to specify a function to rename column names
+  when reading a FITS table in a dictionary.
+
+## Version 0.5.5
+
+- `read(FitsHeader,filename;ext=...)` can be used to read the header of FITS
+  extension `ext` in file `filename`.
+
+- Empty FITS image extensions can be written.
+
 ## Version 0.5.4
 
 - Use `AsType` package.
