@@ -303,14 +303,15 @@ end
 
 reads some columns of the FITS table extension in `hdu` as a dictionary indexed
 by the column names. The columns to read can be specified by `cols` which may
-be a single column name/index, a tuple/range/vector of column names/indices, or
+be a single column name/index, a tuple/range/vector of column names/numbers, or
 a colon `:` to read all columns (the default). Column names may be strings or
 symbols (not a mixture of these). The rows to read can be specified by `rows`
-as a single row index, a unit range of row indices, or a colon `:` to read all
+as a single row index, a unit range of row numbers, or a colon `:` to read all
 rows (the default).
 
-Keyword `rename` (default is identity) is to specify a function to change
-column names.
+Keyword `rename` is to specify a function to change column names. If
+unspecified, the colmun names are left unchanged if keyword `case` is true and
+converted to uppercase letters otherwise.
 
 Keyword `units` can be used to indicate whether to retrieve the units of the
 columns. If `units` is `String`, the values of the dictionary will be 2-tuples
@@ -401,10 +402,10 @@ end
 
 reads some columns of the FITS table extension in `hdu` as a vector. The
 columns to read can be specified by `cols` which may be a single column
-name/index, a tuple/range/vector of column names/indices, or a colon `:` to
+name/index, a tuple/range/vector of column names/numbers, or a colon `:` to
 read all columns (the default). Column names may be strings or symbols (not a
 mixture of these). The rows to read can be specified by `rows` as a single row
-index, a unit range of row indices, or a colon `:` to read all rows (the
+index, a unit range of row numbers, or a colon `:` to read all rows (the
 default). `V` is the type of the result.
 
 Keyword `units` can be used to indicate whether to retrieve the units of the
