@@ -105,9 +105,9 @@ function readfits(filename::AbstractString, args...; kwds...)
     return readfits(Array, filename, args...; kwds...)
 end
 
-function readfits(R::Type, filename::AbstractString;
+function readfits(::Type{R}, filename::AbstractString;
                   ext::Union{AbstractString,Integer} = 1,
-                  col = nothing, kwds...)
+                  col = nothing, kwds...) where {R}
     openfits(filename, "r"; kwds...) do file
         hdu = file[ext]
         if col === nothing
@@ -131,7 +131,7 @@ function read(::Type{FitsFile}, filename::AbstractString, args...; kwds...)
     return readfits(filename, args...; kwds...)
 end
 
-function read(R::Type, ::Type{FitsFile}, filename::AbstractString, args...; kwds...)
+function read(::Type{R}, ::Type{FitsFile}, filename::AbstractString, args...; kwds...) where {R}
     return readfits(R, filename, args...; kwds...)
 end
 

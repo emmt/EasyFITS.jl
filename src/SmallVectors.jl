@@ -86,11 +86,13 @@ end
     return A
 end
 
-check_N(N::Int) = N ≥ 0 ? N : error("type parameter N must be a nonnegative")
-check_N(N) = error("type parameter N must be an `Int`")
+check_N(N::Int) = N ≥ 0 ? N : invalid_N()
+check_N(N::Any) = invalid_N()
+@noinline invalid_N() = throw(ArgumentError("type parameter N must be a nonnegative `Int`"))
 
-check_T(T) = isbitstype(T) ? T : not_bits_type(T)
-@noinline not_bits_type(T::Type) = error("type `$T` is not a plain data type")
+check_T(::Type{T}) where {T} = isbitstype(T) ? T : invalid_T()
+check_T(::Any) = invalid_T()
+@noinline invalid_T() = throw(ArgumentError("type parameter T must be a plain data type"))
 
 check_length(A::Union{AbstractVector,Tuple},N::Integer) =
     length(A) == N || bad_length(A, N)

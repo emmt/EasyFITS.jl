@@ -99,7 +99,7 @@ function Base.read(hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {
     return read(Array{T}, hdu, inds; kwds...)
 end
 
-function Base.read(R::Type{<:Array}, hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...)
+function Base.read(::Type{R}, hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) where {R<:Array}
     return read(R, hdu, inds; kwds...)
 end
 
@@ -309,9 +309,9 @@ function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
     return FitsImageHDU{T,N}(BareBuild(), file, n)
 end
 
-function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Type = UInt8,
-                    dims::Union{Tuple{Vararg{Integer}},
-                                AbstractVector{<:Integer}} = ())
+function Base.write(file::FitsFile, ::Type{FitsImageHDU},
+                    ::Type{T} = UInt8, dims::Union{Tuple{Vararg{Integer}},
+                                                   AbstractVector{<:Integer}} = ()) where {T}
     return write(file, FitsImageHDU{T}, dims)
 end
 
@@ -334,8 +334,8 @@ function Base.write(file::FitsFile, ::Type{FitsImageHDU{T}},
                     dims::Integer...) where {T}
     return write(file, FitsImageHDU{T}, dims)
 end
-function Base.write(file::FitsFile, ::Type{FitsImageHDU}, T::Type,
-                    dims::Integer...)
+function Base.write(file::FitsFile, ::Type{FitsImageHDU}, ::Type{T},
+                    dims::Integer...) where {T}
     return write(file, FitsImageHDU, T, dims)
 end
 

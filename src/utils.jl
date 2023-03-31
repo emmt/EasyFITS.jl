@@ -86,7 +86,7 @@ function get_field_index(::Type{T}, name::Symbol) where {T}
     end
     error("structure $T have no field `$name`")
 end
-get_field_index(T::Type, name::AbstractString) = get_field_index(T, Symbol(name))
+get_field_index(::Type{T}, name::AbstractString) where {T} = get_field_index(T, Symbol(name))
 
 """
     EasyFITS.type_to_bitpix(T)
@@ -191,7 +191,7 @@ elements type `T`. Argument can also be an array instance or type.
 """
 pixeltype_to_code(arr::AbstractArray) = pixeltype_to_code(typeof(arr))
 pixeltype_to_code(::Type{<:AbstractArray{T}}) where {T} = pixeltype_to_code(T)
-pixeltype_to_code(T::Type) = type_to_code(T)
+pixeltype_to_code(::Type{T}) where {T} = type_to_code(T)
 pixeltype_to_code(::Type{Bool}) =
     # NOTE: For FITS image extension Booleans must be considered as bytes in
     # CFITSIO library.
