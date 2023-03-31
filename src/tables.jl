@@ -64,7 +64,7 @@ integer) in FITS table extension of `hdu`. Optional argument `case` specify
 whether upper-/lower-case matters if `col` is a string or a symbol.
 
 """
-function get_colnum(hdu::FitsTableHDU, col::Integer, case::Bool = false)
+@inline function get_colnum(hdu::FitsTableHDU, col::Integer, case::Bool = false)
     @boundscheck check_colnum(hdu, col)
     return as(Int, col)
 end
@@ -339,11 +339,7 @@ function read(::Type{Dict{String,Array}},
         end
     end
     for col in cols
-        if col isa Integer
-            num = as(Int, col)
-        elseif col isa AbstractString || col isa Symbol
-            num = get_colnum(hdu, col, case)
-        end
+        num = get_colnum(hdu, col, case)
         key = names[num]
         push!(dict, key => read(Array, hdu, num; first, last, kwds...))
     end
@@ -402,11 +398,7 @@ function read(::Type{Vector{Array}},
     vect = Vector{Array}(undef, length(cols))
     i = firstindex(vect)
     for col in cols
-        if col isa Integer
-            num = as(Int, col)
-        elseif col isa AbstractString || col isa Symbol
-            num = get_colnum(hdu, col, case)
-        end
+        num = get_colnum(hdu, col, case)
         vect[i] = read(Array, hdu, num; first, last, kwds...)
         i += 1
     end
