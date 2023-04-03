@@ -17,6 +17,6 @@ makedocs(
 
 if DEPLOYDOCS
     deploydocs(
-        repo = "github.com/emmt/InterpolationKernels.jl.git",
+        repo = "github.com/emmt/EasyFITS.jl.git",
     )
 end
