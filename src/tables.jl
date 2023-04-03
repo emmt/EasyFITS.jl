@@ -54,22 +54,6 @@ end
 #------------------------------------------------------------------------------
 # READING FITS TABLES
 
-# The different possibilities to specify a column and a list of columns to read.
-const Column = Union{ColumnName,Integer}
-const Columns = Union{Colon,Integer,
-                      AbstractVector{<:Integer},
-                      Tuple{Vararg{Integer}},
-                      OrdinalRange{<:Integer,<:Integer},
-                      AbstractString,
-                      AbstractVector{<:AbstractString},
-                      Tuple{Vararg{AbstractString}},
-                      Symbol,
-                      AbstractVector{<:Symbol},
-                      Tuple{Vararg{Symbol}}}
-
-# There different possibilities to specify a list of rows to read.
-const Rows = Union{Colon,Integer,AbstractUnitRange{<:Integer}}
-
 columns_to_read(hdu::FitsTableHDU, cols::Columns) = cols
 columns_to_read(hdu::FitsTableHDU, cols::Colon) = hdu.first_column:hdu.last_column
 
@@ -324,10 +308,10 @@ converted to uppercase letters otherwise.
 Keyword `units` can be used to indicate whether to retrieve the units of the
 columns. If `units` is `String`, the values of the dictionary will be 2-tuples
 `(data,units)` with `data` the column data and `units` the column units as a
-string. Otherwise, if `units=nothing` (the default), the values of the
+string. Otherwise, if `units` is `nothing` (the default), the values of the
 dictionary will just be the columns data.
 
-To avoid the `units` keyword, the following 2 calls are provided:
+To avoid the `units` keyword, the following syntaxes are possible:
 
    read(Dict{String,Array},               hdu[, cols[, rows]])
    read(Dict{String,Tuple{Array,String}}, hdu[, cols[, rows]])
@@ -579,8 +563,7 @@ for T in (Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64,
         if len > 0
             GC.@preserve arr null begin
                 check(CFITSIO.$(cfunc("fits_read_colnull_", T))(
-                    hdu, col, row, elem, len, cpointer(null), cpointer(arr), anynull,
-                    Ref{Status}(0)))
+                    hdu, col, row, elem, len, cpointer(null), cpointer(arr), anynull, Ref{Status}(0)))
             end
             fix_booleans!(null)
         end
@@ -601,13 +584,11 @@ for T in (Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64,
 
     @eval function write_col(hdu, col::Integer, row::Integer, elem::Integer,
                              arr::DenseArray{$T,N}, null::Number) where {N}
-
         len = length(arr)
         if len > 0
             GC.@preserve arr begin
                 check(CFITSIO.$(cfunc("fits_write_colnull_", T))(
-                    hdu, col, row, elem, len, cpointer(arr), Ref{T}(null),
-                    Ref{Status}(0)))
+                    hdu, col, row, elem, len, cpointer(arr), Ref{T}(null), Ref{Status}(0)))
             end
         end
         nothing
@@ -615,43 +596,54 @@ for T in (Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64,
 
 end
 
+function write_col(hdu, col::Integer, row::Integer, elem::Integer,
+                   arr::AbstractArray{<:AbstractString},
+                   null::Union{Nothing,AbstractString})
+    write_col(hdu, col, row, elem, String.(arr), null)
+end
+
+function write_col(hdu, col::Integer, row::Integer, elem::Integer,
+                   arr::AbstractArray{String}, null::Union{Nothing,AbstractString})
+    len = length(arr)
+    if len > 0
+        ptr = [Base.unsafe_convert(Cstring, str) for str in arr]
+        GC.@preserve arr ptr check(null === nothing ?
+            CFITSIO.fits_write_col_str(hdu, col, row, elem, len, ptr, Ref{Status}(0)) :
+            CFITSIO.fits_write_colnull_str(hdu, col, row, elem, len, ptr, null, Ref{Status}(0)))
+    end
+    nothing
+end
+
 #------------------------------------------------------------------------------
 # WRITING FITS TABLES
 
-# Private definitions and functions to decode column definitions.
-const ColumnType = Union{Type,Char}
-const ColumnDims = Union{Integer,Tuple{Vararg{Integer}}}
-const ColumnUnits = AbstractString
-const ColumnDefinition = Union{ColumnType,
-                               Tuple{ColumnType},
-                               Tuple{ColumnType,ColumnDims},
-                               Tuple{ColumnType,ColumnUnits},
-                               Tuple{ColumnType,ColumnUnits,ColumnDims}}
-#
-column_type(def::ColumnType) = def
-column_type(def::Tuple{ColumnType}) = def[1]
-column_type(def::Tuple{ColumnType,ColumnDims}) = def[1]
-column_type(def::Tuple{ColumnType,ColumnUnits}) = def[1]
-column_type(def::Tuple{ColumnType,ColumnDims,ColumnUnits}) = def[1]
-column_type(def::Tuple{ColumnType,ColumnUnits,ColumnDims}) = def[1]
-#
-column_dims(def::ColumnType) = (1,)
-column_dims(def::Tuple{ColumnType}) = (1,)
-column_dims(def::Tuple{ColumnType,ColumnUnits}) = (1,)
-column_dims(def::Tuple{ColumnType,ColumnDims}) = Tuple(def[2])
-column_dims(def::Tuple{ColumnType,ColumnDims,ColumnUnits}) = Tuple(def[2])
-column_dims(def::Tuple{ColumnType,ColumnUnits,ColumnDims}) = Tuple(def[3])
-#
-column_units(def::ColumnType) = ""
-column_units(def::Tuple{ColumnType}) = ""
-column_units(def::Tuple{ColumnType,ColumnDims}) = ""
-column_units(def::Tuple{ColumnType,ColumnUnits}) = def[2]
-column_units(def::Tuple{ColumnType,ColumnUnits,ColumnDims}) = def[2]
-column_units(def::Tuple{ColumnType,ColumnDims,ColumnUnits}) = def[3]
+# Private functions to parse column definitions. Possible types for `def` are
+# given by the union `ColumnDefinition`.
+
+column_eltype(def::ColumnEltype) = def
+column_eltype(def::Tuple{ColumnEltype}) = def[1]
+column_eltype(def::Tuple{ColumnEltype,ColumnDims}) = def[1]
+column_eltype(def::Tuple{ColumnEltype,ColumnUnits}) = def[1]
+column_eltype(def::Tuple{ColumnEltype,ColumnDims,ColumnUnits}) = def[1]
+column_eltype(def::Tuple{ColumnEltype,ColumnUnits,ColumnDims}) = def[1]
+
+column_dims(def::ColumnEltype) = (1,)
+column_dims(def::Tuple{ColumnEltype}) = (1,)
+column_dims(def::Tuple{ColumnEltype,ColumnUnits}) = (1,)
+column_dims(def::Tuple{ColumnEltype,ColumnDims}) = Tuple(def[2])
+column_dims(def::Tuple{ColumnEltype,ColumnDims,ColumnUnits}) = Tuple(def[2])
+column_dims(def::Tuple{ColumnEltype,ColumnUnits,ColumnDims}) = Tuple(def[3])
+
+column_units(def::ColumnEltype) = ""
+column_units(def::Tuple{ColumnEltype}) = ""
+column_units(def::Tuple{ColumnEltype,ColumnDims}) = ""
+column_units(def::Tuple{ColumnEltype,ColumnUnits}) = def[2]
+column_units(def::Tuple{ColumnEltype,ColumnUnits,ColumnDims}) = def[2]
+column_units(def::Tuple{ColumnEltype,ColumnDims,ColumnUnits}) = def[3]
 
 # Yields TFORM given column definition.
 function column_tform(def::ColumnDefinition)
-    T = column_type(def)
+    T = column_eltype(def)
     if T isa Char
         letter = T
     else
@@ -713,12 +705,21 @@ for T in (Clong === Clonglong ? (Clong,) : (Clong, Clonglong))
     end
 end
 
+function write_tdim(dest::Union{FitsFile,FitsTableHDU},
+                    def::ColumnDefinition, k::Integer)
+    dims = column_dims(def)
+    if length(dims) > 1
+        write_tdim(dest, k, dims)
+    end
+    nothing
+end
+
 """
-    write(file, FitsTableHDU, cols) -> hdu
+    write(file, FitsTableHDU, cols...) -> hdu
 
 creates a new FITS table extension in FITS file `file` with columns defined by
-`cols`. Each column definition is a pair `name => format` where `name` is the
-column name while `format` specifies the type of the column values and,
+`cols...`. Each column definition is a pair `name => format` where `name` is
+the column name while `format` specifies the type of the column values and,
 optionally, their units and the size of the column cells. The following
 definitions are possible:
 
@@ -760,41 +761,67 @@ and, then, to write column data. Typically:
     write(hdu, col1 => arr1) # write a first column
     ...                      # write other columns
 
-Such a table may be created in a single call:
+where `key1 => val1`, `key2 => val2`, etc. specify header cards, while `col1 =>
+arr1`, `col2 => arr2`, etc. specify columns names and associated data. Such a
+table may be created in a single call:
 
     write(file, [key1 => val1, key2 => val2, ...], [col1 => arr1, col2 => arr2, ...])
 
-where `key1 => val1`, `key2 => val2`, etc. specify header cards, while `col1 =>
-arr1`, `col2 => arr2`, etc. specify columns names and associated data.
-
 """
 function write(file::FitsFile, ::Type{FitsTableHDU},
-               cols::AbstractVector{Pair{K,V}};
-               ascii::Bool=false, nrows::Integer=0) where {K<:AbstractString,V}
+               cols::Pair{<:ColumnName,<:Any}...; kwds...)
+    return write(file, FITSTableHDU, cols; kwds...)
+end
+
+function write(file::FitsFile, ::Type{FitsTableHDU},
+               cols::Union{AbstractVector{<:Pair{<:ColumnName,<:Any}},
+                           Tuple{Vararg{Pair{<:ColumnName,<:Any}}},
+                           NamedTuple};
+               ascii::Bool=false, nrows::Integer=0)
+
+    function parse_column_definition!(ttype::AbstractVector{String},
+                                      tform::AbstractVector{String},
+                                      tunit::AbstractVector{String},
+                                      name::String,
+                                      def::ColumnDefinition,
+                                      k::Integer)
+        ttype[k] = name
+        tform[k] = column_tform(def)
+        tunit[k] = column_tunit(def)
+        nothing
+    end
+
+    # Error catcher.
+    function parse_column_definition!(@nospecialize(ttype::AbstractVector{String}),
+                                      @nospecialize(tform::AbstractVector{String}),
+                                      @nospecialize(tunit::AbstractVector{String}),
+                                      name::String,
+                                      @nospecialize(def),
+                                      @nospecialize(k::Integer))
+        bad_argument("invalid definition for column \"$name\"")
+    end
+
     ascii && error("only creating binary tables is supported")
     tbl = ascii ? CFITSIO.ASCII_TBL : CFITSIO.BINARY_TBL
+
+    # Write column defintions.
     ncols = length(cols)
     ttype = Vector{String}(undef, ncols)
     tform = Vector{String}(undef, ncols)
     tunit = Vector{String}(undef, ncols)
     k = 0
-    for (name, def) in cols
-        k += 1
-        def isa ColumnDefinition || bad_argument("invalid definition for column \"$name\"")
-        ttype[k] = name
-        tform[k] = column_tform(def)
-        tunit[k] = column_tunit(def)
+    for (key, def) in pairs_producer(cols)
+        parse_column_definition!(ttype, tform, tunit, String(key), def, k += 1)
     end
     check(CFITSIO.fits_create_tbl(file, tbl, nrows, ncols, ttype, tform, tunit,
                                   C_NULL, Ref{Status}(0)))
+
+    # Write cell dimensions if needed.
     k = 0
-    for (name, def) in cols
-        k += 1
-        dims = column_dims(def)
-        if length(dims) > 1
-            write_tdim(file, k, dims)
-        end
+    for (key, def) in pairs_producer(cols)
+        write_tdim(file, def, k += 1)
     end
+
     # The number of HDUs as returned by fits_get_num_hdus is only incremented
     # after writing data.
     n = position(file)
@@ -804,75 +831,157 @@ function write(file::FitsFile, ::Type{FitsTableHDU},
     return FitsTableHDU(BareBuild(), file, n, ascii)
 end
 
+# This function yields an iterable object that produces pairs.
+pairs_producer(x::AbstractDict) = x
+pairs_producer(x::AbstractVector{<:Pair}) = x
+pairs_producer(x::Tuple{Vararg{Pair}}) = x
+pairs_producer(x::NamedTuple) = pairs(x)
+pairs_producer(x::Any) = throw(ArgumentError("argument is not a collection of pairs"))
+
 """
-    write(hdu::FitsTableHDU, col => arr, ...; first=hdu.first_row, case=false, null=nothing) -> hdu
+    write(hdu::FitsTableHDU, cols...;
+          first=hdu.first_row, case=false, null=nothing) -> hdu
 
-writes column data into FITS table extension of `hdu`. `col` is the column
-name/number, `arr` is an array of column values. Column values are converted as
-needed and are written starting at the row specified by `first`. The leading
-dimensions of `arr` should be the same as those specified by the corresponding
-`TDIMn` keyword (with `n` the column number) and the remaining last dimension,
-if any, corresponds to the *row* index of the table.
+writes columns `cols...` into the FITS table extension of `hdu`. Columns
+`cols...` are specified as pairs like `col => vals` or `col => (vals, units)`
+with `col` the column name/number, `vals` an array of column values, and
+`units` optional units. Columns `cols...` can also be named tuples, vectors or
+tuples of pairs.
 
-If `col` is a column name, keyword `case` may be used to indicate whether case
-of letters matters (default is `false`).
+For a given column, if `col` is a column name, keyword `case` indicates whether
+case of letters matters (default is `false`) and, if units are specified, they
+must match the value of the FITS keyword `"TUNIT\$n"` in the header of `hdu`
+with `n` the column number.
+
+Column values are converted as needed and are written starting at the row
+specified by `first`. The leading dimensions of `vals` should be the same as
+those specified by the FITS keyword `"TDIM\$n"` (with `n` the column number) in
+the header of `hdu` and the remaining last dimension, if any, corresponds to
+the *row* index of the table.
 
 Keyword `null` may be used to specify the value of undefined elements in `arr`.
 
-Any number of columns may be specified as subsequent arguments. The same
-keywords apply to all columns.
+The same keywords apply to all columns.
 
 """
 function write(hdu::FitsTableHDU,
-               pair::Pair{<:Integer,<:AbstractArray};
+               pair::ColumnDataPair;
                case::Bool = false,
                null::Union{Number,Nothing} = nothing,
                first::Integer = hdu.first_row)
-    col = pair.first
-    arr = dense_array(pair.second)
-    write_col(hdu, col, first, 1, arr, null)
+    # Private function to retrieve the values and the units of a column.
+    data_units(col::Pair{<:Column,<:ColumnData}) = (pair.second, nothing)
+    data_units(col::Pair{<:Column,<:Tuple{ColumnData,ColumnUnits}}) = pair.second
+
+    # Get column number.
+    num = get_colnum(hdu, pair.first, case)
+
+    # Retrieve column values and, if units are specified, check that they are
+    # the same as those already set.
+    vals, units = data_units(pair)
+    if units !== nothing
+        card = get(hdu, "TUNIT$num", nothing)
+        (card === nothing ? isempty(units) :
+            cart.type == FITS_STRING && units == card.string) || bad_argument("invalid column units")
+    end
+
+    # Write column values.
+    write_col(hdu, num, first, 1, dense_array(vals), null)
     return hdu
 end
 
-function write(hdu::FitsTableHDU,
-               pair::Pair{<:AbstractString,<:AbstractArray};
-               case::Bool = false, kwds...)
-    col = get_colnum(hdu, pair.first, case)
-    return write(hdu, col => pair.second; kwds...)
+write(hdu::FitsTableHDU; kdws...) = hdu # nothing to write
+@inline function write(hdu::FitsTableHDU, col::ColumnDataPair,
+                       cols::ColumnDataPair...; kwds...)
+    write(hdu, col; kwds...)
+    return write(hdu, cols...; kwds...)
 end
 
-# Union of possible types for specifying column data to write.
-const ColumnInputData = Union{Pair{<:Integer,<:AbstractArray},
-                              Pair{<:AbstractString,<:AbstractArray}}
-
-# Write more than one column at a time.
-@inline function write(hdu::FitsTableHDU, data::ColumnInputData,
-                       args::ColumnInputData...; kwds...)
-    write(hdu, data; kwds...)
-    return write(hdu, args...; kwds...)
-end
-
-@inline function write(hdu::FitsTableHDU,
-                       data::Tuple{Vararg{ColumnInputData}};
+write(hdu::FitsTableHDU, ::Tuple{}; kdws...) = hdu # no more columns to write
+@inline function write(hdu::FitsTableHDU, cols::Tuple{Vararg{ColumnDataPair}};
                        kwds...)
-    write(hdu, Base.first(data); kwds...)
-    return write(hdu, Base.tail(data)...; kwds...)
+    write(hdu, first(cols); kwds...)
+    return write(hdu, Base.tail(cols)...; kwds...)
 end
 
-function write(hdu::FitsTableHDU,
-               # NOTE: For a vector of input column data, it is not possible to
-               # be more specific for the key type if we want to allow for a
-               # mixture of key types.
-               pairs::AbstractVector{<:Pair{<:Any,<:AbstractArray}};
-               kwds...)
-    for pair in pairs
-        write(hdu, pair)
+function write(hdu::FitsTableHDU, cols::NamedTuple; kwds...)
+    for col in pairs(cols)
+        write(hdu, col; kwds...)
     end
     return hdu
 end
 
-# No more columns to write.
-write(hdu::FitsTableHDU, ::Tuple{}; kdws...) = hdu
-write(hdu::FitsTableHDU; kdws...) = hdu
+function write(hdu::FitsTableHDU,
+               # NOTE: For a vector of input column data, we cannot be very
+               # specific for the key and value types of the pairs if we want
+               # to allow for a mixture of these types. The "error catcher"
+               # version of the `write` method will be eventually called.
+               cols::AbstractVector{<:Pair};
+               kwds...)
+    for col in cols
+        write(hdu, col)
+    end
+    return hdu
+end
+
+# Error catcher.
+@noinline write(hdu::FitsTableHDU, col::Pair{K,V}, args...; kwds...) where {K,V} =
+    throw(ArgumentError("invalid column-data pair of type Pair{$K,$V}"))
+
+"""
+    write(file::FitsFile, header=nothing, cols; ascii=false) -> file
+
+creates a FITS table extension in `file` with additional keywords given by
+`header` and columns `cols...`. The columns `cols` are specified as a
+collection of pairs like `key => vals` or `key => (vals, units)` with `key` the
+(symbolic) name of the column, `vals` its values, and `units` its optional
+units. The collection can be a dictionary, a named tuple, a vector of pairs, or
+a tuple of pairs.
+
+"""
+write(file::FitsFile, cols::TableData; kwds...) =
+    write(file, nothing, cols; kwds...) # provide default empty header
+
+function write(file::FitsFile, header::Union{Nothing,Header},
+               cols::TableData; ascii::Bool=false)
+
+    @noinline bad_column_data(key, val) = throw(ArgumentError("invalid data for column $key"))
+
+    function max_length(A::AbstractArray{<:AbstractString})
+        maxlen = 0
+        for str in A
+            maxlen = max(maxlen, length(str))
+        end
+        return maxlen
+    end
+
+    column_definition(key, val::ColumnData{T,1}) where {T} = (type_to_letter(T), ())
+    column_definition(key, val::ColumnData{T,N}) where {T,N} = (type_to_letter(T), size(val)[1:N-1])
+    column_definition(key, val::ColumnData{<:AbstractString,1})  = ('A', (max_length(val),))
+    column_definition(key, val::ColumnData{<:AbstractString,N}) where {N} = ('A', (max_length(val),
+                                                                                   size(val)[1:N-1]...))
+    column_definition(key, val::Tuple{ColumnData,ColumnUnits}) = (column_definition(key, val[1])..., val[2])
+    column_definition(key, val::Any) = bad_column_data(key, val)
+
+    column_values(key, val::AbstractArray) = val
+    column_values(key, val::Tuple{AbstractArray,String}) = val[1]
+    column_values(key, val::Any) = bad_column_data(key, val)
+
+    # Create a new FITS table HDU with column definitions.
+    defs = sizehint!(Vector{Pair{String,Any}}(undef, 0), length(cols))
+    for (key, val) in pairs_producer(cols)
+        push!(defs, String(key) => column_definition(key, val))
+    end
+    hdu = write(file, FitsTableHDU, defs; ascii)
+
+    # Merge the keywords provided by the caller.
+    merge!(hdu, header)
+
+    # Write values of columns.
+    for (key, val) in pairs_producer(cols)
+        write(hdu, key => column_values(key, val))
+    end
+    return file
+end
 
 #------------------------------------------------------------------------------

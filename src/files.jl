@@ -88,40 +88,40 @@ function read(::Type{FitsHeader}, filename::AbstractString;
 end
 
 """
-    readfits(R::Type=Array, filename; ext=1, col=nothing, extended=false) -> data::R
+    readfits([R::Type,] filename, args...; ext=1, extended=false, kwds...) -> data
 
 reads some data in extension `ext` (a Header Data Unit number or a name) in
-FITS file `filename`. The data is returned as an object of type `R`. Array type
+FITS file `filename`. Specify keyword `extended = true` to use CFITSIO extended
+filename syntax.
+
+If `R` is specified, the data is returned as an object of type `R`. Array type
 parameters may be specified in `R`. For example, specify `R = Array{Float32}`
 to ensure that the result be a single precision floating-point array.
 
-If the extension is a table, keyword `col` may be used to specify which
-column(s) to read.
+If the extension is an image, `args...` specifies the ranges of pixels to read
+along the dimensions. The default is to read all pixels.
 
-Specify keyword `extended = true` to use CFITSIO extended filename syntax.
+If the extension is a table, `args...` consist in up to 2 arguments `cols` and
+`rows` to select a subset of columns and of rows respectively. The default is
+to read all columns and rows.
 
 """
-function readfits(filename::AbstractString, args...; kwds...)
-    return readfits(Array, filename, args...; kwds...)
-end
-
-function readfits(::Type{R}, filename::AbstractString;
-                  ext::Union{AbstractString,Integer} = 1,
-                  col = nothing, kwds...) where {R}
-    openfits(filename, "r"; kwds...) do file
-        hdu = file[ext]
-        if col === nothing
-            return read(R, hdu)
-        else
-            hdu isa FitsTableHDU || error(
-                "column(s) may only be specified for a FITS table extension")
-            return read(R, hdu, col)
-        end
+function readfits(filename::AbstractString, args...; extended::Bool = false,
+                  ext::Union{AbstractString,Integer} = 1, kwds...)
+    openfits(filename, "r"; extended) do file
+        return read(file[ext], args...; kwds...)
     end
 end
 
+function readfits(::Type{R}, filename::AbstractString, args...; extended::Bool = false,
+                  ext::Union{AbstractString,Integer} = 1, kwds...)  where {R}
+    openfits(filename, "r"; extended) do file
+        return read(R, file[ext], args...; kwds...)
+    end
+end;
+
 """
-    read(R::Type=Array, FitsFile, filename, args...; kwds...) -> data::R
+    read([R::Type,] FitsFile, filename, args...; kwds...) -> data
 
 reads some data in FITS file `filename`. See [`readfits`](@ref) for the meaning
 of arguments and for possible keywords.
@@ -131,7 +131,8 @@ function read(::Type{FitsFile}, filename::AbstractString, args...; kwds...)
     return readfits(filename, args...; kwds...)
 end
 
-function read(::Type{R}, ::Type{FitsFile}, filename::AbstractString, args...; kwds...) where {R}
+function read(::Type{R}, ::Type{FitsFile}, filename::AbstractString, args...;
+              kwds...) where {R}
     return readfits(R, filename, args...; kwds...)
 end
 
@@ -146,20 +147,11 @@ overwrites destination `dest` with some data read from FITS file named
 See [`readfits`](@ref) for the meaning of arguments and for possible keywords.
 
 """
-function readfits!(dest, filename::AbstractString;
-                   ext::Union{AbstractString,Integer} = 1,
-                   col = nothing, kwds...)
-    openfits(filename, "r"; kwds...) do file
-        hdu = file[ext]
-        if col === nothing
-            read!(dest, hdu)
-        else
-            hdu isa FitsTableHDU || error(
-                "column(s) may only be specified for a FITS table extension")
-            read!(dest, hdu, col)
-        end
+function readfits!(dest, filename::AbstractString, args...; extended::Bool = false,
+                   ext::Union{AbstractString,Integer} = 1, kwds...)
+    openfits(filename, "r"; extended) do file
+        return read!(dest, file[ext], args...; kwds...)
     end
-    return dest
 end
 
 """
@@ -262,9 +254,9 @@ function write(file::FitsFile)
     return file
 end
 
-function write(file::FitsFile, hdr::Union{Nothing,Header},
-               A::Union{ImageData,TableData}, args...)
-    write(file, hdr, A)
+function write(file::FitsFile, header::Union{Nothing,Header},
+               data::Union{ImageData,TableData}, args...)
+    write(file, header, data)
     write(file, args...)
     return file
 end

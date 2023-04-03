@@ -20,8 +20,6 @@ const IndexRange = OrdinalRange{<:Integer,<:Integer}
 const SubArrayIndex = Union{Colon,Integer,IndexRange}
 const SubArrayIndices{N} = NTuple{N,SubArrayIndex}
 
-const ColumnName = Union{AbstractString,Symbol}
-
 """
     EasyFITS.Header
 
@@ -81,14 +79,161 @@ const Header = Union{FitsHeader,NamedTuple,VectorOfCardPairs}
 """
     EasyFITS.ImageData{T,N}
 
+is the possible type(s) for the pixels of a `N`-dimensional FITS image
+extension with elements of type `T`.
+
 """
 const ImageData{T<:Number,N} = AbstractArray{T,N}
 
 """
+    EasyFITS.ColumnName
+
+is the union of possible types for specifying the name of a column in a FITS
+table extension.
+
+"""
+const ColumnName = Union{AbstractString,Symbol}
+
+"""
+    EasyFITS.Column
+
+is the union of possible types for identifying a single column in a FITS table
+extension.
+
+"""
+const Column = Union{ColumnName,Integer}
+
+"""
+    EasyFITS.Columns
+
+is the union of possible types for specifying one or several columns in a FITS
+table extension.
+
+The method:
+
+    EasyFITS.columns_to_read(hdu::FitsTableHDU, cols::Columns)
+
+yields an iterable object over the column indices to read in table.
+
+"""
+const Columns = Union{Colon,Column,
+                      OrdinalRange{<:Integer,<:Integer},
+                      AbstractVector{<:Column},
+                      # If specified as a tuple, don't mix indices and names:
+                      Tuple{Vararg{Integer}},
+                      Tuple{Vararg{ColumnName}}}
+
+"""
+    EasyFITS.Rows
+
+is the union of possible types for specifying one or several rows in a FITS
+table extension.
+
+The following methods are provided:
+
+    EasyFITS.rows_to_read(hdu::FitsTableHDU, rows::Rows)
+    EasyFITS.first_row_to_read(hdu::FitsTableHDU, rows::Rows)
+    EasyFITS.last_row_to_read(hdu::FitsTableHDU, rows::Rows)
+
+to yield a iterable object over the row indices to read in table and the
+first/last such row indices.
+
+"""
+const Rows = Union{Colon,Integer,AbstractUnitRange{<:Integer}}
+
+"""
+    EasyFITS.ColumnData{T,N}
+
+is the possible type(s) for the cells of a `N`-dimensional column with values
+of type `T` in a FITS table extension.
+
+"""
+const ColumnData{T,N} = AbstractArray{T,N}
+
+"""
+    EasyFITS.ColumnUnits
+
+is the possible type(s) for the units of a column in a FITS table extension.
+
+"""
+const ColumnUnits = AbstractString
+
+"""
+    EasyFITS.ColumnEltype
+
+is the possible type(s) for specifying the types of the values in a column of a
+FITS table extension.
+
+"""
+const ColumnEltype = Union{Type,Char}
+
+"""
+    EasyFITS.ColumnDims
+
+is the possible type(s) for specifying the cell dimensions in a column of a
+FITS table extension.
+
+"""
+const ColumnDims = Union{Integer,Tuple{Vararg{Integer}}}
+
+"""
+    EasyFITS.ColumnDefinition
+
+is the possible type(s) for specifying the type of values, cell dimensions, and
+units of a column of a FITS table extension.
+
+"""
+const ColumnDefinition = Union{ColumnEltype,
+                               Tuple{ColumnEltype},
+                               Tuple{ColumnEltype,ColumnDims},
+                               Tuple{ColumnEltype,ColumnDims,ColumnUnits},
+                               Tuple{ColumnEltype,ColumnUnits},
+                               Tuple{ColumnEltype,ColumnUnits,ColumnDims}}
+
+# Union of possible types for specifying column data to write.
+"""
+    EasyFITS.ColumnDataPair
+
+is the possible type(s) for specifying a column with its data and, optionally,
+its units to be written in a FITS table extension. Instances of this kind are
+pairs like `col => vals` or `col => (vals, units)` with `col` the column name
+or number, `vals` the column values, and `units` optional units.
+
+"""
+const ColumnDataPair = Pair{<:Column,
+                            <:Union{ColumnData,<:Tuple{ColumnData,ColumnUnits}}}
+
+"""
     EasyFITS.TableData
 
-is the union of types of arguments that can be specified to represent data in a
-FITS table extension.
+is the union of types that can be used to store the data of FITS table
+extension. Instances of this kind are collections of `key => vals` or `key =>
+(vals, units)` pairs with `key` the column name, `vals` the column values, and
+`units` the optional units of these values. Such collections can be
+dictionaries, named tuples, vectors, or tuples.
+
+For table data specified by dictionaries or vectors, the names of the columns
+must all be of the same type.
+
+Owing to the variety of posiibilities for representing column values with
+optional units, `EasyFITS.TableData` cannot be specific for the values of the
+pairs in the collections. The package therefore rely on *error catcher* methods
+to detect column with invalid associated data.
+
+"""
+
+"""
+    EasyFITS.TableData
+
+is the union of types that can be interpreted as a set of FITS table columns.
+Instances of these types are collections of `key => vals` or `key => (vals,
+units)` pairs with `key` the column name, `vals` the column values, and `units`
+the optional units of these values.
+
+Since it is not possible to be too specific, completely
+the data part in
+
+a FITS table extension.
 
 A loop through all columns of `dat::TableData` writes:
 
@@ -100,29 +245,10 @@ where non-exported method `get_column(dat,k)` yields a pair `name => vals` of
 the name and the values of the `k`-th column in dat.
 
 """
-const TableData = Union{AbstractVector{<:Pair{<:ColumnName,<:AbstractArray}},
-                        Tuple{Vararg{<:Pair{<:ColumnName,<:AbstractArray}}},
-                        NamedTuple{<:Any,<:Tuple{Vararg{<:AbstractArray}}},
-                        AbstractDict{<:ColumnName,<:AbstractArray}}
-
-ncols(dat::TableData) = length(dat)
-
-function get_column(dat::AbstractVector{<:Pair{<:ColumnName,<:AbstractArray}}, k::Int)
-    key, vals = dat[k]
-    String(key) => vals
-end
-function get_column(dat::Tuple{Vararg{<:Pair{<:ColumnName,<:AbstractArray}}}, k::Int)
-    key, vals = dat[k]
-    String(key) => vals
-end
-function get_column(dat::NamedTuple{<:Any,<:Tuple{Vararg{<:AbstractArray}}}, key::Symbol)
-    vals = dat[key]
-    String(key) => vals
-end
-function get_column(dat::AbstractDict{K,<:AbstractArray}, key::K) where {K<:ColumnName}
-    vals = dat[key]
-    String(key) => vals
-end
+const TableData = Union{AbstractDict{<:ColumnName,<:Any},
+                           AbstractVector{<:Pair{<:ColumnName,<:Any}},
+                           Tuple{Vararg{Pair{<:ColumnName,<:Any}}},
+                           NamedTuple}
 
 """
     FitsHDU

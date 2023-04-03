@@ -4,6 +4,9 @@ using Test, EasyFITS, DataFrames
 
 using EasyFITS: FitsInteger, FitsFloat, FitsComplex
 
+column_values(arg::AbstractArray) = arg
+column_values(arg::Tuple{AbstractArray,AbstractString}) = arg[1]
+
 # Yield type for which we are sure that no possible conversion is implemented.
 other_type(type::FitsCardType) =
     type === FITS_LOGICAL   ? Missing :
@@ -407,6 +410,7 @@ end
 end
 
 @testset "FITS Tables" begin
+    # Low-level API.
     openfits(tempfile, "w!") do file
         @test length(file) == 0
         hdu = write(file, FitsTableHDU, ["Col#1" => ('E', "m/s"),
@@ -525,10 +529,32 @@ end
         @test dict[hdu.column_names[2]] == cols[2][5:5]
         dict = read(hdu, :, 5; rename=identity) # read a single row
         @test dict isa Dict{String,<:Array}
-        @show dict[hdu.column_names[1]]
-        @show cols[1][5]
         @test dict[hdu.column_names[1]] == fill(cols[1][5])
         @test dict[hdu.column_names[2]] == fill(cols[2][5])
+    end
+
+    # High-level API.
+    table = (Index = 1:4,
+             Speed = (Float32.(-1:2:5), "cm/s"),
+             Length = (Int16.(8:3:17), "mm"),
+             Misc = reshape(Int8.(1:24), (2,3,4)),
+             #= Name = ["Alice","Bob","Casimir","Duff"] =#)
+    writefits!(tempfile, table)
+    dict = readfits(tempfile, ext=2)
+    @test Set(keys(dict)) == Set(map(uppercase∘String, keys(table)))
+    @test dict["INDEX"]   == column_values(table[:Index])
+    @test dict["SPEED"]   == column_values(table[:Speed])
+    @test dict["LENGTH"]  == column_values(table[:Length])
+    @test dict["MISC"]    == column_values(table[:Misc])
+    rows = 2:3
+    dict = readfits(tempfile, :, rows; ext=2, case=true)
+    @test Set(keys(dict)) == Set(map(String, keys(table)))
+    @test dict["Index"]   == column_values(table[:Index])[rows]
+    @test dict["Speed"]   == column_values(table[:Speed])[rows]
+    @test dict["Length"]  == column_values(table[:Length])[rows]
+    @test dict["Misc"]    == column_values(table[:Misc])[:,:,rows]
+    for col in keys(table)
+        @test readfits(tempfile, col; ext=2) == column_values(table[col])
     end
 end
 

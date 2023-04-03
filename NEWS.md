@@ -22,6 +22,12 @@
 - Reading column(s) from a FITS table can yield the column(s) values or the
   column(s) values *and* their units.
 
+- FITS table extensions can be written by `write(file, header=nothing, cols)`
+  with columns `cols` specified by a collection of of pairs like `key => vals`
+  or `key => (vals, units)` with `key` the (symbolic) name of the column,
+  `vals` its values, and `units` its optional units. The collection can be a
+  dictionary, a named tuple, a vector of pairs, or a tuple of pairs.
+
 ## Version 0.5.5
 
 - `read(FitsHeader,filename;ext=...)` can be used to read the header of FITS
