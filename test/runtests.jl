@@ -421,16 +421,26 @@ end
         @test hdu.ncols == 2
         @test ncol(hdu) == 2
         @test hdu.first_column == 1
-        @test hdu.last_column == hdu.ncols + 1 - hdu.first_column
+        @test hdu.columns == hdu.first_column:hdu.last_column
+        @test length(hdu.columns) == hdu.ncols
         @test hdu.nrows == 0
         @test nrow(hdu) == 0
         @test hdu.first_row == 1
-        @test hdu.last_row == hdu.nrows + 1 - hdu.first_row
+        @test hdu.rows == hdu.first_row:hdu.last_row
+        @test length(hdu.rows) == hdu.nrows
         @test hdu.data_ndims == 2
         @test hdu.data_size == (hdu.nrows, hdu.ncols)
         @test hdu.data_axes == (hdu.first_row:hdu.last_row,
                                 hdu.first_column:hdu.last_column)
         @test hdu.column_names == ["Col#1", "Col#2"]
+        c1 = hdu.column_number("Col#1")
+        @test hdu.column_name(c1) == "COL#1"
+        @test hdu.column_name(c1; case=true) == "Col#1"
+        c2 = hdu.column_number("Col#2")
+        @test hdu.column_name(c2) == "COL#2"
+        @test hdu.column_name(c2; case=true) == "Col#2"
+        @test hdu.column_units("Col#1") == "m/s"
+        @test hdu.column_units("Col#2") == "Hz"
         @test hdu[:tunit1].value() == "m/s"
         @test hdu[:tunit2].value() == "Hz"
         for col ∈ (1, "Col#1")

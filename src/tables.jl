@@ -1,37 +1,53 @@
 #------------------------------------------------------------------------------
 # FITS TABLES PROPERTIES
 
-Base.propertynames(::FitsTableHDU) = (:nrows, :ncols, :column_names,
-                                      :first_row, :last_row,
-                                      :first_column, :last_column,
+Base.propertynames(::FitsTableHDU) = (:nrows, :rows, :first_row, :last_row,
+                                      :ncols, :columns, :first_column, :last_column,
+                                      :column_name, :column_names, :column_number, :column_units,
                                       :data_size, :data_ndims, :data_axes,
                                       :extname, :hduname, :file, :num, :type, :xtension)
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:data_ndims}) = 2
-Base.getproperty(hdu::FitsTableHDU, ::Val{:data_size}) = (get_nrows(hdu),
-                                                          get_ncols(hdu))
-Base.getproperty(hdu::FitsTableHDU, ::Val{:data_axes}) = (Base.OneTo(get_nrows(hdu)),
-                                                          Base.OneTo(get_ncols(hdu)))
+Base.getproperty(hdu::FitsTableHDU, ::Val{:data_size}) = (hdu.nrows, hdu.ncols)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:data_axes}) = (hdu.rows, hdu.columns)
 
+Base.getproperty(hdu::FitsTableHDU, ::Val{:rows}) = Base.OneTo(hdu.nrows)
 Base.getproperty(hdu::FitsTableHDU, ::Val{:first_row}) = 1
-Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = get_nrows(hdu)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = hdu.nrows
 Base.getproperty(hdu::FitsTableHDU, ::Val{:nrows}) = get_nrows(hdu)
-
-Base.getproperty(hdu::FitsTableHDU, ::Val{:first_column}) = 1
-Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = get_ncols(hdu)
-Base.getproperty(hdu::FitsTableHDU, ::Val{:ncols}) = get_ncols(hdu)
-
 function get_nrows(f::Union{FitsFile,FitsTableHDU})
     nrows = Ref{Clonglong}()
     check(CFITSIO.fits_get_num_rowsll(f, nrows, Ref{Status}(0)))
     return as(Int, nrows[])
 end
 
+Base.getproperty(hdu::FitsTableHDU, ::Val{:columns}) = Base.OneTo(hdu.ncols)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:first_column}) = 1
+Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = hdu.ncols
+Base.getproperty(hdu::FitsTableHDU, ::Val{:ncols}) = get_ncols(hdu)
 function get_ncols(f::Union{FitsFile,FitsTableHDU})
     ncols = Ref{Cint}()
     check(CFITSIO.fits_get_num_cols(f, ncols, Ref{Status}(0)))
     return as(Int, ncols[])
 end
+
+struct UnitsGetter
+    hdu::FitsTableHDU
+end
+(obj::UnitsGetter)(col::Column; case::Bool = false) = get_units(obj.hdu, col; case)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:column_units}) = UnitsGetter(hdu)
+
+struct ColumnNumberGetter
+    hdu::FitsTableHDU
+end
+(obj::ColumnNumberGetter)(col::Column; case::Bool = false) = get_colnum(obj.hdu, col; case)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:column_number}) = ColumnNumberGetter(hdu)
+
+struct ColumnNameGetter
+    hdu::FitsTableHDU
+end
+(obj::ColumnNameGetter)(col::Column; case::Bool = false) = get_colname(obj.hdu, col; case)[1]
+Base.getproperty(hdu::FitsTableHDU, ::Val{:column_name}) = ColumnNameGetter(hdu)
 
 """
     names(hdu::FitsTableHDU)
@@ -55,11 +71,10 @@ end
 # READING FITS TABLES
 
 columns_to_read(hdu::FitsTableHDU, cols::Columns) = cols
-columns_to_read(hdu::FitsTableHDU, cols::Colon) = hdu.first_column:hdu.last_column
+columns_to_read(hdu::FitsTableHDU, cols::Colon) = hdu.columns
 
 rows_to_read(hdu::FitsTableHDU, rows::Rows) = rows
-rows_to_read(hdu::FitsTableHDU, rows::Colon) =
-    first_row_to_read(hdu,rows):last_row_to_read(hdu,rows)
+rows_to_read(hdu::FitsTableHDU, rows::Colon) = hdu.rows
 
 first_row_to_read(hdu::FitsTableHDU, rows::Rows) = as(Int, first(rows))
 first_row_to_read(hdu::FitsTableHDU, rows::Colon) = hdu.first_row
@@ -68,79 +83,78 @@ last_row_to_read(hdu::FitsTableHDU, rows::Rows) = as(Int, last(rows))
 last_row_to_read(hdu::FitsTableHDU, rows::Colon) = hdu.last_row
 
 """
-    EasyFITS.get_units(hdu, col, case=false) -> str
+    EasyFITS.get_units(hdu, col; case=false) -> str
+    hdu.column_units(col; case=false) -> str
 
-yields the units for the column `col` of FITS table `hdu`. If `case` is true
-and `col` is a (symbolic) name, the case of the letters is taken into account.
+yield the units for the column `col` of FITS table `hdu`. Keyword `case`
+specifies whether the case of letters matters when `col` is a (symbolic) name.
+The result is always a string, possibly empty.
 
 """
-function get_units(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
-    return get_units(hdu, get_colnum(hdu, col, case), false)
-end
-
-function get_units(hdu::FitsTableHDU, col::Integer, case::Bool = false)
-    card = get(hdu, "TUNIT$col", nothing)
-    if card !== nothing && card.type == FITS_STRING
-        return card.string
-    else
-        return ""
-    end
+function get_units(hdu::FitsTableHDU, col::Column; case::Bool = false)
+    num = get_colnum(hdu, col; case)
+    card = get(hdu, "TUNIT$num", nothing)
+    return (card === nothing || card.type != FITS_STRING ? "" : card.string)
 end
 
 """
-    EasyFITS.get_colnum(hdu::FitsTableHDU, col, case=false) -> num
+    EasyFITS.get_colnum(hdu::FitsTableHDU, col; case=false) -> num
+    hdu.column_number(col; case=false) -> num
 
 yields the column number of column matching `col` (a string, a symbol, or an
-integer) in FITS table extension of `hdu`. Optional argument `case` specify
-whether upper-/lower-case matters if `col` is a string or a symbol.
+integer) in FITS table extension of `hdu`. Keyword `case` specifies whether the
+case of letters matters if `col` is a string or a symbol.
 
 """
-@inline function get_colnum(hdu::FitsTableHDU, col::Integer, case::Bool = false)
-    @boundscheck check_colnum(hdu, col)
+@inline function get_colnum(hdu::FitsTableHDU, col::Integer; case::Bool = false)
+    @boundscheck checkbounds(hdu, col)
     return as(Int, col)
 end
 
-function get_colnum(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
+function get_colnum(hdu::FitsTableHDU, col::ColumnName; case::Bool = false)
     colnum = Ref{Cint}()
     check(CFITSIO.fits_get_colnum(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
                                   col, colnum, Ref{Status}(0)))
     return as(Int, colnum[])
 end
 
-check_colnum(hdu::FitsTableHDU, col::Integer) =
-    ((hdu.first_column ≤ col) & (col ≤ hdu.last_column)) || bad_argument("out of range column index")
+Base.checkbounds(hdu::FitsTableHDU, col::Integer) =
+    col ∈ hdu.columns || bad_argument("out of range column index")
 
 """
-    EasyFITS.get_colname(hdu::FitsTableHDU, col, case=false) -> (str, num)
+    EasyFITS.get_colname(hdu::FitsTableHDU, col; case=false) -> (str, num)
+    hdu.column_name(col; case=false) -> str
 
 yields the column name and number of column matching `col` (a string, a symbol,
-or an integer) in FITS table extension of `hdu`. Optional argument `case`
-specify whether upper-/lower-case matters if `col` is a string or a symbol. If
-`case` is false, the column name `str` is converted to upper-case letters.
+or an integer) in FITS table extension of `hdu`. Keyword `case` specifies
+whether the case of letters matters if `col` is a string or a symbol. If `case`
+is false, the column name `str` is converted to upper-case letters.
 
 """
-function get_colname(hdu::FitsTableHDU, col::Integer, case::Bool = false)
-    check_colnum(hdu, col)
+function get_colname(hdu::FitsTableHDU, col::Integer; case::Bool = false)
+    checkbounds(hdu, col)
     card = get(hdu, "TTYPE$col", nothing) # FIXME: optimize?
     (card === nothing || card.type != FITS_STRING) && return ("COL#$col", as(Int, col))
     return (case ? card.string : uppercase(card.string), as(Int, col))
 end
 
-function get_colname(hdu::FitsTableHDU, col::ColumnName, case::Bool = false)
+function get_colname(hdu::FitsTableHDU, col::ColumnName; case::Bool = false)
     colnum = Ref{Cint}()
-    colname = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
+    buffer = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
     check(CFITSIO.fits_get_colname(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
-                                   col, pointer(colname), colnum, Ref{Status}(0)))
-    return (to_string!(colname), as(Int, colnum[]))
+                                   col, pointer(buffer), colnum, Ref{Status}(0)))
+    colname = to_string!(buffer)
+    return (case ? colname : uppercase(colname), as(Int, colnum[]))
 end
 
 for func in (:get_coltype, :get_eqcoltype)
     local cfunc = Symbol("fits_",func,"ll")
-    @eval function $func(f::Union{FitsFile,FitsTableHDU}, col::ColumnName,
+    @eval function $func(f::Union{FitsFile,FitsTableHDU}, col::ColumnName;
                          case::Bool = false)
-        return $func(f, get_colnum(f, col, case))
+        return $func(f, get_colnum(f, col; case))
     end
-    @eval function $func(f::Union{FitsFile,FitsTableHDU}, col::Integer)
+    @eval function $func(f::Union{FitsFile,FitsTableHDU}, col::Integer;
+                         case::Bool = false)
         type = Ref{Cint}()
         repeat = Ref{Clonglong}()
         width = Ref{Clonglong}()
@@ -149,8 +163,8 @@ for func in (:get_coltype, :get_eqcoltype)
     end
 end
 
-read_tdim(f::Union{FitsFile,FitsTableHDU}, col::ColumnName, case::Bool=false) =
-    read_tdim(f, get_colnum(f, col, case))
+read_tdim(f::Union{FitsFile,FitsTableHDU}, col::ColumnName; case::Bool=false) =
+    read_tdim(f, get_colnum(f, col; case))
 
 function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
     1 ≤ col ≤ 999 || error("invalid column number")
@@ -175,7 +189,7 @@ reads column `col` of the FITS table extension in `hdu` and returns its values
 and, possibly, its units.
 
 The column `col` may be specified by its name or by its number. If `col` is a
-string or a symbol, keyword `case` specifies whether uppercase/lowercase
+string or a symbol, keyword `case` specifies whether the case of letters
 matters (`case = false` by default).
 
 Optional leading argument `R` is to specify the type of the result which can be
@@ -184,8 +198,8 @@ types, to retrieve the column values and their units.
 
 Optional argument `rows` is to specify which rows to read. It can be an integer
 to read a single row, a unit range of integers to read these rows, or a colon
-`:` to read all rows (the default). Properties `hdu.first_row` and
-`hdu.last_row` can be used to retrieve the first and last row numbers.
+`:` to read all rows (the default). Use `hdu.first_row` and `hdu.last_row`
+to retrieve the first and last row numbers.
 
 See [`read!(::DenseArray,::FitsTableHDU,::ColumName)`](@ref) for the other
 possible keywords.
@@ -199,14 +213,14 @@ end
 function read(::Type{Tuple{A,String}}, hdu::FitsTableHDU, col::Column,
               rows::Rows = Colon(); case::Bool = false,
               kwds...) where {A<:AbstractArray}
-    num = get_colnum(hdu, col, case)
+    num = get_colnum(hdu, col; case)
     return (read(A, hdu, num, rows; kwds...), get_units(hdu, num))
 end
 
 function read(::Type{A}, hdu::FitsTableHDU, col::ColumnName,
               rows::Rows = Colon(); case::Bool = false,
               kwds...) where {A<:AbstractArray}
-    return read(A, hdu, get_colnum(hdu, col, case), rows; kwds...)
+    return read(A, hdu, get_colnum(hdu, col; case), rows; kwds...)
 end
 
 function read(::Type{Array}, hdu::FitsTableHDU, col::Integer,
@@ -257,14 +271,16 @@ end
 # (1,), an empty size is assumed.
 function size_to_read(::Type{T}, hdu::FitsTableHDU,
                       col::Integer, rows::Rows) where {T<:Union{String,Number}}
-    first = first_row_to_read(hdu, rows)
-    last = last_row_to_read(hdu, rows)
-    nrows = max(last + 1 - first, 0)
-    if nrows > 0 && (first < hdu.first_row || last > hdu.last_row)
-        bad_argument("out of bounds first row to read")
+    all_rows = hdu.rows
+    if rows isa Colon
+        nrows = length(all_rows)
+    else
+        nrows = length(rows)
+        nrows == 0 || (first(rows) ≥ first(all_rows) && last(rows) ≤ last(all_rows)) ||
+            bad_argument("out of bounds row(s) to read")
     end
     dims = read_tdim(hdu, col)
-    if T !== String && length(dims) == 1 && Base.first(dims) == 1
+    if T !== String && length(dims) == 1 && first(dims) == 1
         # Cells of this column have no dimensions and do not have string
         # values.
         if rows isa Integer
@@ -278,6 +294,8 @@ function size_to_read(::Type{T}, hdu::FitsTableHDU,
     return dims
 end
 
+# Convert an array of bytes to an arry of strings. The leading dimension
+# indexes the characters of the strings. Trailing spaces are stripped.
 function bytes_to_strings(A::AbstractArray{UInt8,N}) where {N}
     I = axes(A)[1]
     J = CartesianIndices(axes(A)[2:N])
@@ -291,14 +309,12 @@ function bytes_to_strings(A::AbstractArray{UInt8,N}) where {N}
         for i in I
             c = A[i,j]
             iszero(c) && break
-            l += 1
-            buf[l] = c
+            buf[l += 1] = c
             if c != space
                 len = l
             end
         end
-        k += 1
-        B[k] = GC.@preserve buf unsafe_string(pointer(buf), len)
+        B[k += 1] = GC.@preserve buf unsafe_string(pointer(buf), len)
     end
     return B
 end
@@ -385,7 +401,7 @@ function merge!(dict::AbstractDict{K,V}, hdu::FitsTableHDU,
                                                    Tuple{AbstractArray,String}}}
     names = hdu.column_names
     for col in columns_to_read(hdu, cols)
-        num = get_colnum(hdu, col, case)
+        num = get_colnum(hdu, col; case)
         key = rename(names[num]) # FIXME: as(K, ...) and relax type of parameter K
         push!(dict, key => read(V, hdu, num, rows; kwds...))
     end
@@ -456,7 +472,7 @@ function push!(vec::AbstractVector{<:AbstractArray},
                hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
                case::Bool = false, kwds...)
     for col in columns_to_read(hdu, cols)
-        num = get_colnum(hdu, col, case)
+        num = get_colnum(hdu, col; case)
         push!(vec, read(A, hdu, num, rows; kwds...))
     end
     return vec
@@ -466,7 +482,7 @@ function push!(vec::AbstractVector{<:Tuple{<:AbstractArray,String}},
                hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
                case::Bool = false, kwds...)
     for col in columns_to_read(hdu, cols)
-        num = get_colnum(hdu, col, case)
+        num = get_colnum(hdu, col; case)
         push!(vec, (read(A, hdu, num, rows; kwds...), get_units(hdu, num)))
     end
     return vec
@@ -479,7 +495,7 @@ overwrites the elements of array `arr` with values of the column `col` of the
 FITS table extension in `hdu` and returns `arr`.
 
 The column `col` may be specified by its name or by its number. If `col` is a
-string or a symbol, keyword `case` indicates whether uppercase/lowercase
+string or a symbol, keyword `case` indicates whether the case of letters
 matters (`case = false` by default).
 
 Keyword `first` may be specified with the index of the first row to read. By
@@ -501,7 +517,7 @@ they must be *dense arrays*.
 """
 function read!(arr::DenseArray, hdu::FitsTableHDU, col::ColumnName;
                case::Bool = false, kwds...)
-    return read!(arr, hdu, get_colnum(hdu, col, case); kwds...)
+    return read!(arr, hdu, get_colnum(hdu, col; case); kwds...)
 end
 
 function read!(arr::DenseArray{String,N}, hdu::FitsTableHDU, col::Integer;
@@ -845,9 +861,9 @@ with `col` the column name/number, `vals` an array of column values, and
 tuples of pairs.
 
 For a given column, if `col` is a column name, keyword `case` indicates whether
-case of letters matters (default is `false`) and, if units are specified, they
-must match the value of the FITS keyword `"TUNIT\$n"` in the header of `hdu`
-with `n` the column number.
+the case of letters matters (default is `false`) and, if units are specified,
+they must match the value of the FITS keyword `"TUNIT\$n"` in the header of
+`hdu` with `n` the column number.
 
 Column values are converted as needed and are written starting at the row
 specified by `first`. The leading dimensions of `vals` should be the same as
@@ -870,7 +886,7 @@ function write(hdu::FitsTableHDU,
     data_units(col::Pair{<:Column,<:Tuple{ColumnData,ColumnUnits}}) = pair.second
 
     # Get column number.
-    num = get_colnum(hdu, pair.first, case)
+    num = get_colnum(hdu, pair.first; case)
 
     # Retrieve column values and, if units are specified, check that they are
     # the same as those already set.

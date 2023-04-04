@@ -21,9 +21,9 @@ arr = read(hdu, col)
 
 with `hdu` the *Header Data Unit* containing the table and `col` the column
 name or number. The names of the columns are given by `hdu.column_names` and
-valid column numbers are in the range `hdu.first_column:hdu.last_column` (see
-[Table HDU Properties](#Table-HDU-Properties) for a list of all properties). If
-`col` is a string or a symbol, keyword `case` can be used to specify whether
+valid column numbers are in the range `hdu.columns` (see [Table HDU
+Properties](#Table-HDU-Properties) for a list of all properties). If `col` is a
+string or a symbol, keyword `case` can be used to specify whether
 uppercase/lowercase matters (`case` is false by default).
 
 By default, all rows are read but it is possible to specify which rows to read:
@@ -282,21 +282,40 @@ keywords apply to all columns.
 
 The following table lists all properties of a FITS table HDU.
 
-| Property       | Description                          |
-|:---------------|:-------------------------------------|
-| `nrows`        | Number of rows                       |
-| `ncols`        | Number of columns                    |
-| `column_names` | Column names                         |
-| `first_row`    | Index of first row                   |
-| `last_row`     | Index of last row                    |
-| `first_column` | Index of first column                |
-| `last_column`  | Index of last column                 |
-| `data_size`    | Table dimensions                     |
-| `data_ndims`   | Number of table dimensions           |
-| `data_axes`    | Indices along table dimensions       |
-| `extname`      | Extension name                       |
-| `hduname`      | HDU name                             |
-| `file`         | Associated FITS file                 |
-| `num`          | HDU number                           |
-| `type`         | HDU type: `FITS_BINARY_TABLE_HDU`    |
-| `xtension`     | Extension: `"BINTABLE"` or `"TABLE"` |
+| Property        | Description                          |
+|:----------------|:-------------------------------------|
+| `nrows`         | Number of rows                       |
+| `rows`          | Index range of rows                  |
+| `first_row`     | Index of first row                   |
+| `last_row`      | Index of last row                    |
+| `ncols`         | Number of columns                    |
+| `columns`       | Index range of columns               |
+| `first_column`  | Index of first column                |
+| `last_column`   | Index of last column                 |
+| `column_name`   | Column name getter                   |
+| `column_names`  | Column names                         |
+| `column_number` | Column number getter                 |
+| `column_units`  | Column units getter                  |
+| `data_size`     | Table dimensions                     |
+| `data_ndims`    | Number of table dimensions           |
+| `data_axes`     | Indices along table dimensions       |
+| `extname`       | Extension name                       |
+| `hduname`       | HDU name                             |
+| `file`          | Associated FITS file                 |
+| `num`           | HDU number                           |
+| `type`          | HDU type: `FITS_BINARY_TABLE_HDU`    |
+| `xtension`      | Extension: `"BINTABLE"` or `"TABLE"` |
+
+To retrieve the units, the number, or the name of column `col` in the FITS
+table `hdu` object, use the properties `column_units`, `column_number`, or
+`column_name` properties as follows:
+
+```julia
+hdu.column_units(col; case=false) -> units::String
+hdu.column_name(col; case=false) -> name::String
+hdu.column_number(col; case=false) -> number::Int
+```
+
+Keyword `case` specifies whether the case of letters does matters when `col` is
+a (symbolic) name. The result of `hdu.column_units(col)` is always a string,
+possibly empty.
