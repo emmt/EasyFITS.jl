@@ -28,6 +28,10 @@
   `vals` its values, and `units` its optional units. The collection can be a
   dictionary, a named tuple, a vector of pairs, or a tuple of pairs.
 
+- To avoid ambiguities, when writing complete FITS extensions in a single
+  `write` call, two arguments must be supplied for each extension: one for the
+  header (possibly `nothing`) and one for the data.
+
 ## Version 0.5.5
 
 - `read(FitsHeader,filename;ext=...)` can be used to read the header of FITS

@@ -929,7 +929,7 @@ end
     throw(ArgumentError("invalid column-data pair of type Pair{$K,$V}"))
 
 """
-    write(file::FitsFile, header=nothing, cols; ascii=false) -> file
+    write(file::FitsFile, header, cols; ascii=false) -> file
 
 creates a FITS table extension in `file` with additional keywords given by
 `header` and columns `cols...`. The columns `cols` are specified as a
@@ -939,9 +939,6 @@ units. The collection can be a dictionary, a named tuple, a vector of pairs, or
 a tuple of pairs.
 
 """
-write(file::FitsFile, cols::TableData; kwds...) =
-    write(file, nothing, cols; kwds...) # provide default empty header
-
 function write(file::FitsFile, header::Union{Nothing,Header},
                cols::TableData; ascii::Bool=false)
 

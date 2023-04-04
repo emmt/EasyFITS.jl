@@ -352,33 +352,16 @@ function write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
 end
 
 """
-    write(file::FitsFile, hdr, arr::AbstractArray, args...) -> file
+    write(file::FitsFile, hdr, arr::AbstractArray) -> file
 
-    write(file::FitsFile, arr::AbstractArray, hdr=nothing) -> file
+writes a new FITS Image Extension in `file` with non-structural header keywords
+specified by `hdr` and data specified by array `arr`.
 
 """
 function write(file::FitsFile, hdr::Union{Header,Nothing},
                arr::AbstractArray{T,N}) where {T<:Number,N}
-    # FIXME: improve type-stability
     write(merge!(write(file, FitsImageHDU, T, size(arr)), hdr), arr)
-    return file
-end
-
-function write(file::FitsFile, arr::AbstractArray{<:Number},
-               hdr::Union{Header,Nothing} = nothing)
-    return write(file, hdr, arr)
-end
-
-function write(file::FitsFile, hdr::Union{Header,Nothing},
-               arr::AbstractArray{<:Number}, args...)
-    write(file, hdr, arr)
-    return write(file, args...)
-end
-
-function write(file::FitsFile, arr::AbstractArray{<:Number},
-               hdr::Union{Header,Nothing}, args...)
-    write(file, hdr, arr)
-    return write(file, args...)
+    return file # returns the file not the HDU
 end
 
 """

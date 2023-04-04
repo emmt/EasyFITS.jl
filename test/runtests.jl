@@ -539,7 +539,7 @@ end
              Length = (Int16.(8:3:17), "mm"),
              Misc = reshape(Int8.(1:24), (2,3,4)),
              #= Name = ["Alice","Bob","Casimir","Duff"] =#)
-    writefits!(tempfile, table)
+    writefits!(tempfile, nothing, table)
     dict = readfits(tempfile, ext=2)
     @test Set(keys(dict)) == Set(map(uppercase∘String, keys(table)))
     @test dict["INDEX"]   == column_values(table[:Index])
