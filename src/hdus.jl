@@ -259,14 +259,13 @@ end
     hdu[key] = x
     push!(hdu, key => x)
 
-updates or appends a record associating the keyword `key` with the data `dat`
-in the header of the FITS header data unit `hdu` (see `push!`). Depending on
-the type of the FITS keyword `key`, the argument `x` can be `val`, `com` or
-`(val,com)` with `val` and `com` the value and the comment of the FITS card.
+updates or appends a record associating the keyword `key` with `x` in the
+header of the FITS header data unit `hdu` (see `push!`). Depending on the type
+of the FITS keyword `key`, the argument `x` can be `val`, `com`, or `(val,com)`
+with `val` and `com` the value and the comment of the FITS card.
 
 """
-Base.setindex!(hdu::FitsHDU, dat::CardData, key::CardName) =
-    push!(hdu, key => dat)
+Base.setindex!(hdu::FitsHDU, x, key::CardName) = push!(hdu, key => x)
 
 """
     push!(hdu::FitsHDU, rec; append=false) -> hdu
@@ -287,49 +286,41 @@ converted into a FITS card. This includes a pair `key => val`, `key => com`, or
 To push more than one record, call `merge!` instead of `push!`.
 
 """
-push!(hdu::FitsHDU, rec::Pair{<:CardName}; append::Bool = false) =
-    _push!(hdu, normalize_card_name(first(rec)), last(rec), append)
-
-# Like push! but name has been normalized (that is trailing spaces removed and
-# converted to uppercase letters).
-function _push!(hdu::FitsHDU, key::String, x, append::Bool)
-    quick_key = FitsKey(key)
-    if quick_key == Fits"COMMENT"
-        write_comment(hdu, extract_comment_only(key, x))
-    elseif quick_key == Fits"HISTORY"
-        write_history(hdu, extract_comment_only(key, x))
-    elseif quick_key == Fits""
-        write_key(hdu, key, Nothing, extract_comment_only(key, x))
-    else
-        val, com = extract_value_and_comment_parts(key, x)
-        if append || quick_key == Fits"CONTINUE"
+function push!(hdu::FitsHDU, card::FitsCard; append::Bool = false)
+    # Private method.
+    function set_key(hdu::FitsHDU, key::String, val, com::String; append::Bool = false)
+        if append
             write_key(hdu, key, val, com)
         else
             update_key(hdu, key, val, com)
         end
+        nothing
     end
-    return hdu
-end
 
-function push!(hdu::FitsHDU, card::FitsCard; append::Bool = false)
-    if card.type === FITS_COMMENT
+    if card.type === FITS_LOGICAL
+        set_key(hdu, card.name, card.logical, card.comment; append)
+    elseif card.type === FITS_INTEGER
+        set_key(hdu, card.name, card.integer, card.comment; append)
+    elseif card.type === FITS_FLOAT
+        set_key(hdu, card.name, card.float, card.comment; append)
+    elseif card.type === FITS_STRING
+        set_key(hdu, card.name, card.string, card.comment; append)
+    elseif card.type === FITS_COMPLEX
+        set_key(hdu, card.name, card.complex, card.comment; append)
+    elseif card.type === FITS_COMMENT
         if card.key == Fits"COMMENT"
             write_comment(hdu, card.comment)
-            return hdu
         elseif card.key == Fits"HISTORY"
             write_history(hdu, card.comment)
-            return hdu
-        elseif card.key == Fits""
-            append = true
+        elseif card.key == Fits"" || card.key == Fits"CONTINUE"
+            write_key(hdu, card.name, nothing, card.comment)
+        else
+            update_key(hdu, card.name, nothing, card.comment)
         end
-    elseif card.key == Fits"CONTINUE"
-        append = true
-    end
-    # FIXME: Improve type stability.
-    if append
-        write_key(hdu, card.name, card.value(), card.comment)
-    else
-        update_key(hdu, card.name, card.value(), card.comment)
+    elseif card.type === FITS_UNDEFINED
+        set_key(hdu, card.name, missing, card.comment; append)
+    elseif card.type !== FITS_END
+        error("unexpected FITS card type")
     end
     return hdu
 end
@@ -352,19 +343,27 @@ In most cases, calling `merge!` is a shortcut to:
     end
 
 """
-merge!(hdu::FitsHDU, recs::Nothing; append::Bool = false) = hdu
-
-function merge!(hdu::FitsHDU, recs::NamedTuple; append::Bool = false)
-    for key in keys(recs)
-        push!(hdu, key => recs[key]; append)
+function merge!(hdu::FitsHDU, hdr::Header; append::Bool = false)
+    # By default, assume an iterable object producing cards or equivalent.
+    for rec in hdr
+        push!(hdu, rec; append)
     end
     return hdu
 end
 
-# By default, assume an iterable object.
-function merge!(hdu::FitsHDU, recs; append::Bool = false)
-    for rec in recs
-        push!(hdu, rec; append)
+merge!(hdu::FitsHDU, recs::Nothing; append::Bool = false) = hdu
+
+function merge!(hdu::FitsHDU, hdr::NamedTuple; append::Bool = false)
+    for key in keys(hdr)
+        push!(hdu, key => hdr[key]; append)
+    end
+    return hdu
+end
+
+# For vectors of pairs, the pairs must be reformed (their value type may be Any).
+function merge!(hdu::FitsHDU, hdr::AbstractVector{<:CardPair}; append::Bool = false)
+    for pair in hdr
+        push!(hdu, pair.first => pair.second; append)
     end
     return hdu
 end
@@ -385,51 +384,6 @@ function Base.delete!(hdu::FitsHDU, key::Integer)
     check(CFITSIO.fits_delete_record(hdu, key, Ref{Status}(0)))
     return hdu
 end
-
-"""
-   EasyFITS.normalize_card_value(val)
-
-converts `val` to a suitable keyword value, yielding `Invalid()` for invalid
-value type. Argument `val` shall be the bare value of a non-commentary FITS
-keyword without the comment part.
-
-"""
-normalize_card_value(val::Undefined) = missing
-normalize_card_value(val::Nothing) = nothing
-normalize_card_value(val::Bool) = val
-normalize_card_value(val::Integer) = as(Int, val)
-normalize_card_value(val::Real) = as(Cdouble, val)
-normalize_card_value(val::Complex) = as(Complex{Cdouble}, val)
-normalize_card_value(val::AbstractString) = val
-normalize_card_value(val::Any) = Invalid() # means error
-
-extract_comment_only(key, x::Nothing) = ""
-extract_comment_only(key, x::AbstractString) = x
-extract_comment_only(key, x::Tuple{Nothing,Nothing}) = ""
-extract_comment_only(key, x::Tuple{Nothing,AbstractString}) = last(x)
-extract_comment_only(key, x) = invalid_card_value(key, x; commentary=true)
-
-extract_value_and_comment_parts(key, x::CardValue) =
-    (normalize_card_value(x), nothing)
-extract_value_and_comment_parts(key, x::Tuple{CardValue}) =
-    (normalize_card_value(first(x)), nothing)
-extract_value_and_comment_parts(key, x::Tuple{CardValue,Nothing}) =
-    (normalize_card_value(first(x)), nothing)
-extract_value_and_comment_parts(key, x::Tuple{CardValue,AbstractString}) =
-    (normalize_card_value(first(x)), last(x))
-extract_value_and_comment_parts(key, x) = invalid_card_value(key, x)
-
-@noinline invalid_card_value(key::String, x; commentary::Bool=false) =
-    bad_argument("invalid value of type ", typeof(x), " for ",
-                 (commentary ? "commentary " : ""), "FITS keyword \"",
-                 key, "\"")
-
-# NOTE: Always yields a String.
-normalize_card_name(key::Symbol) = normalize_card_name(String(key))
-normalize_card_name(key::AbstractString) = uppercase(rstrip(key))
-
-unsafe_optional_string(s::AbstractString) = s
-unsafe_optional_string(s::Nothing) = Ptr{Cchar}(0)
 
 """
     EasyFITS.write_key(dst, key, val, com=nothing) -> dst
@@ -460,6 +414,9 @@ function update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::AbstractStri
     return hdu
 end
 
+unsafe_optional_string(s::AbstractString) = s
+unsafe_optional_string(s::Nothing) = Ptr{Cchar}(0)
+
 for func in (:update_key, :write_key),
     (V, T) in ((AbstractString, String),
                (Bool,           Bool),
@@ -470,31 +427,27 @@ for func in (:update_key, :write_key),
     if T === Missing
         # Commentary (nothing) card or undefined value (undef or missing).
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
-            _com = unsafe_optional_string(com)
             check(CFITSIO.$(Symbol("fits_",func,"_null"))(
-                dst, key, _com, Ref{Status}(0)))
+                dst, key, unsafe_optional_string(com), Ref{Status}(0)))
             return dst
         end
     elseif T === String
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
-            _com = unsafe_optional_string(com)
             check(CFITSIO.$(Symbol("fits_",func,"_str"))(
-                dst, key, val, _com, Ref{Status}(0)))
+                dst, key, val, unsafe_optional_string(com), Ref{Status}(0)))
             return dst
         end
     elseif T === Bool
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
-            _com = unsafe_optional_string(com)
             check(CFITSIO.$(Symbol("fits_",func,"_log"))(
-                dst, key, val, _com, Ref{Status}(0)))
+                dst, key, val, unsafe_optional_string(com), Ref{Status}(0)))
             return dst
         end
-    else
+    else # FIXME: use more specialized CFITSIO routines?
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
-            _com = unsafe_optional_string(com)
-            _val = Ref{$T}(val)
             check(CFITSIO.$(Symbol("fits_",func))(
-                dst, type_to_code($T), key, _val, _com, Ref{Status}(0)))
+                dst, type_to_code($T), key, Ref{$T}(val),
+                unsafe_optional_string(com), Ref{Status}(0)))
             return dst
         end
     end

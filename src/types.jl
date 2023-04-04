@@ -1,19 +1,12 @@
 const Status = Cint
 
-# The different ways to represent a FITS header card value + comment.
-# NOTE: CardName, CardValue, and CardComment are defined in BaseFITS.
+# Signature of pairs that may possibly be converted into FITS cards.
+#
+#NOTE: The value type is purposely unspecific to allow for collections of card
+# pairs mixing different value types.
+#
 # FIXME: Should be in BaseFITS?
-const CardData = Union{CardValue,
-                       Tuple{CardValue},
-                       Tuple{CardValue,CardComment}}
-
-# The signature of a Pair that can be converted into a FITS card.
-# FIXME: Should be in BaseFITS?
-const CardPair{K<:CardName,V<:CardData} = Pair{K,V}
-
-# NOTE: The type of the pair values cannot be restricted, it must be `<:Any`,
-#       not even `V where {V<:Any}`.
-const VectorOfCardPairs{K<:CardName} = AbstractVector{<:Pair{K,<:Any}}
+const CardPair{K<:CardName,V} = Pair{K,V}
 
 # Aliases used for sub-indexing.
 const IndexRange = OrdinalRange{<:Integer,<:Integer}
@@ -74,7 +67,8 @@ header.
     may appear more than once.
 
 """
-const Header = Union{FitsHeader,NamedTuple,VectorOfCardPairs}
+const Header = Union{FitsHeader,NamedTuple,Tuple{Vararg{CardPair}},
+                     AbstractVector{<:CardPair}}
 
 """
     EasyFITS.ImageData{T,N}
@@ -206,49 +200,29 @@ const ColumnDataPair = Pair{<:Column,
 """
     EasyFITS.TableData
 
-is the union of types that can be used to store the data of FITS table
-extension. Instances of this kind are collections of `key => vals` or `key =>
-(vals, units)` pairs with `key` the column name, `vals` the column values, and
-`units` the optional units of these values. Such collections can be
-dictionaries, named tuples, vectors, or tuples.
+is the union of types that can possibly be that of FITS table data. Instances
+of this kind are collections of `key => vals` or `key => (vals, units)` pairs
+with `key` the column name, `vals` the column values, and `units` the optional
+units of these values. Such collections can be dictionaries, named tuples,
+vectors, or tuples.
 
 For table data specified by dictionaries or vectors, the names of the columns
 must all be of the same type.
 
-Owing to the variety of posiibilities for representing column values with
+Owing to the variety of posibilities for representing column values with
 optional units, `EasyFITS.TableData` cannot be specific for the values of the
-pairs in the collections. The package therefore rely on *error catcher* methods
+pairs in the collection. The package therefore rely on *error catcher* methods
 to detect column with invalid associated data.
 
-"""
-
-"""
-    EasyFITS.TableData
-
-is the union of types that can be interpreted as a set of FITS table columns.
-Instances of these types are collections of `key => vals` or `key => (vals,
-units)` pairs with `key` the column name, `vals` the column values, and `units`
-the optional units of these values.
-
-Since it is not possible to be too specific, completely
-the data part in
-
-a FITS table extension.
-
-A loop through all columns of `dat::TableData` writes:
-
-    for k in keys(dat)
-        name, vals = EasyFITS.get_column(dat, k)
-    end
-
-where non-exported method `get_column(dat,k)` yields a pair `name => vals` of
-the name and the values of the `k`-th column in dat.
+Another consequence is that there is a non-empty intersection between
+`EasyFITS.TableData` and `EasyFITS.Header` which imposes to rely on position of
+arguments to distingusih them.
 
 """
 const TableData = Union{AbstractDict{<:ColumnName,<:Any},
-                           AbstractVector{<:Pair{<:ColumnName,<:Any}},
-                           Tuple{Vararg{Pair{<:ColumnName,<:Any}}},
-                           NamedTuple}
+                        AbstractVector{<:Pair{<:ColumnName,<:Any}},
+                        Tuple{Vararg{Pair{<:ColumnName,<:Any}}},
+                        NamedTuple}
 
 """
     FitsHDU
