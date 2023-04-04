@@ -183,37 +183,37 @@ end
 suppress_units(comment::AbstractString) =
     replace(comment, r"^\[.*?\]\s*" => "")
 
-cards_1 = (key_b1 = (true,  "This is true"),
-           key_b2 = (false, "This is false"),
-           key_b3 = false,
-           key_b4 = (true, ""),
-           key_i1 = 123, # no comment
-           key_i2 = (0x9, nothing),
-           key_i3 = (Int16(42), "[cm] with units"),
-           key_i4 = (-77, "[] no units"),
-           key_i5 = (101, "[  foo /  bar ] strip leading/trailing spaces"),
-           key_f1 = (-1.2f-2, "Single precision"),
-           key_f2 = (-3.7, "Double precision"),
-           key_f3 = (11//7, "Rational number"),
-           key_f4 = (pi, "Irrational number"),
-           key_c1 = (complex(-2,3), "Integer complex"),
-           key_c2 = (complex(2.1f0,-3.7f0), "Single precision complex"),
-           key_c3 = (complex(2.1,-3.7), "Double precision complex"),
-           key_s1 = " <- significant space here",
-           key_s2 = ("", "Empty string"),
-           key_s3 = (" ", "Another empty string"),
-           key_s4 = ("'oops!'", "String with quotes"),
-           key_s5 = " <- keep this, not these ->    ",
-           key_s6 = (SubString("Hello world!", 7, 12), "A sub-string"),
-           key_n2 = (undef, "undefined value"),
-           key_n3 = (missing, "missing value"),
-           comment = "simple comment",
-           history = "historical comment",
-           very_long_key_name = (1, "Should use HIERARCH convention"),
-           uncommented_very_long_key_name = 2.0,
+cards_1 = (KEY_B1 = (true,  "This is true"),
+           KEY_B2 = (false, "This is false"),
+           KEY_B3 = false,
+           KEY_B4 = (true, ""),
+           KEY_I1 = 123, # no comment
+           KEY_I2 = (0x9, nothing),
+           KEY_I3 = (Int16(42), "[cm] with units"),
+           KEY_I4 = (-77, "[] no units"),
+           KEY_I5 = (101, "[  foo /  bar ] strip leading/trailing spaces"),
+           KEY_F1 = (-1.2f-2, "Single precision"),
+           KEY_F2 = (-3.7, "Double precision"),
+           KEY_F3 = (11//7, "Rational number"),
+           KEY_F4 = (pi, "Irrational number"),
+           KEY_C1 = (complex(-2,3), "Integer complex"),
+           KEY_C2 = (complex(2.1f0,-3.7f0), "Single precision complex"),
+           KEY_C3 = (complex(2.1,-3.7), "Double precision complex"),
+           KEY_S1 = " <- significant space here",
+           KEY_S2 = ("", "Empty string"),
+           KEY_S3 = (" ", "Another empty string"),
+           KEY_S4 = ("'oops!'", "String with quotes"),
+           KEY_S5 = " <- keep this, not these ->    ",
+           KEY_S6 = (SubString("Hello world!", 7, 12), "A sub-string"),
+           KEY_N2 = (undef, "undefined value"),
+           KEY_N3 = (missing, "missing value"),
+           COMMENT = "simple comment",
+           HISTORY = "historical comment",
+           VERY_LONG_KEY_NAME = (1, "Should use HIERARCH convention"),
+           UNCOMMENTED_VERY_LONG_KEY_NAME = 2.0,
            )
 
-cards_2 = [uppercase(String(key)) => val for (key,val) in pairs(cards_1)]
+cards_2 = [String(key) => val for (key,val) in pairs(cards_1)]
 tempfile, io = mktemp(; cleanup=false)
 close(io)
 
