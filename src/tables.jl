@@ -169,21 +169,25 @@ function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
 end
 
 """
-    read([Array,] hdu::FitsTableHDU, col[, rows]; kwds...) -> vals::Array
+    read([R=Array,] hdu::FitsTableHDU, col[, rows]; kwds...) -> vals::R
 
 reads column `col` of the FITS table extension in `hdu` and returns its values
-as an array `vals`.
+and, possibly, its units.
 
 The column `col` may be specified by its name or by its number. If `col` is a
 string or a symbol, keyword `case` specifies whether uppercase/lowercase
 matters (`case = false` by default).
+
+Optional leading argument `R` is to specify the type of the result which can be
+an array type, to only retrieve the column values, or a tuple of array and string
+types, to retrieve the column values and their units.
 
 Optional argument `rows` is to specify which rows to read. It can be an integer
 to read a single row, a unit range of integers to read these rows, or a colon
 `:` to read all rows (the default). Properties `hdu.first_row` and
 `hdu.last_row` can be used to retrieve the first and last row numbers.
 
-See [`read!(::DenseArray,::FitsTableHDU,::Integer)`](@ref) for the other
+See [`read!(::DenseArray,::FitsTableHDU,::ColumName)`](@ref) for the other
 possible keywords.
 
 """
@@ -191,8 +195,17 @@ function read(hdu::FitsTableHDU, col::Column, rows::Rows = Colon(); kwds...)
     return read(Array, hdu, col, rows; kwds...)
 end
 
+# Read column values and units.
+function read(::Type{Tuple{A,String}}, hdu::FitsTableHDU, col::Column,
+              rows::Rows = Colon(); case::Bool = false,
+              kwds...) where {A<:AbstractArray}
+    num = get_colnum(hdu, col, case)
+    return (read(A, hdu, num, rows; kwds...), get_units(hdu, num))
+end
+
 function read(::Type{A}, hdu::FitsTableHDU, col::ColumnName,
-              rows::Rows = Colon(); case::Bool = false, kwds...) where {A<:Array}
+              rows::Rows = Colon(); case::Bool = false,
+              kwds...) where {A<:AbstractArray}
     return read(A, hdu, get_colnum(hdu, col, case), rows; kwds...)
 end
 
@@ -364,27 +377,16 @@ merges the contents of the dictionary `dict` with the colum(s) `cols` read from
 the FITS table extension in `hdu` and returns the dictionary.
 
 """
-function merge!(dict::AbstractDict{String,<:Array}, hdu::FitsTableHDU,
+function merge!(dict::AbstractDict{K,V}, hdu::FitsTableHDU,
                 cols::Columns = Colon(), rows::Rows = Colon();
-                case::Bool = false, rename::Function = (case ? identity : uppercase), kwds...)
+                case::Bool = false, rename::Function = (case ? identity : uppercase),
+                kwds...) where {K<:String,V<:Union{AbstractArray,
+                                                   Tuple{AbstractArray,String}}}
     names = hdu.column_names
     for col in columns_to_read(hdu, cols)
         num = get_colnum(hdu, col, case)
-        key = rename(names[num])
-        push!(dict, key => read(Array, hdu, num, rows; kwds...))
-    end
-    return dict
-end
-
-function merge!(dict::AbstractDict{String,Tuple{<:Array,String}}, hdu::FitsTableHDU,
-                cols::Columns = Colon(), rows::Rows = Colon();
-                case::Bool = false, rename::Function = (case ? identity : uppercase), kwds...)
-    names = hdu.column_names
-    for col in columns_to_read(hdu, cols)
-        num = get_colnum(hdu, col, case)
-        key = rename(names[num])
-        push!(dict, key => (read(Array, hdu, num, rows; kwds...),
-                            get_units(hdu, num)))
+        key = rename(names[num]) # FIXME: as(K, ...) and relax type of parameter K
+        push!(dict, key => read(V, hdu, num, rows; kwds...))
     end
     return dict
 end
@@ -428,37 +430,30 @@ function read(::Type{Vector}, hdu::FitsTableHDU,
     end
 end
 
-# Read selection of columns without their units.
+# Read selection of columns with or without their units.
 function read(::Type{V}, hdu::FitsTableHDU,
               cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
-              kwds...) where {A<:AbstractArray, V<:AbstractVector{A}}
+              kwds...) where {T<:Union{AbstractArray,Tuple{AbstractArray,String}},
+                              V<:AbstractVector{T}}
     cols = columns_to_read(hdu, cols)
     vec = V(undef, length(cols))
     i = firstindex(vec) - 1
     for col in cols
-        num = get_colnum(hdu, col, case)
-        vec[i += 1] = read(A, hdu, num, rows; kwds...)
+        vec[i += 1] = read(T, hdu, col, rows; kwds...)
     end
     return vec
 end
 
-# Read selection of columns with their units.
-function read(::Type{V}, hdu::FitsTableHDU,
-              cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
-              kwds...) where {A<:AbstractArray, V<:AbstractVector{Tuple{A,String}}}
-    cols = columns_to_read(hdu, cols)
-    vec = V(undef, length(cols))
-    i = firstindex(vec) - 1
-    for col in cols
-        num = get_colnum(hdu, col, case)
-        vec[i += 1] = (read(A, hdu, num, rows; kwds...), get_units(hdu, num))
-    end
-    return vec
-end
+"""
+    push!(vec, hdu::FitsTableHDU[, cols[, rows]]) -> vec
 
-function push!(vec::Type{V}, hdu::FitsTableHDU,
-               cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
-               kwds...) where {A<:AbstractArray, V<:AbstractVector{A}}
+appends rows `rows` of columns `cols` read from FITS table extension `hdu` to
+the vector `vec` and returns it.
+
+"""
+function push!(vec::AbstractVector{<:AbstractArray},
+               hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
+               case::Bool = false, kwds...)
     for col in columns_to_read(hdu, cols)
         num = get_colnum(hdu, col, case)
         push!(vec, read(A, hdu, num, rows; kwds...))
@@ -466,9 +461,9 @@ function push!(vec::Type{V}, hdu::FitsTableHDU,
     return vec
 end
 
-function push!(vec::Type{V}, hdu::FitsTableHDU,
-               cols::Columns = Colon(), rows::Rows = Colon(); case::Bool = false,
-               kwds...) where {A<:AbstractArray, V<:AbstractVector{Tuple{A,String}}}
+function push!(vec::AbstractVector{<:Tuple{<:AbstractArray,String}},
+               hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
+               case::Bool = false, kwds...)
     for col in columns_to_read(hdu, cols)
         num = get_colnum(hdu, col, case)
         push!(vec, (read(A, hdu, num, rows; kwds...), get_units(hdu, num)))
