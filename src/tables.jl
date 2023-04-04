@@ -324,20 +324,15 @@ columns. If `units` is `String`, the values of the dictionary will be 2-tuples
 string. Otherwise, if `units` is `nothing` (the default), the values of the
 dictionary will just be the columns data.
 
-To avoid the `units` keyword, the following syntaxes are possible:
+To avoid the `units` keyword, the following methods are provided:
 
-   read(Dict{String,Array},               hdu[, cols[, rows]])
-   read(Dict{String,Tuple{Array,String}}, hdu[, cols[, rows]])
+    read(Dict{String,Array},               hdu[, cols[, rows]])
+    read(Dict{String,Tuple{Array,String}}, hdu[, cols[, rows]])
 
-to respectively yields the same result as `read(hdu,...)` with
-`units=nothing` and as with `units=String`.
+to yield the same result as `read(hdu,...)` with respectively `units=nothing`
+and `units=String`.
 
 """
-function read(hdu::FitsTableHDU,
-              cols::Columns = Colon(), rows::Rows = Colon(); kwds...)
-    return read(Dict, hdu, cols, rows; kwds...)
-end
-
 function read(::Type{Dict}, hdu::FitsTableHDU,
               cols::Columns = Colon(), rows::Rows = Colon();
               units = nothing, kwds...)
@@ -355,6 +350,12 @@ function read(::Type{D}, hdu::FitsTableHDU,
               kwds...) where {D<:Union{Dict{String,<:AbstractArray},
                                        Dict{String,<:Tuple{<:AbstractArray,String}}}}
     return merge!(D(), hdu, cols, rows; kwds...)
+end
+
+# The default is to read table columns as a dictionary.
+function read(hdu::FitsTableHDU,
+              cols::Columns = Colon(), rows::Rows = Colon(); kwds...)
+    return read(Dict, hdu, cols, rows; kwds...)
 end
 
 """
@@ -409,13 +410,13 @@ string. Otherwise, if `units=nothing` (the default), the values of the
 dictionary will just be the columns data.
 
 To avoid the `units` keyword and allow more control on the type of the result,
-the following 2 calls are provided:
+the following 2 methods are provided:
 
-   read(Vector{<:Array},               hdu[, cols[, rows]])
-   read(Vector{Tuple{<:Array,String}}, hdu[, cols[, rows]])
+    read(Vector{<:Array},               hdu[, cols[, rows]])
+    read(Vector{Tuple{<:Array,String}}, hdu[, cols[, rows]])
 
-to respectively yields the same result as `read(hdu,...)` with
-`units=nothing` and as with `units=String`.
+to yield the same result as `read(hdu,...)` with respectively `units=nothing`
+and `units=String`.
 
 """
 function read(::Type{Vector}, hdu::FitsTableHDU,

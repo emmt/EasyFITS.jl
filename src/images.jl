@@ -49,12 +49,13 @@ the ouput type and improve type-stability. For example:
     arr = read(Array{Float32,2}, hdu)
 
 yield similar results if `hdu` is a 2-D image extension but the 2nd example is
-more efficient than the 1st one as no temporary array is nedded if the pixel
+more efficient than the 1st one as no temporary array is needed if the pixel
 type is not equivalent to `Float32` and the 3rd example is completely
 type-stable.
 
 Keywords `anynull` and `null` may be specified to deal with undefined pixel
-values (see documentation for `read!`).
+values (see documentation for
+[`read!(::DenseArray{<:Number},::FitsImageHDU,::SubArrayIndex...)`](@ref)).
 
 """
 function read(hdu::FitsImageHDU{T,N}; kwds...) where {T,N}
@@ -81,14 +82,15 @@ end
 
 reads a rectangular sub-region of the FITS image extension in `hdu` defined by
 the indices `inds...`. Keywords `anynull` and `null` may be specified to deal
-with undefined pixel values (see documentation for `read!`).
+with undefined pixel values (see documentation for
+[`read!(::DenseArray{<:Number},::FitsImageHDU,::SubArrayIndex...)`](@ref)).
 
 The result is similar to:
 
     arr = read(R, hdu)[inds...]
 
-but may be more efficient as no array other than the result is allocated and
-fewer values are read.
+but is generally more efficient as no array other than the result is allocated
+and fewer values are read.
 
 """
 function read(hdu::FitsImageHDU{T}, inds::SubArrayIndex...; kwds...) where {T}

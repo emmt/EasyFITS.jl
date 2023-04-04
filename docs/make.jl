@@ -1,7 +1,11 @@
 using Documenter
 
 push!(LOAD_PATH, "../src/")
+
 using EasyFITS
+import EasyFITS:
+    Rows, Column, Columns, ColumnName, ColumnData, ColumnDataPair,
+    TableData, ImageData, Header, SubArrayIndex
 
 DEPLOYDOCS = (get(ENV, "CI", nothing) == "true")
 
