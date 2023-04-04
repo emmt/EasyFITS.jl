@@ -499,8 +499,8 @@ Output arrays `arr` and `null` must have contiguous elements, in other words,
 they must be *dense arrays*.
 
 """
-function read!(arr::DenseArray, hdu::FitsTableHDU,
-               col::AbstractString; case::Bool = false, kwds...)
+function read!(arr::DenseArray, hdu::FitsTableHDU, col::ColumnName;
+               case::Bool = false, kwds...)
     return read!(arr, hdu, get_colnum(hdu, col, case); kwds...)
 end
 
