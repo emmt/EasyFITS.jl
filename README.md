@@ -7,7 +7,7 @@
 [![Coverage][codecov-img]][codecov-url]
 
 `EasyFITS` is a [Julia][julia-url] package designed to make it easier to read
-and write data in [FITS (for)](https://fits.gsfc.nasa.gov/fits_standard.html) format without
+and write data in [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) format without
 sacrificing performances, flexibility, or readability.
 
 
@@ -32,26 +32,49 @@ inds = 1:nrows;
 speed = rand(Float64, nrows);
 mass = rand(Float32, nrows);
 position = rand(Float32, 3, nrows);
+phase = (1:7) .// 3;
+amplitude = exp.(-1:-1:-7);
+x = amplitude.*cos.(phase);
+y = amplitude.*sin.(phase);
 writefits(filename,
-          # Header part of 1st HDU.
+          #-----------------------------------------------------------------
+          # First HDU must be a FITS "image", but data may be empty.
+          #
+          # Header part as a vector of `key=>val` or `key=>(val,com)` pairs:
           ["DATE"    => (now(), "date of creation"),
            "HISTORY" => "This file has been produced by EasyFITS",
            "USER"    => ENV["USER"]],
-          # Data part (here, a FITS "image") of 1st HDU .
+          # Data part as an array:
           arr,
-          # Header part of 2nd HDU.
+          #-----------------------------------------------------------------
+          # Second HDU, here a FITS "table".
+          #
+          # Header part of 2nd HDU as a tuple of pairs:
           ("EXTNAME" => ("MY-EXTENSION", "Name of this extension"),
            "EXTVER"  => (1, "Version of this extension")),
-          # Data part (here, a FITS "table") of 2nd HDU .
+          # Data part is a table in the form of a named tuple:
           (Speed    = (speed, "km/s"),  # this column has units
            Indices  = inds,             # not this one
            Mass     = (mass, "kg"),
-           Position = (position, "cm")))
+           Position = (position, "cm")),
+          #-----------------------------------------------------------------
+          # Third HDU, another FITS "table".
+          #
+          # Header part of 3rd HDU as a named tuple (note that keywords must
+          # be in uppercase letters):
+          (EXTNAME = ("MY-OTHER-EXTENSION", "Name of this other extension"),
+           EXTVER  = (1, "Version of this other extension"),
+           COMMENT = "This is an interesting comment"),
+          # Data part is a table in the form of a vector of pairs (colum names
+          # can be strings or symbols but not a mixture):
+          [:phase => ((180/π).*phase, "deg"),
+           :amplitude => (amplitude, "V"),
+           :xy => (hcat(x,y)', "V")])
 ```
 
 Each HDU has a the header part (the metadata) and a data part which is
 reflected by the pairs of arguments after the name of the file `filename` in
-the above call to `writefits`. The two headers are provided by collections (a
+the above call to `writefits`. The headers are provided by collections (a
 vector for the 1st one, a tuple for the 2nd) of pairs associating a keyword
 with a value and a comment (both optional). The data in a FITS *Image
 Extension* is any real-valued Julia array. The data part in a FITS *Table

@@ -1,6 +1,6 @@
 module TestingEasyFITS
 
-using Test, EasyFITS, DataFrames
+using Test, EasyFITS, Dates, DataFrames
 
 using EasyFITS: FitsInteger, FitsFloat, FitsComplex
 
@@ -566,6 +566,76 @@ end
     for col in keys(table)
         @test readfits(tempfile, col; ext=2) == column_values(table[col])
     end
+
+    # Complex example.
+    arr = rand(Float32, (3,4,5));
+    nrows = 20;
+    inds = 1:nrows;
+    speed = rand(Float64, nrows);
+    mass = rand(Float32, nrows);
+    position = rand(Float32, 3, nrows);
+    phase = (1:7) .// 3;
+    amplitude = exp.(-1:-1:-7);
+    x = amplitude.*cos.(phase);
+    y = amplitude.*sin.(phase);
+    date = now();
+    writefits!(
+        tempfile,
+        #-----------------------------------------------------------------
+        # First HDU must be a FITS "image", but data may be empty.
+        #
+        # Header part as a vector of `key=>val` or `key=>(val,com)` pairs:
+        ["DATE"    => (date, "date of creation"),
+         "HISTORY" => "This file has been produced by EasyFITS",
+         "USER"    => "John Doe"],
+        # Data part as an array:
+        arr,
+        #-----------------------------------------------------------------
+        # Second HDU, here a FITS "table".
+        #
+        # Header part of 2nd HDU as a tuple of pairs:
+        ("EXTNAME" => ("MY-EXTENSION", "Name of this extension"),
+         "EXTVER"  => (1, "Version of this extension")),
+        # Data part is a table in the form of a named tuple:
+        (Speed    = (speed, "km/s"),  # this column has units
+         Indices  = inds,             # not this one
+         Mass     = (mass, "kg"),
+         Position = (position, "cm")),
+        #-----------------------------------------------------------------
+        # Third HDU, another FITS "table".
+        #
+        # Header part of 3rd HDU as a named tuple (note that keywords must
+        # be in uppercase letters):
+        (EXTNAME = ("MY-OTHER-EXTENSION", "Name of this other extension"),
+         EXTVER  = (1, "Version of this other extension"),
+         COMMENT = "This is an interesting comment"),
+        # Data part is a table in the form of a vector of pairs (colum names
+        # can be strings or symbols but not a mixture):
+        [:phase => ((180/π).*phase, "deg"),
+         :amplitude => (amplitude, "V"),
+         :xy => (hcat(x,y)', "V")])
+    h1 = read(FitsHeader, tempfile)
+    @test h1 isa FitsHeader
+    @test h1["DATE"].value(DateTime) === date
+    @test h1["USER"].value() == "John Doe"
+    @test readfits(tempfile) == arr
+    h2 = read(FitsHeader, tempfile, ext=2)
+    @test h2 isa FitsHeader
+    @test h2["EXTNAME"].value() == "MY-EXTENSION"
+    x2 = readfits(tempfile, ext=2)
+    @test x2 isa Dict{String}
+    @test x2["SPEED"] == speed
+    @test x2["INDICES"] == inds
+    @test x2["MASS"] == mass
+    @test x2["POSITION"] == position
+    h3 = read(FitsHeader, tempfile, ext="MY-OTHER-EXTENSION")
+    @test h3 isa FitsHeader
+    @test h3["EXTNAME"].value() == "MY-OTHER-EXTENSION"
+    x3 = readfits(tempfile, ext="MY-OTHER-EXTENSION")
+    @test x3 isa Dict{String}
+    @test x3["PHASE"] == (180/π).*phase
+    @test x3["AMPLITUDE"] == amplitude
+    @test x3["XY"] == hcat(x,y)'
 end
 
 end # module
