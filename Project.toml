@@ -13,7 +13,7 @@ Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
-BaseFITS = "0.3"
+BaseFITS = "0.3.5"
 CFITSIO_jll = "3, 4"
 Clang = "0.14, 0.15, 0.16, 0.17"
 Requires = "1.3"

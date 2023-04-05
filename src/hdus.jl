@@ -360,14 +360,6 @@ function merge!(hdu::FitsHDU, hdr::NamedTuple; append::Bool = false)
     return hdu
 end
 
-# For vectors of pairs, the pairs must be reformed (their value type may be Any).
-function merge!(hdu::FitsHDU, hdr::AbstractVector{<:CardPair}; append::Bool = false)
-    for pair in hdr
-        push!(hdu, pair.first => pair.second; append)
-    end
-    return hdu
-end
-
 """
     delete!(hdu::FitsHDU, key) -> hdu
 

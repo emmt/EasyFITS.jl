@@ -1,13 +1,5 @@
 const Status = Cint
 
-# Signature of pairs that may possibly be converted into FITS cards.
-#
-#NOTE: The value type is purposely unspecific to allow for collections of card
-# pairs mixing different value types.
-#
-# FIXME: Should be in BaseFITS?
-const CardPair{K<:CardName,V} = Pair{K,V}
-
 # Aliases used for sub-indexing.
 const IndexRange = OrdinalRange{<:Integer,<:Integer}
 const SubArrayIndex = Union{Colon,Integer,IndexRange}

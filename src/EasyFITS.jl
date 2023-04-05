@@ -45,6 +45,7 @@ using BaseFITS:
     CardName,
     CardValue,
     CardComment,
+    CardPair,
     FitsComplex,
     FitsInteger,
     FitsFloat,
