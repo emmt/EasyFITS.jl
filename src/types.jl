@@ -59,8 +59,11 @@ header.
     may appear more than once.
 
 """
-const Header = Union{FitsHeader,NamedTuple,Tuple{Vararg{CardPair}},
-                     AbstractVector{<:CardPair}}
+const Header = Union{
+    # Collections of FITS cards:
+    FitsHeader, Tuple{Vararg{FitsCard}}, AbstractVector{FitsCard},
+    # Collection of pairs:
+    NamedTuple, Tuple{Vararg{CardPair}}, AbstractVector{<:CardPair}}
 
 """
     EasyFITS.ImageData{T,N}
