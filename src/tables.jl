@@ -520,110 +520,58 @@ function read!(arr::DenseArray, hdu::FitsTableHDU, col::ColumnName;
     return read!(arr, hdu, get_colnum(hdu, col; case); kwds...)
 end
 
-function read!(arr::DenseArray{String,N}, hdu::FitsTableHDU, col::Integer;
-               kwds...) where {N}
-    error("reading column of strings not yet implemented")
+@noinline function read!(arr::DenseArray{T,N}, hdu::FitsTableHDU, col::Integer;
+                         kwds...) where {T,N}
+    error("reading column of values of type `$T` is not supported")
 end
 
 function read!(arr::DenseArray{T,N}, hdu::FitsTableHDU, col::Integer;
+               first::Integer = hdu.first_row,
                null::Union{DenseArray{Bool,N},Number,Nothing} = nothing,
-               anynull::Union{Ref{Bool},Nothing} = nothing,
-               first::Integer = hdu.first_row) where {T<:Number,N}
-    if null === nothing
-        _null = zero(T)
-    elseif null isa Number
-        _null = as(T, null)
-    else
-        _null = null
-    end
-    if anynull isa Ref{Bool}
-        _anynull = Ref(zero(Cint))
-    else
-        _anynull = C_NULL
-    end
-    read_col!(hdu, col, first, 1, arr, _null, _anynull)
-    if anynull isa Ref{Bool}
-        anynull[] = !iszero(_anynull[])
-    end
+               anynull::AnyNull = nothing) where {T<:NumericTypes,N,
+                                                  AnyNull<:Union{Ref{Bool},Nothing}}
+    temp = AnyNull <: Ref{Bool} ? Ref(zero(Cint)) : C_NULL
+    unsafe_read_col!(hdu, col, first, 1, length(arr), arr, null, temp)
+    AnyNull <: Ref{Bool} && (anynull[] = !iszero(temp[]))
     return arr
 end
 
-for T in (Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64,
-          Float32, Float64, Complex{Float32}, Complex{Float64}, Bool)
+for T in NUMERIC_TYPES
 
-    @eval function read_col!(hdu::FitsTableHDU,
-                             col::Integer, row::Integer, elem::Integer,
-                             arr::DenseArray{$T},
-                             null::$T, anynull)
-        len = length(arr)
-        if len > 0
-            GC.@preserve arr begin
-                check(CFITSIO.$(cfunc("fits_read_col_", T))(
-                    hdu, col, row, elem, len, null, cpointer(arr), anynull,
-                    Ref{Status}(0)))
+    @eval function unsafe_read_col!(hdu::FitsTableHDU, col::Integer, row::Integer,
+                                    elem::Integer, nelem::Integer, arr::DenseArray{$T,N},
+                                    null::Null, anynull) where {N, Null<:Union{DenseArray{Bool,N},
+                                                                               Number,Nothing}}
+        if Null <: AbstractArray
+            axes(null) == axes(arr) || error("incompatible array axes")
+            if nelem > 0
+                GC.@preserve arr null check(CFITSIO.$(cfunc("fits_read_colnull_", T))(
+                    hdu, col, row, elem, nelem, cpointer(null), cpointer(arr), anynull, Ref{Status}(0)))
+                fix_booleans!(null)
+            end
+        else
+            null = (Null <: Number ? as($T, null) : zero($T))
+            if nelem > 0
+                GC.@preserve arr check(CFITSIO.$(cfunc("fits_read_col_", T))(
+                    hdu, col, row, elem, nelem, null, cpointer(arr), anynull, Ref{Status}(0)))
             end
         end
-        nothing
+        return nothing
     end
 
-    @eval function read_col!(hdu::FitsTableHDU,
-                             col::Integer, row::Integer, elem::Integer,
-                             arr::DenseArray{$T,N},
-                             null::DenseArray{Bool,N}, anynull) where {N}
-        len = length(arr)
-        axes(null) == axes(arr) || error("incompatible array axes")
-        if len > 0
-            GC.@preserve arr null begin
-                check(CFITSIO.$(cfunc("fits_read_colnull_", T))(
-                    hdu, col, row, elem, len, cpointer(null), cpointer(arr), anynull, Ref{Status}(0)))
-            end
-            fix_booleans!(null)
-        end
-        nothing
-    end
-
-    @eval function write_col(hdu, col::Integer, row::Integer, elem::Integer,
-                             arr::DenseArray{$T}, null::Nothing = nothing)
-        len = length(arr)
-        if len > 0
-            GC.@preserve arr begin
-                check(CFITSIO.$(cfunc("fits_write_col_", T))(
-                    hdu, col, row, elem, len, cpointer(arr), Ref{Status}(0)))
+    @eval function unsafe_write_col(hdu::FitsTableHDU, col::Integer, row::Integer,
+                                    elem::Integer, nelem::Integer, arr::DenseArray{$T},
+                                    null::Null = nothing) where {Null<:Union{Number,Nothing}}
+        if nelem > 0
+            if Null <: Nothing
+                GC.@preserve arr check(CFITSIO.$(cfunc("fits_write_col_", T))(
+                    hdu, col, row, elem, nelem, cpointer(arr), Ref{Status}(0)))
+            else
+                GC.@preserve arr check(CFITSIO.$(cfunc("fits_write_colnull_", T))(
+                    hdu, col, row, elem, nelem, cpointer(arr), Ref{$T}(null), Ref{Status}(0)))
             end
         end
-        nothing
     end
-
-    @eval function write_col(hdu, col::Integer, row::Integer, elem::Integer,
-                             arr::DenseArray{$T,N}, null::Number) where {N}
-        len = length(arr)
-        if len > 0
-            GC.@preserve arr begin
-                check(CFITSIO.$(cfunc("fits_write_colnull_", T))(
-                    hdu, col, row, elem, len, cpointer(arr), Ref{T}(null), Ref{Status}(0)))
-            end
-        end
-        nothing
-    end
-
-end
-
-function write_col(hdu, col::Integer, row::Integer, elem::Integer,
-                   arr::AbstractArray{<:AbstractString},
-                   null::Union{Nothing,AbstractString})
-    write_col(hdu, col, row, elem, String.(arr), null)
-end
-
-function write_col(hdu, col::Integer, row::Integer, elem::Integer,
-                   arr::AbstractArray{String}, null::Union{Nothing,AbstractString})
-    len = length(arr)
-    if len > 0
-        ptr = [Base.unsafe_convert(Cstring, str) for str in arr]
-        GC.@preserve arr ptr check(null === nothing ?
-            CFITSIO.fits_write_col_str(hdu, col, row, elem, len, ptr, Ref{Status}(0)) :
-            CFITSIO.fits_write_colnull_str(hdu, col, row, elem, len, ptr, null, Ref{Status}(0)))
-    end
-    nothing
 end
 
 #------------------------------------------------------------------------------
@@ -898,7 +846,7 @@ function write(hdu::FitsTableHDU,
     end
 
     # Write column values.
-    write_col(hdu, num, first, 1, dense_array(vals), null)
+    unsafe_write_col(hdu, num, first, 1, length(vals), dense_array(vals), null)
     return hdu
 end
 

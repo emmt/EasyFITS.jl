@@ -305,52 +305,34 @@ let expr = :(bad_argument("invalid TFORM type letter"))
     @eval type_from_letter(c::Char) = $expr
 end
 
-# Named tuples to associate suffixes to types.
-const SHORT_TYPE_SUFFIXES = (Int8            => :sb, UInt8            => :b,
-                             Cshort          => :i,  Cushort          => :ui,
-                             Cint            => :k,  Cuint            => :uk,
-                             Clong           => :j,  Culong           => :uj,
-                             Clonglong       => :jj, Culonglong       => :ujj,
-                             Cfloat          => :e,  Cdouble          => :d,
-                             Complex{Cfloat} => :c,  Complex{Cdouble} => :m,
-                             Bool            => :l,  String           => :s,
-                             Bit             => :x,  Nothing          => :u,
-                             Missing         => :u,  UndefInitializer => :u)
+# Named tuples to associate short and long suffixes to Julia types.
+const TYPE_SUFFIXES =
+    (Int8            => (:sb, :sbyt),   UInt8            => (:b,   :byt),
+     Cshort          => (:i,  :sht),    Cushort          => (:ui,  :usht),
+     Cint            => (:k,  :int),    Cuint            => (:uk,  :uint),
+     Clong           => (:j,  :lng),    Culong           => (:uj,  :ulng),
+     Clonglong       => (:jj, :lnglng), Culonglong       => (:ujj, :ulnglng),
+     Cfloat          => (:e,  :flt),    Cdouble          => (:d,   :dbl),
+     Complex{Cfloat} => (:c,  :cmp),    Complex{Cdouble} => (:m,   :dblcmp),
+     Bool            => (:l,  :log),    AbstractString   => (:s,   :str),
+     Bit             => (:x,  :bit),    Nothing          => (:u,   :null),
+     Missing         => (:u,  :null),   UndefInitializer => (:u,   :null))
 
-const LONG_TYPE_SUFFIXES = (Int8            => :sbyt,   UInt8            => :byt,
-                            Cshort          => :sht,    Cushort          => :usht,
-                            Cint            => :int,    Cuint            => :uint,
-                            Clong           => :lng,    Culong           => :ulng,
-                            Clonglong       => :lnglng, Culonglong       => :ulnglng,
-                            Cfloat          => :flt,    Cdouble          => :dbl,
-                            Complex{Cfloat} => :cmp,    Complex{Cdouble} => :dblcmp,
-                            Bool            => :log,    String           => :str,
-                            Bit             => :bit,    Nothing          => :null,
-                            Missing         => :null,   UndefInitializer => :null)
-
-let S = Set{DataType}()
-    for (T, sym) in SHORT_TYPE_SUFFIXES
-        T ∈ S && continue
-        push!(S, T)
-        if T === String
-            @eval short_suffix(::Type{<:AbstractString}) = $(String(sym))
-        else
-            @eval short_suffix(::Type{$T}) = $(String(sym))
+let types = Set{DataType}()
+    for (T, sfx) in TYPE_SUFFIXES
+        T ∈ types && continue
+        push!(types, T)
+        S = isconcretetype(T) ? T : :(<:$T)
+        @eval begin
+            short_suffix(::Type{$S}) = $(String(sfx[1]))
+            long_suffix( ::Type{$S}) = $(String(sfx[2]))
         end
     end
+    @eval const NUMERIC_TYPES = $((filter(T -> T <: Number, types)...,))
 end
 
-let S = Set{DataType}()
-    for (T, sym) in LONG_TYPE_SUFFIXES
-        T ∈ S && continue
-        push!(S, T)
-        if T === String
-            @eval long_suffix(::Type{<:AbstractString}) = $(String(sym))
-        else
-            @eval long_suffix(::Type{$T}) = $(String(sym))
-        end
-    end
-end
+# Numeric types supported by the library for reading/writing.
+const NumericTypes = Union{NUMERIC_TYPES...,}
 
 """
     EasyFITS.cfunc(pfx::Union{AbstractString,Symbol}, T::Type) -> sym
