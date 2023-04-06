@@ -8,12 +8,14 @@ Base.propertynames(::FitsTableHDU) = (:nrows, :rows, :first_row, :last_row,
                                       :extname, :hduname, :file, :num, :type, :xtension)
 
 Base.getproperty(hdu::FitsTableHDU, ::Val{:data_ndims}) = 2
-Base.getproperty(hdu::FitsTableHDU, ::Val{:data_size}) = (hdu.nrows, hdu.ncols)
-Base.getproperty(hdu::FitsTableHDU, ::Val{:data_axes}) = (hdu.rows, hdu.columns)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:data_size}) = (get_nrows(hdu),
+                                                          get_ncols(hdu))
+Base.getproperty(hdu::FitsTableHDU, ::Val{:data_axes}) = (Base.OneTo(get_nrows(hdu)),
+                                                          Base.OneTo(get_ncols(hdu)))
 
-Base.getproperty(hdu::FitsTableHDU, ::Val{:rows}) = Base.OneTo(hdu.nrows)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:rows}) = Base.OneTo(get_nrows(hdu))
 Base.getproperty(hdu::FitsTableHDU, ::Val{:first_row}) = 1
-Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = hdu.nrows
+Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = get_nrows(hdu)
 Base.getproperty(hdu::FitsTableHDU, ::Val{:nrows}) = get_nrows(hdu)
 function get_nrows(f::Union{FitsFile,FitsTableHDU})
     nrows = Ref{Clonglong}()
@@ -21,9 +23,9 @@ function get_nrows(f::Union{FitsFile,FitsTableHDU})
     return as(Int, nrows[])
 end
 
-Base.getproperty(hdu::FitsTableHDU, ::Val{:columns}) = Base.OneTo(hdu.ncols)
+Base.getproperty(hdu::FitsTableHDU, ::Val{:columns}) = Base.OneTo(get_ncols(hdu))
 Base.getproperty(hdu::FitsTableHDU, ::Val{:first_column}) = 1
-Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = hdu.ncols
+Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = get_ncols(hdu)
 Base.getproperty(hdu::FitsTableHDU, ::Val{:ncols}) = get_ncols(hdu)
 function get_ncols(f::Union{FitsFile,FitsTableHDU})
     ncols = Ref{Cint}()
