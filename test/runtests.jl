@@ -157,9 +157,9 @@ end
             @test eltype(A) === UInt32
             @test size(A) === (4, 5, 6)
         end
-        @test_throws ArgumentError new_array(Float32, Val(2),  4, 5, 6)
-        @test_throws ArgumentError new_array(Int16,   Val(2), (4, 5, 6))
-        @test_throws ArgumentError new_array(UInt32,  Val(2), [4, 5, 6])
+        @test_throws DimensionMismatch new_array(Float32, Val(2),  4, 5, 6)
+        @test_throws DimensionMismatch new_array(Int16,   Val(2), (4, 5, 6))
+        @test_throws DimensionMismatch new_array(UInt32,  Val(2), [4, 5, 6])
     end
     let dense_array = EasyFITS.dense_array,
         A = convert(Array, reshape(1:24, 2,3,4)),

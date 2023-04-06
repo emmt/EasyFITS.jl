@@ -511,7 +511,7 @@ new_array(::Type{T}, n::Val{N}, dims::Integer...) where {T,N} = new_array(T, n, 
 @generated function new_array(::Type{T}, ::Val{N}, dims) where {T,N}
     d = [:(dims[$k]) for k in 1:N]
     return quote
-        length(dims) == N || bad_argument("incompatible number of dimensions")
+        length(dims) == N || throw(DimensionMismatch("incompatible number of dimensions"))
         return Array{$T,$N}(undef, $(d...))
     end
 end
