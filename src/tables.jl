@@ -444,7 +444,7 @@ end
 #       assumed in CFITSIO and FITS standard to distinguish null (empty) and
 #       non-null strings.
 function convert_eltype(::Type{UInt8}, A::AbstractArray{<:AbstractString,N};
-                        firstdim::Int = maximum_length(A),
+                        firstdim::Integer = maximum_length(A),
                         fillchar::Char = '\0') where {N}
     fillchar ∈ (' ', '\0') || throw(ArgumentError("invalid fill character `$fillchar`"))
     fillchar = UInt8(fillchar)
