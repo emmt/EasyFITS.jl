@@ -170,18 +170,16 @@ read_tdim(f::Union{FitsFile,FitsTableHDU}, col::ColumnName; case::Bool=false) =
 
 function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
     1 ≤ col ≤ 9999 || throw(FitsError(CFITSIO.BAD_COL_NUM))
-    naxis = Ref{Cint}()
-    naxes = Vector{Clonglong}(undef, 5)
+    ndims = Ref{Cint}()
+    dims = Vector{Clonglong}(undef, 5)
     again = true # recall function?
     while again
-        check(CFITSIO.fits_read_tdimll(f, col, length(naxes), naxis, naxes,
-                                       Ref{Status}(0)))
-        again = naxis[] > length(naxes)
-        if naxis[] != length(naxes)
-            resize!(naxes, naxis[])
-        end
+        check(CFITSIO.fits_read_tdimll(
+            f, col, length(dims), ndims, dims, Ref{Status}(0)))
+        again = ndims[] > length(dims)
+        ndims[] != length(dims) && resize!(dims, ndims[])
     end
-    return as(Vector{Int}, naxes)
+    return dims
 end
 
 """
