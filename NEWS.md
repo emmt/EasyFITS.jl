@@ -32,6 +32,10 @@
   `write` call, two arguments must be supplied for each extension: one for the
   header (possibly `nothing`) and one for the data.
 
+- The constant `EasyFITS.CFITSIO_VERSION` gives the version of the CFITSIO
+  library for which the package has been built. At load time, it is checked
+  that this version matches that of the dynamic library.
+
 ## Version 0.5.5
 
 - `read(FitsHeader,filename;ext=...)` can be used to read the header of FITS

@@ -131,7 +131,7 @@ end
 end
 
 @testset "Utilities" begin
-    @test EasyFITS.library_version() isa VersionNumber
+    @test EasyFITS.CFITSIO_VERSION isa VersionNumber
     let new_array = EasyFITS.new_array
         let A = new_array(Float32, 4, 5, 6)
             @test eltype(A) === Float32
