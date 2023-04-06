@@ -169,7 +169,7 @@ read_tdim(f::Union{FitsFile,FitsTableHDU}, col::ColumnName; case::Bool=false) =
     read_tdim(f, get_colnum(f, col; case))
 
 function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
-    1 ≤ col ≤ 999 || error("invalid column number")
+    1 ≤ col ≤ 9999 || throw(FitsError(CFITSIO.BAD_COL_NUM))
     naxis = Ref{Cint}()
     naxes = Vector{Clonglong}(undef, 5)
     again = true # recall function?
