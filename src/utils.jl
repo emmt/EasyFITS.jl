@@ -147,6 +147,12 @@ let expr = :(bad_argument("invalid BITPIX value"))
     @eval type_from_bitpix(b::Int) = $expr
 end
 
+# A few type assertions.
+CFITSIO.LONGLONG === Clonglong || throw(AssertionError(
+    "CFITSIO.LONGLONG = `$(CFITSIO.LONGLONG)` while Clonglong = `$Clonglong`"))
+CFITSIO.ULONGLONG === Culonglong || throw(AssertionError(
+    "CFITSIO.LONGLONG = `$(CFITSIO.ULONGLONG)` while Culonglong = `$Culonglong`"))
+
 """
     EasyFITS.type_to_code(T)
 
@@ -329,10 +335,16 @@ let types = Set{DataType}()
         end
     end
     @eval const NUMERIC_TYPES = $((filter(T -> T <: Number, types)...,))
+    @eval const INTEGER_TYPES = $((filter(T -> T <: Integer, types)...,))
+    @eval const   FLOAT_TYPES = $((filter(T -> T <: AbstractFloat, types)...,))
+    @eval const COMPLEX_TYPES = $((filter(T -> T <: Complex, types)...,))
 end
 
 # Numeric types supported by the library for reading/writing.
 const NumericTypes = Union{NUMERIC_TYPES...,}
+const IntegerTypes = Union{INTEGER_TYPES...,}
+const   FloatTypes = Union{  FLOAT_TYPES...,}
+const ComplexTypes = Union{COMPLEX_TYPES...,}
 
 """
     EasyFITS.cfunc(pfx::Union{AbstractString,Symbol}, T::Type) -> sym
