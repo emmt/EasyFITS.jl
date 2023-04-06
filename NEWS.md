@@ -2,6 +2,9 @@
 
 ## Version 0.5.6
 
+This version introduces many changes mostly for reading/writing FITS table
+extensions:
+
 - The `rename` keyword can be used to specify a function to rename column names
   when reading a FITS table in a dictionary.
 
@@ -22,21 +25,37 @@
 - Reading column(s) from a FITS table can yield the column(s) values or the
   column(s) values *and* their units.
 
-- FITS table extensions can be written by `write(file, header=nothing, cols)`
-  with columns `cols` specified by a collection of of pairs like `key => vals`
-  or `key => (vals, units)` with `key` the (symbolic) name of the column,
-  `vals` its values, and `units` its optional units. The collection can be a
-  dictionary, a named tuple, a vector of pairs, or a tuple of pairs.
+- FITS table extensions can be written by `write(file,hdr,cols)` with `hdr`
+  specifying additional header records, columns `cols` specified by a
+  collection of pairs like `key => vals` or `key => (vals, units)` with `key`
+  the (symbolic) name of the column, `vals` its values, and `units` its
+  optional units. The collection `cols` can be a dictionary, a named tuple, a
+  vector of pairs, or a tuple of pairs.
 
 - To avoid ambiguities, when writing complete FITS extensions in a single
   `write` call, two arguments must be supplied for each extension: one for the
   header (possibly `nothing`) and one for the data.
 
+- **Columns of strings:**
+
+  - Columns with string values and, possibly, multi-dimensional cells can be
+    read/written as strings or as raw bytes. Although specified by FITS
+    standard, multi-dimensional cells of strings may not be correctly supported
+    by all software (notably not by
+    [`fv`](https://heasarc.gsfc.nasa.gov/docs/software/ftools/fv/)). CFITSIO
+    itself implements its own mechanisms for multi-dimensional cells of strings
+    which are not part of FITS standard and does not understand the FITS
+    standard rules. For this reason in `EasyFITS`, raw bytes are always used as
+    an intermediate by to represent strings so as to shortcut the handling of
+    strings by CFITSIO.
 
   - As assumed in the CFITSIO library and by the FITS standard, trailing spaces
     are not significant (and discarded) unless the string only consists in
     spaces if which case the first space is considered as significant (and
     kept). This is intended to distinguish null (empty) and non-null strings.
+
+There are also some changes not related to FITS table extensions:
+
 - The constant `EasyFITS.CFITSIO_VERSION` gives the version of the CFITSIO
   library for which the package has been built. At load time, it is checked
   that this version matches that of the dynamic library.

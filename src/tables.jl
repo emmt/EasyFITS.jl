@@ -211,113 +211,289 @@ end
 
 # Read column values and units.
 function read(::Type{Tuple{A,String}}, hdu::FitsTableHDU, col::Column,
-              rows::Rows = Colon(); case::Bool = false,
-              kwds...) where {A<:AbstractArray}
+              rows::Rows = Colon(); case::Bool = false, kwds...) where {A<:Array}
     num = get_colnum(hdu, col; case)
     return (read(A, hdu, num, rows; kwds...), get_units(hdu, num))
 end
 
+# Convert column name to number.
 function read(::Type{A}, hdu::FitsTableHDU, col::ColumnName,
-              rows::Rows = Colon(); case::Bool = false,
-              kwds...) where {A<:AbstractArray}
+              rows::Rows = Colon(); case::Bool = false, kwds...) where {A<:Array}
     return read(A, hdu, get_colnum(hdu, col; case), rows; kwds...)
 end
 
-function read(::Type{Array}, hdu::FitsTableHDU, col::Integer,
-              rows::Rows = Colon(); kwds...)
+function read(::Type{A}, hdu::FitsTableHDU, col::Integer, rows::Rows = Colon();
+              kwds...) where {A<:Array}
+    # Get equivalent type stored by the column.
     type, repeat, width = get_eqcoltype(hdu, col)
-    if type == CFITSIO.TSTRING
-        return read(Array{String}, hdu, col, rows; kwds...)
-    else
-        dims = size_to_read(Number, hdu, col, rows)
-        return read!(new_array(type_from_code(type), dims), hdu, col;
-                     first = first_row_to_read(hdu, rows), kwds...)
-    end
+    type > zero(type) || error("reading variable-length array is not implemented")
+
+    # Get dimension of array to read.
+    dims = size_to_read(hdu, col, rows)
+
+    # Allocate array for storing the result, read the data, and eventually
+    # convert its element type.
+    return read!(args_for_read!(type_from_code(type), dims, A)...,
+                 hdu, col; first = first_row_to_read(hdu, rows), kwds...)
 end
 
-function read(::Type{Array{T}}, hdu::FitsTableHDU, col::Integer,
-              rows::Rows = Colon(); kwds...) where {T<:Number}
-    dims = size_to_read(Number, hdu, col, rows)
-    return read!(new_array(T, dims), hdu, col;
-                 first = first_row_to_read(hdu, rows), kwds...)
-end
+"""
+    args_for_read!(S::Type, dims, A::Type) -> (arr, T)
 
-function read(::Type{Array{T,N}}, hdu::FitsTableHDU, col::Integer,
-              rows::Rows = Colon(); kwds...) where {T<:Number,N}
-    dims = size_to_read(Number, hdu, col, rows)
-    length(dims) == N || error("invalid number of dimensions")
-    return read!(new_array(T, Val(N), dims), hdu, col;
-                 first = first_row_to_read(hdu, rows), kwds...)
-end
+given the element type `S` and the dimensions `dims` of the column data in the
+file, and the array type `A` requested by the caller, this function yields an
+array `arr` to store the column values with `read!` and the type `T` of the
+elements of the array to return to the caller.
 
-# Read array of strings as bytes. FIXME: null and anynull keywords
+If `eltype(arr) == T` holds, `arr` can be directly returned to the caller;
+otherwise, a conversion by [`convert_eltype`](@ref) is needed.
 
-function read(::Type{Array{String}}, hdu::FitsTableHDU, col::Integer,
-              rows::Rows = Colon(); kwds...)
-    dims = size_to_read(String, hdu, col, rows)
-    return bytes_to_strings(read!(new_array(UInt8, dims), hdu, col;
-                                  first = first_row_to_read(hdu, rows), kwds...))
-end
+If `S` is `String`, then:
 
-function read(::Type{Array{String,N}}, hdu::FitsTableHDU, col::Integer,
-              rows::Rows = Colon(); kwds...) where {N}
-    dims = size_to_read(String, hdu, col, rows)
-    length(dims) == N+1 || error("invalid number of dimensions")
-    return bytes_to_strings(read!(new_array(UInt8, Val(N+1), dims), hdu, col;
-                                  first = first_row_to_read(hdu, rows), kwds...))
-end
+- if `A` does not specify an element type, `T` is returned as `String`;
+  otherwise, `T` is returned as `eltype(A)` which must be `UInt8` or `String`;
+
+- the number of dimensions `length(dims)` includes the character index and data
+  is read as bytes, so `eltype(arr) == UInt8` holds and, if `A` specifies a
+  number of dimensions `N`, then:
+
+      N == (T == String ? length(dims) - 1 : length(dims))
+
+  must hold.
+
+Otherwise `S` is a numeric type, and
+
+- if `A` does not specify an element type, `T` is returned as `S`;
+  otherwise, `T` is returned as `eltype(A)` and `T <: Real` must hold;
+
+- if `A` specifies a number of dimensions, say `N`, then:
+
+      N == length(dims)
+
+  must hold.
+
+"""
+args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array}) where {S} =
+    # Caller specifies no element type and no number of dimensions.
+    new_array(eltype_to_read(S), dims), S
+args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array{<:Any,N}}) where {S,N} =
+    # Caller specifies the number of dimensions but no element type.
+    new_array(eltype_to_read(S), ndims_to_read(dims, Array{S,N}), dims), S
+args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array{T}}) where {S,T} =
+    # Caller specifies the element type but no number of dimensions.
+    new_array(eltype_to_read(S, T), dims), T
+args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array{T,N}}) where {S,T,N} =
+    # Caller specifies the element type and the number of dimensions.
+    new_array(eltype_to_read(S, T), ndims_to_read(dims, Array{T,N}), dims), T
+
+"""
+    EasyFITS.ndims_to_read(dims, Array{T,N}) -> Val(length(dims))
+
+yields the number of dimensions of the array to read in a column and checks the
+number of dimensions of the expected result of type `Array{T,N}` after possible
+conversion. This method is type-stable as it yields the following predictable
+result:
+
+    Val(N+1)  if T <: String
+    Val(N)    otherwise
+
+"""
+ndims_to_read(dims::Vector{<:Integer}, ::Type{Array{String,N}}) where {N} =
+    (n = length(dims)) == N+1 ? Val(N+1) : bad_column_ndims(N, n-1)
+
+ndims_to_read(dims::Vector{<:Integer}, ::Type{Array{T,N}}) where {T,N} =
+    (n = length(dims) == N) ? Val(N) : bad_column_ndims(N, n)
+
+@noinline bad_column_ndims(m::Int, n::Int) = throw(DimensionMismatch(
+    "bad number of dimensions for column, got $m, should be $n"))
+
+"""
+    EasyFITS.eltype_to_read(S) -> R
+    EasyFITS.eltype_to_read(S, T) -> R
+
+yield the type `R` of the elements to read for a column with elements of type
+`S`. Optional argument `T` is the element type requested by the caller. An
+exception is thrown if `T` is invalid.
+
+"""
+eltype_to_read(::Type{String}) = UInt8
+eltype_to_read(::Type{S}) where {S<:NumericTypes} = S
+
+# Special case of strings:
+eltype_to_read(::Type{String}, ::Type{T}) where {T<:Union{UInt8,String}} = UInt8
+
+# NOTE: Some conversions like float->integer are not allowed.
+const AllowedTypesFromComplex = Complex{<:Union{AbstractFloat,Rational}}
+const AllowedTypesFromFloat   = Union{AbstractFloat,Rational,AllowedTypesFromComplex}
+const AllowedTypesFromInteger = Union{Integer,AllowedTypesFromFloat}
+
+# Conversions handled by CFITSIO:
+eltype_to_read(::Type{S}, ::Type{T}) where {S<:IntegerTypes,T<:NumericTypes} = T
+eltype_to_read(::Type{S}, ::Type{T}) where {S<:FloatTypes,T<:Union{FloatTypes,ComplexTypes}} = T
+eltype_to_read(::Type{S}, ::Type{T}) where {S<:ComplexTypes,T<:ComplexTypes} = T
+# Conversions not handled by CFITSIO:
+eltype_to_read(::Type{S}, ::Type{T}) where {S<:IntegerTypes,T<:AllowedTypesFromInteger} = S
+eltype_to_read(::Type{S}, ::Type{T}) where {S<:FloatTypes,  T<:AllowedTypesFromFloat  } = S
+eltype_to_read(::Type{S}, ::Type{T}) where {S<:ComplexTypes,T<:AllowedTypesFromComplex} = S
+
+# Error catchers:
+@noinline eltype_to_read(::Type{S}) where {S} = throw(ArgumentError(
+    "reading column values of type `$S` is not supported"))
+@noinline eltype_to_read(::Type{String}, ::Type{T}) where {T} = throw(ArgumentError(
+    "reading column of strings as values of type `$T` is not supported"))
+@noinline eltype_to_read(::Type{S}, ::Type{T}) where {S,T} = throw(ArgumentError(
+    "reading column values of type `$S` as values of type `$T` is not supported"))
 
 # Yields size of column data as read. If reading numbers and cell has size
 # (1,), an empty size is assumed.
-function size_to_read(::Type{T}, hdu::FitsTableHDU,
-                      col::Integer, rows::Rows) where {T<:Union{String,Number}}
+function size_to_read(hdu::FitsTableHDU, col::Integer, rows::R) where {R<:Rows}
     all_rows = hdu.rows
-    if rows isa Colon
+    if R <: Colon
         nrows = length(all_rows)
     else
         nrows = length(rows)
-        nrows == 0 || (first(rows) ≥ first(all_rows) && last(rows) ≤ last(all_rows)) ||
+        nrows == 0 || ((first(rows) ≥ first(all_rows)) & (last(rows) ≤ last(all_rows))) ||
             bad_argument("out of bounds row(s) to read")
     end
     dims = read_tdim(hdu, col)
-    if T !== String && length(dims) == 1 && first(dims) == 1
-        # Cells of this column have no dimensions and do not have string
-        # values.
-        if rows isa Integer
-            empty!(dims)
-        else
+    shrink = (length(dims) == 1 && first(dims) == 1) # Cells of this column are scalar?
+    if R <: Integer
+        # A scalar row is to be read, there is no row index dimension.
+        shrink && empty!(dims)
+    else
+        # The last dimension is the row index.
+        if shrink
             dims[firstindex(dims)] = nrows
+        else
+            push!(dims, nrows)
         end
-    elseif !(rows isa Integer)
-        push!(dims, nrows)
     end
     return dims
 end
 
-# Convert an array of bytes to an arry of strings. The leading dimension
-# indexes the characters of the strings. Trailing spaces are stripped.
-function bytes_to_strings(A::AbstractArray{UInt8,N}) where {N}
-    I = axes(A)[1]
-    J = CartesianIndices(axes(A)[2:N])
-    B = Array{String}(undef, size(J))
+"""
+    read!(wrk::AbstractArray, T::Type, hdu::FitsTableHDU, col) -> arr
+
+overwrites the elements of workspace array `wrk` with values of the column
+`col` read in the FITS table extension `hdu` and returns it with elements of
+type `T`. If `eltype(wrk) <: T` holds, `wrk` is returned as `arr`; otherwise
+`arr` is a freshly allocated array.
+
+If `T` is `String` and `eltype(wrk)` is `UInt8` the result is an array of
+strings built from the bytes along the first dimension of `wrk` for all other
+dimensions of `wrk` and with trailing spaces removed.
+
+"""
+function read!(wrk::AbstractArray, ::Type{T}, hdu::FitsTableHDU,
+               col::Column; kwds...) where {T}
+    return convert_eltype(T, read!(wrk, hdu, col; kwds...))
+end
+
+convert_eltype(::Type{T}, A::AbstractArray{<:T}) where {T} = A
+convert_eltype(::Type{T}, A::AbstractArray) where {T} = copyto!(similar(A, T), A)
+
+# Convert an array of bytes to an array of strings. The leading dimension
+# indexes the characters of the strings.
+#
+# NOTE: Trailing spaces are stripped, a single space is however significant as
+#       assumed in CFITSIO and FITS standard to distinguish null (empty) and
+#       non-null strings.
+function convert_eltype(::Type{String}, A::AbstractArray{UInt8,N}) where {N}
+    B = Array{String}(undef, size(A)[2:N])
+    inds = axes(A)
+    I = inds[1]
+    J = CartesianIndices(inds[2:N])
     buf = Array{UInt8}(undef, length(I))
-    space = UInt8(' ')
-    k = 0
+    guard = Base.cconvert(Ptr{UInt8}, buf)
+    ptr = Base.unsafe_convert(Ptr{UInt8}, guard)
+    l = firstindex(B) - 1 # fast linear index in B
+    nbads = 0 # number of bad characters
     @inbounds for j in J
-        len = 0
-        l = 0
+        flag = false # any character found before the null?
+        k = firstindex(buf) - 1 # index of last written character in buf
+        last = k # index of last non-space character in buf
         for i in I
             c = A[i,j]
-            iszero(c) && break
-            buf[l += 1] = c
-            if c != space
-                len = l
+            is_null(c) && break
+            if ! is_ascii(c)
+                # FIXME: throw(ArgumentError("invalid character `$c`"))
+                nbads += 1
+                continue
+            end
+            flag = true
+            buf[k += 1] = c
+            if ! is_space(c)
+                last = k
             end
         end
-        B[k += 1] = GC.@preserve buf unsafe_string(pointer(buf), len)
+        len = last - (firstindex(buf) - 1)
+        if flag & (len < 1)
+            # See NOTE above.
+            len = 1
+        end
+        B[l += 1] = GC.@preserve guard unsafe_string(ptr, len)
     end
+    nbads == 0 || @warn "$nbads non-ASCII characters have been filtered"
     return B
 end
+
+# Convert an array of strings into an array of bytes. The leading dimension in
+# the result indexes the characters of the strings.
+#
+# NOTE: Trailing spaces are stripped, a single space is however significant as
+#       assumed in CFITSIO and FITS standard to distinguish null (empty) and
+#       non-null strings.
+function convert_eltype(::Type{UInt8}, A::AbstractArray{<:AbstractString,N};
+                        firstdim::Int = maximum_length(A),
+                        fillchar::Char = '\0') where {N}
+    fillchar ∈ (' ', '\0') || throw(ArgumentError("invalid fill character `$fillchar`"))
+    fillchar = UInt8(fillchar)
+    B = Array{UInt8}(undef, firstdim, size(A)...)
+    maxlen = 0 # maximum length of strings (without non-significant trailing spaces)
+    off = firstindex(B) - 1 # offset index in B
+    nbads = 0 # number of bad characters
+    @inbounds for str in A
+        num = 0 # number of input characters
+        len = 0 # length of output string without non-significant trailing spaces
+        for c in str
+            if is_null(c) | (! is_ascii(c))
+                # FIXME: throw(ArgumentError("invalid character `$c`"))
+                nbads += 1
+                continue
+            end
+            num += 1
+            if !is_space(c)
+                len = num
+            end
+            if num ≤ firstdim
+                B[off + num] = c
+            end
+        end
+        if (num > 0)&(len < 1)
+            # See NOTE above.
+            len = 1
+        end
+        maxlen = max(maxlen, len)
+        for k in len+1:firstdim
+            B[off + k] = fillchar
+        end
+        off += firstdim
+    end
+    firstdim ≥ maxlen || @warn "strings have been truncated to $firstdim characters, whereas $maxlen are needed"
+    nbads == 0 || @warn "$nbads non-ASCII or null characters have been filtered"
+    return B
+end
+
+# NOTE: `isascii` only takes character argument.
+is_ascii(c::UInt8) = c < 0x80
+is_ascii(c::Char) = isascii(c)
+
+# NOTE: We are only interested in ASCII spaces.
+is_space(c::UInt8) = c == 0x20
+is_space(c::Char) = c == ' '
+
+is_null(c::UInt8) = iszero(c)
+is_null(c::Char) = c == '\0'
 
 """
     read([Dict,] hdu::FitsTableHDU[, cols[, rows]]) -> dict
@@ -604,11 +780,7 @@ column_units(def::Tuple{ColumnEltype,ColumnDims,ColumnUnits}) = def[3]
 # Yields TFORM given column definition.
 function column_tform(def::ColumnDefinition)
     T = column_eltype(def)
-    if T isa Char
-        letter = T
-    else
-        letter = type_to_letter(T)
-    end
+    letter = T isa Char ? T : type_to_letter(T)
     repeat = prod(column_dims(def))
     if repeat > 1
         return string(repeat, letter)
@@ -827,14 +999,19 @@ The same keywords apply to all columns.
 function write(hdu::FitsTableHDU,
                pair::ColumnDataPair;
                case::Bool = false,
-               null::Union{Number,Nothing} = nothing,
+               null::Union{Number,AbstractString,Nothing} = nothing,
                first::Integer = hdu.first_row)
     # Private function to retrieve the values and the units of a column.
     data_units(col::Pair{<:Column,<:ColumnData}) = (pair.second, nothing)
     data_units(col::Pair{<:Column,<:Tuple{ColumnData,ColumnUnits}}) = pair.second
 
     # Get column number.
-    num = get_colnum(hdu, pair.first; case)
+    col = pair.first
+    num = get_colnum(hdu, col; case)
+
+    # Get column equivalent type.
+    type, repeat, width = get_eqcoltype(hdu, num)
+    type > zero(type) || error("reading variable length array in column $col is not implemented")
 
     # Retrieve column values and, if units are specified, check that they are
     # the same as those already set.
@@ -845,8 +1022,47 @@ function write(hdu::FitsTableHDU,
             cart.type == FITS_STRING && units == card.string) || bad_argument("invalid column units")
     end
 
+    # Check string case.
+    if abs(type) == CFITSIO.TSTRING
+        eltype(vals) <: Union{AbstractString,UInt8} || bad_argument(
+            "columns of strings can only be written as bytes or strings")
+    else
+        eltype(vals) <: AbstractString && bad_argument(
+            "strings can only be written to columns of strings")
+    end
+
+    # Check dimensions. The number of rows is adjusted automatically.
+    cell_dims = read_tdim(hdu, num)
+    prod(cell_dims) == repeat || error("unexpected column repeat count ($repeat) and product of cell dimensions ($(prod(cell_dims))) for column $col")
+    if (cell_ndims = length(cell_dims)) == 1 && Base.first(cell_dims) == 1
+        cell_ndims = 0
+    end
+    vals_dims = size(vals)
+    vals_ndims = ndims(vals)
+    if eltype(vals) <: AbstractString
+        off = 1 # the first dimension is to index characters and does not count here
+    else
+        off = 0 # all leading dimensions must be identical
+    end
+    n = cell_ndims - off # number of dimension to compare
+    ((vals_ndims == n)|(vals_ndims == n+1)) || throw(DimensionMismatch("bad number of dimensions"))
+    for i in 1:n
+        vals_dims[i] == cell_dims[i+off] || throw(DimensionMismatch("incompatible dimension"))
+    end
+
     # Write column values.
-    unsafe_write_col(hdu, num, first, 1, length(vals), dense_array(vals), null)
+    if eltype(vals) <: AbstractString
+        null isa Union{AbstractString,Nothing} || bad_argument("invalid `null` type")
+        fillchar =
+            null === nothing || isempty(null) ? '\0' :
+            null == " " ? ' ' : bad_argument("invalid `null` value")
+        firstdim = Base.first(cell_dims) # number of character per string as stored in this column
+        temp = convert_eltype(UInt8, vals; firstdim, fillchar)
+        unsafe_write_col(hdu, num, first, 1, length(temp), temp, nothing)
+    else
+        null isa AbstractString && bad_argument("invalid `null` type")
+        unsafe_write_col(hdu, num, first, 1, length(vals), dense_array(vals), null)
+    end
     return hdu
 end
 
@@ -904,18 +1120,10 @@ function write(file::FitsFile, header::Union{Nothing,Header},
 
     @noinline bad_column_data(key, val) = throw(ArgumentError("invalid data for column $key"))
 
-    function max_length(A::AbstractArray{<:AbstractString})
-        maxlen = 0
-        for str in A
-            maxlen = max(maxlen, length(str))
-        end
-        return maxlen
-    end
-
     column_definition(key, val::ColumnData{T,1}) where {T} = (type_to_letter(T), ())
     column_definition(key, val::ColumnData{T,N}) where {T,N} = (type_to_letter(T), size(val)[1:N-1])
-    column_definition(key, val::ColumnData{<:AbstractString,1})  = ('A', (max_length(val),))
-    column_definition(key, val::ColumnData{<:AbstractString,N}) where {N} = ('A', (max_length(val),
+    column_definition(key, val::ColumnData{<:AbstractString,1})  = ('A', (maximum_length(val),))
+    column_definition(key, val::ColumnData{<:AbstractString,N}) where {N} = ('A', (maximum_length(val),
                                                                                    size(val)[1:N-1]...))
     column_definition(key, val::Tuple{ColumnData,ColumnUnits}) = (column_definition(key, val[1])..., val[2])
     column_definition(key, val::Any) = bad_column_data(key, val)

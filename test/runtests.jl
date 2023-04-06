@@ -421,6 +421,22 @@ end
 end
 
 @testset "FITS Tables" begin
+    # Type conversion for reading.
+    let eltype_to_read = EasyFITS.eltype_to_read
+        @inferred UInt8   eltype_to_read(String)
+        @inferred UInt8   eltype_to_read(String,UInt8)
+        @inferred UInt8   eltype_to_read(String,String)
+        @inferred UInt8   eltype_to_read(UInt8)
+        @inferred Int16   eltype_to_read(UInt8,Int16)
+        @inferred Float64 eltype_to_read(Float64)
+        @inferred Float32 eltype_to_read(Float64,Float32)
+        @inferred Float64 eltype_to_read(Float64,Rational)
+        @test_throws ArgumentError eltype_to_read(String,Int8)
+        @test_throws ArgumentError eltype_to_read(Float64,String)
+        @test_throws ArgumentError eltype_to_read(Float64,Int)
+        @test_throws ArgumentError eltype_to_read(ComplexF32,Int)
+    end
+
     # Low-level API.
     openfits(tempfile, "w!") do file
         @test length(file) == 0
@@ -587,8 +603,15 @@ end
     position = rand(Float32, 3, nrows);
     phase = (1:7) .// 3;
     amplitude = exp.(-1:-1:-7);
+    name = ["Row#$i" for i in 1:length(phase)]; # a vector of strings
     x = amplitude.*cos.(phase);
     y = amplitude.*sin.(phase);
+    xy = hcat(x,y)';
+    label = Array{String,2}(undef, 2, length(x));
+    for i in 1:length(x);
+        label[1,i] = "x$i";
+        label[2,i] = "y$i";
+    end
     date = now();
     writefits!(
         tempfile,
@@ -624,7 +647,9 @@ end
         # can be strings or symbols but not a mixture):
         [:phase => ((180/π).*phase, "deg"),
          :amplitude => (amplitude, "V"),
-         :xy => (hcat(x,y)', "V")])
+         :name => name,
+         :xy => (xy, "V"),
+         :label => label])
     h1 = read(FitsHeader, tempfile)
     @test h1 isa FitsHeader
     @test h1["DATE"].value(DateTime) === date
@@ -646,7 +671,9 @@ end
     @test x3 isa Dict{String}
     @test x3["PHASE"] == (180/π).*phase
     @test x3["AMPLITUDE"] == amplitude
-    @test x3["XY"] == hcat(x,y)'
+    @test x3["NAME"] == name
+    @test x3["XY"] == xy
+    @test x3["LABEL"] == label
 end
 
 end # module
