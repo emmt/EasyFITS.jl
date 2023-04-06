@@ -167,6 +167,17 @@ end
         @test dense_array(A) === A
         @test isa(dense_array(B), Array)
     end
+    let string_length = EasyFITS.string_length
+        @test string_length("") == 0
+        @test string_length(" ") == 1
+        @test string_length("  ") == 1
+        @test string_length("a") == 1
+        @test string_length("a ") == 1
+        @test string_length("a  ") == 1
+        @test string_length(" a") == 2
+        @test string_length(" a ") == 2
+        @test string_length(" a  ") == 2
+    end
 end
 
 # Get comment as a string from header card settings.

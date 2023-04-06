@@ -548,3 +548,32 @@ function to_string!(buf::Vector{UInt8})
     end
     return String(buf)
 end
+
+"""
+    EasyFITS.string_length(str)
+
+yields the length of the string `str` not counting non-significant trailing
+spaces. As assumed in CFITSIO and FITS standard, if there are non non-space
+characters in `str`, a single trailing space is considered to be significant.
+This is intended to distinguish null (empty) and non-null strings.
+
+"""
+function string_length(str::AbstractString)
+    num = 0 # number of characters
+    len = 0 # number of character without non-significant trailing spaces
+    @inbounds for c in str
+        num += 1
+        if !is_space(c)
+            len = num
+        end
+    end
+    return ((num > 0)&(len < 1)) ? 1 : len
+end
+
+function maximum_length(A::AbstractArray{<:AbstractString})
+    maxlen = 0
+    @inbounds for str in A
+        maxlen = max(maxlen, string_length(str))
+    end
+    return maxlen
+end

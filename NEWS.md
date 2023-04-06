@@ -32,6 +32,11 @@
   `write` call, two arguments must be supplied for each extension: one for the
   header (possibly `nothing`) and one for the data.
 
+
+  - As assumed in the CFITSIO library and by the FITS standard, trailing spaces
+    are not significant (and discarded) unless the string only consists in
+    spaces if which case the first space is considered as significant (and
+    kept). This is intended to distinguish null (empty) and non-null strings.
 - The constant `EasyFITS.CFITSIO_VERSION` gives the version of the CFITSIO
   library for which the package has been built. At load time, it is checked
   that this version matches that of the dynamic library.
