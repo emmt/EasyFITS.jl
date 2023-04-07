@@ -1,5 +1,8 @@
 # Things to do in EasyFITS
 
+- Make `EasyFITS` understand the rules of CFITSIO for reading multi-dimensional
+  cells of strings. Not for writing though.
+
 - Deal with long strings (`CONTINUE` FITS keyword).
 
 - Deal with columns of bits.
@@ -14,6 +17,8 @@
 - In `utils.jl` use a more elegant and secure way to deal with FITS booleans
   which are implemented as `Cchar` in CFITSIO and thus arrays of booleans are
   unfortunately thought as `CString` by Julia code wrapper.
+
+- Extension `ext` may be specified as a predicate function.
 
 - FITS cards are (restricted) ASCII strings. The FITS standard states that FITS
   header cards exclusively consist in the characters whose hexadecimal values
