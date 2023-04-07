@@ -553,9 +553,9 @@ end
     EasyFITS.string_length(str)
 
 yields the length of the string `str` not counting non-significant trailing
-spaces. As assumed in CFITSIO and FITS standard, if there are non non-space
-characters in `str`, a single trailing space is considered to be significant.
-This is intended to distinguish null (empty) and non-null strings.
+spaces. As assumed in the CFITSIO library and by FITS standard, if there are
+only spaces in `str`, the first space is considered to be significant. This is
+intended to distinguish null (empty) and non-null strings.
 
 """
 function string_length(str::AbstractString)
