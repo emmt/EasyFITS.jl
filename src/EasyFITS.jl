@@ -38,7 +38,7 @@ export
     writefits,
     writefits!
 
-using AsType
+using TypeUtils
 
 using BaseFITS
 using BaseFITS:

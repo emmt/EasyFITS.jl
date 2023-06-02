@@ -1,5 +1,9 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.7
+
+- Package `AsType` is now [`TypeUtils`](https://github.com/emmt/TypeUtils.jl).
+
 ## Version 0.5.6
 
 This version introduces many changes mostly for reading/writing FITS table
