@@ -1,4 +1,4 @@
-name: CI
+name: Nightly
 on:
   push:
     branches: ['master']
@@ -16,14 +16,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.6', '1.9']
+        version: ['nightly']
         os: ['ubuntu-latest']
         arch: ['x64', 'x86']
     steps:
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.version }}
+          version: nightly
           arch: ${{ matrix.arch }}
       - name: Add registries
         run: julia -e 'import Pkg;
@@ -32,9 +32,3 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
-      - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
-        with:
-          files: lcov.info
-          fail_ci_if_error: false
-        if: ${{ matrix.os =='ubuntu-latest' }}
