@@ -42,14 +42,18 @@ using TypeUtils
 
 using BaseFITS
 using BaseFITS:
-    CardName,
-    CardValue,
     CardComment,
+    CardName,
     CardPair,
+    CardValue,
     FitsComplex,
-    FitsInteger,
     FitsFloat,
-    Undefined
+    FitsInteger,
+    Undefined,
+    is_comment,
+    is_end,
+    is_naxis,
+    is_structural
 
 using Base: @propagate_inbounds, string_index_err
 using Base.Order: Ordering, Forward, Reverse

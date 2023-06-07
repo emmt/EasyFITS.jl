@@ -1,5 +1,10 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.8
+
+- Import predicate functions `is_comment`, `is_end`, `is_naxis`, and
+  `is_structural` from `BaseFITS`.
+
 ## Version 0.5.7
 
 - Package `AsType` is now [`TypeUtils`](https://github.com/emmt/TypeUtils.jl).
