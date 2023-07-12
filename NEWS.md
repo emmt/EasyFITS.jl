@@ -5,6 +5,11 @@
 - New non-exported constant `EasyFITS.OptionalHeader` to match `nothing` or
   anything that can represent a FITS header.
 
+- Other packages may simply extend
+  `Base.write(file::FitsFile,header::EasyFITS.OptionalHeader,data::CustomType)`
+  and/or `Base.read(::Type{<:CustomType},hdu::FitsHDU)` for their own type of
+  data `CustomType` to specify how to save and/or load such kind of data.
+
 ## Version 0.5.8
 
 - Import predicate functions `is_comment`, `is_end`, `is_naxis`, and

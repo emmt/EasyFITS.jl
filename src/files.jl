@@ -261,6 +261,13 @@ function write(file::FitsFile, header::OptionalHeader,
     return file
 end
 
+# catch errors
+@noinline function write(file::FitsFile,
+                         @nospecialize(header::OptionalHeader),
+                         @nospecialize(data::Any))
+    error("no method to write FITS extension for data of type $(typeof(data))")
+end
+
 #------------------------------------------------------------------------------
 # Interface to FITS files.
 
