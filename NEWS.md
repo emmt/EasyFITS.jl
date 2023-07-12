@@ -1,5 +1,10 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.9
+
+- New non-exported constant `EasyFITS.OptionalHeader` to match `nothing` or
+  anything that can represent a FITS header.
+
 ## Version 0.5.8
 
 - Import predicate functions `is_comment`, `is_end`, `is_naxis`, and

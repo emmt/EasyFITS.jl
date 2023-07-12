@@ -66,6 +66,15 @@ const Header = Union{
     NamedTuple, Tuple{Vararg{CardPair}}, AbstractVector{<:CardPair}}
 
 """
+    EasyFITS.OptionalHeader
+
+is the union of `Nothing` and of type(s) that are accepted to specify a FITS
+header in `EasyFITS` package.
+
+"""
+const OptionalHeader = Union{Nothing,Header}
+
+"""
     EasyFITS.ImageData{T,N}
 
 is the possible type(s) for the pixels of a `N`-dimensional FITS image

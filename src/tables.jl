@@ -1115,7 +1115,7 @@ units. The collection can be a dictionary, a named tuple, a vector of pairs, or
 a tuple of pairs.
 
 """
-function write(file::FitsFile, header::Union{Nothing,Header},
+function write(file::FitsFile, header::OptionalHeader,
                cols::TableData; ascii::Bool=false)
 
     @noinline bad_column_data(key, val) = throw(ArgumentError("invalid data for column $key"))

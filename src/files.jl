@@ -254,7 +254,7 @@ function write(file::FitsFile)
     return file
 end
 
-function write(file::FitsFile, header::Union{Nothing,Header},
+function write(file::FitsFile, header::OptionalHeader,
                data::Union{ImageData,TableData}, args...)
     write(file, header, data)
     write(file, args...)

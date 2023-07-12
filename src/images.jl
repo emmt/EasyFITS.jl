@@ -360,7 +360,7 @@ writes a new FITS Image Extension in `file` with non-structural header keywords
 specified by `hdr` and data specified by array `arr`.
 
 """
-function write(file::FitsFile, hdr::Union{Header,Nothing},
+function write(file::FitsFile, hdr::OptionalHeader,
                arr::AbstractArray{T,N}) where {T<:Number,N}
     write(merge!(write(file, FitsImageHDU, T, size(arr)), hdr), arr)
     return file # returns the file not the HDU
