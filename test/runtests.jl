@@ -289,6 +289,10 @@ end
                 @test card.value() === card.integer
                 @test card.value() == size(A, i)
             end
+            @test  haskey(hdu, "NAXIS")
+            @test !haskey(hdu, "NO-SUCH-KEY")
+            @test  haskey(hdu, firstindex(hdu))
+            @test !haskey(hdu, lastindex(hdu) + 1)
             write(hdu, A)
         end
         @test position(file) == 1

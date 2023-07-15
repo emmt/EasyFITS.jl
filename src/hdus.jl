@@ -194,15 +194,25 @@ function Base.get(hdu::FitsHDU, key::Union{CardName,Integer}, def)
     end
 end
 
-@inline function try_read!(buf::AbstractVector{UInt8}, hdu::FitsHDU, key::CardName)
-    @boundscheck length(buf) ≥ CFITSIO.FLEN_CARD || error("buffer is too small")
-    return CFITSIO.fits_read_card(hdu, key, buf, Ref{Status}(0))
+Base.haskey(hdu::FitsHDU, key::Integer) = key ∈ keys(hdu)
+function Base.haskey(hdu::FitsHDU, key::CardName)
+    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    status = @inbounds try_read!(buf, hdu, key)
+    iszero(status) && return true
+    status == CFITSIO.KEY_NO_EXIST && return false
+    throw(FitsError(status))
 end
 
-@inline function try_read!(buf::AbstractVector{UInt8}, hdu::FitsHDU, key::Integer)
-    @boundscheck length(buf) ≥ CFITSIO.FLEN_CARD || error("buffer is too small")
-    return key ≤ 0 ? CFITSIO.KEY_OUT_BOUNDS :
-        CFITSIO.fits_read_record(hdu, key, buf, Ref{Status}(0))
+@inline function try_read!(buf::AbstractVector{UInt8}, hdu::FitsHDU,
+                           key::Union{CardName,Integer})
+    length(buf) ≥ CFITSIO.FLEN_CARD || error("buffer is too small")
+    if !(key isa Integer)
+        return CFITSIO.fits_read_card(hdu, key, buf, Ref{Status}(0))
+    elseif key ≥ firstindex(hdu)
+        return CFITSIO.fits_read_record(hdu, key, buf, Ref{Status}(0))
+    else
+        return CFITSIO.KEY_OUT_BOUNDS
+    end
 end
 
 # This function is needed to truncate C-string at 1st null, we take the

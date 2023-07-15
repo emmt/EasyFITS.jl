@@ -1,5 +1,9 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.11
+
+- Extend `haskey` for `FitsHDU` instances.
+
 ## Version 0.5.10
 
 - Fix compatibility.
