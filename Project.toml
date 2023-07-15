@@ -1,7 +1,7 @@
 name = "EasyFITS"
 uuid = "a977f4a2-36a7-4172-89e7-19c2726f82e5"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "0.5.9"
+version = "0.5.10"
 
 [deps]
 BaseFITS = "b056ee54-6bb4-44e7-9abb-abfb59909e18"
