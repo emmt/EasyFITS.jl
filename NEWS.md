@@ -1,5 +1,9 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.10
+
+- Fix compatibility.
+
 ## Version 0.5.9
 
 - New non-exported constant `EasyFITS.OptionalHeader` to match `nothing` or
