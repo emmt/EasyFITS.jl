@@ -708,6 +708,12 @@ end
 
         # dimension is mandatory
         @test_throws ArgumentError write(fitsfile, FitsTableHDU, :col1 => String)
+
+        # overlarge String is a failure
+        let hdu
+            hdu = write(fitsfile, FitsTableHDU, :col1 => (String, 3))
+            @test_throws ArgumentError write(hdu, :col1 => ["abcd"])
+        end
     end
 end
 

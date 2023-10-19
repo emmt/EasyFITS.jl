@@ -479,7 +479,8 @@ function convert_eltype(::Type{UInt8}, A::AbstractArray{<:AbstractString,N};
         end
         off += firstdim
     end
-    firstdim ≥ maxlen || @warn "strings have been truncated to $firstdim characters, whereas $maxlen are needed"
+    firstdim ≥ maxlen || throw(ArgumentError(
+        "Cannot add a string of $maxlen bytes, the column maximum is set to $firstdim"))
     nbads == 0 || @warn "$nbads non-ASCII or null characters have been filtered"
     return B
 end
