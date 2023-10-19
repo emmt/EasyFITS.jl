@@ -678,6 +678,12 @@ end
     @test x3["NAME"] == name
     @test x3["XY"] == xy
     @test x3["LABEL"] == label
+
+    # write (version with columns given as varargs)
+    fitsfile = openfits(tempfile, "w!")
+    @test write(fitsfile, FitsHeader(), [1;;])[1] isa FitsImageHDU
+    @test write(fitsfile, FitsTableHDU, :col1 => Float32) isa FitsTableHDU
+    @test write(fitsfile, FitsTableHDU, :col1 => Float32, :col2 => Int) isa FitsTableHDU
 end
 
 end # module

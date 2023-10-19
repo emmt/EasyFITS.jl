@@ -902,7 +902,7 @@ table may be created in a single call:
 """
 function write(file::FitsFile, ::Type{FitsTableHDU},
                cols::Pair{<:ColumnName,<:Any}...; kwds...)
-    return write(file, FITSTableHDU, cols; kwds...)
+    return write(file, FitsTableHDU, cols; kwds...)
 end
 
 function write(file::FitsFile, ::Type{FitsTableHDU},
@@ -1019,7 +1019,7 @@ function write(hdu::FitsTableHDU,
     if units !== nothing
         card = get(hdu, "TUNIT$num", nothing)
         (card === nothing ? isempty(units) :
-            cart.type == FITS_STRING && units == card.string) || bad_argument("invalid column units")
+            card.type == FITS_STRING && units == card.string) || bad_argument("invalid column units")
     end
 
     # Check string case.
