@@ -1,5 +1,15 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.12 (not bumped yet)
+
+- For FITS tables, cell dimensions are mandatory for columns whose cell type is `String`. The user
+must now provide the maximum number of characters for the strings. It avoids ambiguities. When the
+user define a column with cell type `Int` and no dimension, the cell is assumed scalar. But a
+`String` is non-scalar by definition. Previous code, when no dimension provided, was setting
+maximum string length to `1`, which is certainly not what the user meant.
+- In the same topic as the previous bullet: trying to add a string that is too long for the cell
+maximum now throws an error, instead of truncating. It avoids writing wrong data in the file.
+
 ## Version 0.5.11
 
 - Extend `haskey` for `FitsHDU` instances.
