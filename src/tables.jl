@@ -917,9 +917,15 @@ function write(file::FitsFile, ::Type{FitsTableHDU},
                                       name::String,
                                       def::ColumnDefinition,
                                       k::Integer)
+        # NOTE: see column_tform, column_tunit, and column_tdim
+        T = column_eltype(def)
+        letter = T isa Char ? T : type_to_letter(T)
+        letter === 'A' && def isa DimensionlessColumnDefinition && throw(ArgumentError(
+            "dimensions must be specified for column of strings \"$name\""))
+        repeat = prod(column_dims(def))
         ttype[k] = name
-        tform[k] = column_tform(def)
-        tunit[k] = column_tunit(def)
+        tform[k] = repeat > 1 ? string(repeat, letter) : string(letter)
+        tunit[k] = column_units(def)
         nothing
     end
 
@@ -1045,7 +1051,9 @@ function write(hdu::FitsTableHDU,
         off = 0 # all leading dimensions must be identical
     end
     n = cell_ndims - off # number of dimension to compare
-    ((vals_ndims == n)|(vals_ndims == n+1)) || throw(DimensionMismatch("bad number of dimensions"))
+    # a single table row | several table rows
+    ((vals_ndims == n) | (vals_ndims == n+1)) || throw(DimensionMismatch(
+        "bad number of dimensions: \"$vals_ndims\" != \"$n\""))
     for i in 1:n
         vals_dims[i] == cell_dims[i+off] || throw(DimensionMismatch("incompatible dimension"))
     end

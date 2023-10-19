@@ -680,10 +680,35 @@ end
     @test x3["LABEL"] == label
 
     # write (version with columns given as varargs)
-    fitsfile = openfits(tempfile, "w!")
-    @test write(fitsfile, FitsHeader(), [1;;])[1] isa FitsImageHDU
-    @test write(fitsfile, FitsTableHDU, :col1 => Float32) isa FitsTableHDU
-    @test write(fitsfile, FitsTableHDU, :col1 => Float32, :col2 => Int) isa FitsTableHDU
+    openfits(tempfile, "w!") do fitsfile
+        write(fitsfile, FitsHeader(), [1;;])
+        @test write(fitsfile, FitsTableHDU, :col1 => Float32) isa FitsTableHDU
+        @test write(fitsfile, FitsTableHDU, :col1 => Float32, :col2 => Int) isa FitsTableHDU
+    end
+
+    # String columns, check dimensions and write
+    openfits(tempfile, "w!") do fitsfile
+        write(fitsfile, FitsHeader(), [1;;])
+
+        # 10-char strings
+        let hdu
+            @test (hdu = write(fitsfile, FitsTableHDU, :col1 => (String, 10))) isa FitsTableHDU
+            data = ["abcdefghij", "abcd", "abcdefghi"]
+            @test write(hdu, :col1 => data) isa FitsTableHDU
+            @test read(hdu, :col1) == data
+        end
+
+        # pairs of 4-char strings
+        let hdu
+            @test (hdu = write(fitsfile, FitsTableHDU, :col1 => (String, (4,2)))) isa FitsTableHDU
+            data = ["abcd" ; "defg" ;; "hijk" ; "lmno" ;; "pq" ; "rstu"]
+            @test write(hdu, :col1 => data) isa FitsTableHDU
+            @test read(hdu, :col1) == data
+        end
+
+        # dimension is mandatory
+        @test_throws ArgumentError write(fitsfile, FitsTableHDU, :col1 => String)
+    end
 end
 
 end # module
