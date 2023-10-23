@@ -479,7 +479,8 @@ function convert_eltype(::Type{UInt8}, A::AbstractArray{<:AbstractString,N};
         end
         off += firstdim
     end
-    firstdim ≥ maxlen || @warn "strings have been truncated to $firstdim characters, whereas $maxlen are needed"
+    firstdim ≥ maxlen || throw(ArgumentError(
+        "Cannot add a string of $maxlen bytes, the column maximum is set to $firstdim"))
     nbads == 0 || @warn "$nbads non-ASCII or null characters have been filtered"
     return B
 end
@@ -902,7 +903,7 @@ table may be created in a single call:
 """
 function write(file::FitsFile, ::Type{FitsTableHDU},
                cols::Pair{<:ColumnName,<:Any}...; kwds...)
-    return write(file, FITSTableHDU, cols; kwds...)
+    return write(file, FitsTableHDU, cols; kwds...)
 end
 
 function write(file::FitsFile, ::Type{FitsTableHDU},
@@ -917,9 +918,15 @@ function write(file::FitsFile, ::Type{FitsTableHDU},
                                       name::String,
                                       def::ColumnDefinition,
                                       k::Integer)
+        # NOTE: see column_tform, column_tunit, and column_tdim
+        T = column_eltype(def)
+        letter = T isa Char ? T : type_to_letter(T)
+        letter === 'A' && def isa DimensionlessColumnDefinition && throw(ArgumentError(
+            "dimensions must be specified for column of strings \"$name\""))
+        repeat = prod(column_dims(def))
         ttype[k] = name
-        tform[k] = column_tform(def)
-        tunit[k] = column_tunit(def)
+        tform[k] = repeat > 1 ? string(repeat, letter) : string(letter)
+        tunit[k] = column_units(def)
         nothing
     end
 
@@ -1019,7 +1026,7 @@ function write(hdu::FitsTableHDU,
     if units !== nothing
         card = get(hdu, "TUNIT$num", nothing)
         (card === nothing ? isempty(units) :
-            cart.type == FITS_STRING && units == card.string) || bad_argument("invalid column units")
+            card.type == FITS_STRING && units == card.string) || bad_argument("invalid column units")
     end
 
     # Check string case.
@@ -1045,7 +1052,9 @@ function write(hdu::FitsTableHDU,
         off = 0 # all leading dimensions must be identical
     end
     n = cell_ndims - off # number of dimension to compare
-    ((vals_ndims == n)|(vals_ndims == n+1)) || throw(DimensionMismatch("bad number of dimensions"))
+    # a single table row | several table rows
+    ((vals_ndims == n) | (vals_ndims == n+1)) || throw(DimensionMismatch(
+        "bad number of dimensions: \"$vals_ndims\" != \"$n\""))
     for i in 1:n
         vals_dims[i] == cell_dims[i+off] || throw(DimensionMismatch("incompatible dimension"))
     end

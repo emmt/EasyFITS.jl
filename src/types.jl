@@ -174,6 +174,17 @@ FITS table extension.
 """
 const ColumnDims = Union{Integer,Tuple{Vararg{Integer}}}
 
+
+"""
+    EasyFITS.DimensionlessColumnDefinition
+
+is similar to [`ColumnDefinition`](@ref) but without cell dimensions.
+
+"""
+const DimensionlessColumnDefinition = Union{ColumnEltype,
+                                            Tuple{ColumnEltype},
+                                            Tuple{ColumnEltype,ColumnUnits}}
+
 """
     EasyFITS.ColumnDefinition
 
@@ -181,11 +192,9 @@ is the possible type(s) for specifying the type of values, cell dimensions, and
 units of a column of a FITS table extension.
 
 """
-const ColumnDefinition = Union{ColumnEltype,
-                               Tuple{ColumnEltype},
+const ColumnDefinition = Union{DimensionlessColumnDefinition,
                                Tuple{ColumnEltype,ColumnDims},
                                Tuple{ColumnEltype,ColumnDims,ColumnUnits},
-                               Tuple{ColumnEltype,ColumnUnits},
                                Tuple{ColumnEltype,ColumnUnits,ColumnDims}}
 
 # Union of possible types for specifying column data to write.
