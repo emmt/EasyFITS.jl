@@ -192,10 +192,10 @@ is the possible type(s) for specifying the type of values, cell dimensions, and
 units of a column of a FITS table extension.
 
 """
-const ColumnDefinition = Union{Tuple{ColumnEltype,ColumnDims},
+const ColumnDefinition = Union{DimensionlessColumnDefinition,
+                               Tuple{ColumnEltype,ColumnDims},
                                Tuple{ColumnEltype,ColumnDims,ColumnUnits},
-                               Tuple{ColumnEltype,ColumnUnits,ColumnDims},
-                               DimensionlessColumnDefinition}
+                               Tuple{ColumnEltype,ColumnUnits,ColumnDims}}
 
 # Union of possible types for specifying column data to write.
 """
