@@ -681,15 +681,12 @@ end
 
     # write (version with columns given as varargs)
     openfits(tempfile, "w!") do fitsfile
-        write(fitsfile, FitsHeader(), [1;;])
         @test write(fitsfile, FitsTableHDU, :col1 => Float32) isa FitsTableHDU
         @test write(fitsfile, FitsTableHDU, :col1 => Float32, :col2 => Int) isa FitsTableHDU
     end
 
     # String columns, check dimensions and write
     openfits(tempfile, "w!") do fitsfile
-        #write(fitsfile, FitsHeader(), [1;;])
-
         # column of single character strings
         let data = ["a","b","c"],
             hdu = @inferred write(fitsfile, FitsTableHDU, [:col1 => (String, 1)])
