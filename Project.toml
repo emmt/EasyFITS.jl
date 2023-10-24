@@ -1,7 +1,7 @@
 name = "EasyFITS"
 uuid = "a977f4a2-36a7-4172-89e7-19c2726f82e5"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "0.5.11"
+version = "0.5.12"
 
 [deps]
 BaseFITS = "b056ee54-6bb4-44e7-9abb-abfb59909e18"
@@ -10,8 +10,8 @@ Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
-TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 
 [compat]
 BaseFITS = "≥ 0.3.8"
