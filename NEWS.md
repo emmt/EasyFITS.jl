@@ -1,15 +1,18 @@
 # User visible changes for EasyFITS
 
-## Version 0.5.12 (not bumped yet)
+## Version 0.5.12
 
 - Columns of strings in FITS tables:
-  - An error is raised when attempting to write strings longer than the maximal length in a column
-    of strings. The previous behavior was to truncate the strings and display a warning.
-  - When cell dimensions are not specified in a column definition, it is assumed that a single
-    value is stored by each cell of that column. This is inappropriate for strings for which the
-    default amounts to storing a single character per cell. Cell dimensions are therefore now
-    mandatory for defining columns of strings in a table HDU. Note that this is the simplest
+  - An error is raised when attempting to write strings longer than the maximal
+    length in a column of strings. The previous behavior was to truncate the
+    strings and display a warning.
+  - When cell dimensions are not specified in a column definition, it is
+    assumed that a single value is stored by each cell of that column. This is
+    inappropriate for strings for which the default amounts to storing a single
+    character per cell. Cell dimensions are therefore now mandatory for
+    defining columns of strings in a table HDU. Note that this is the simplest
     way to specify the maximum length of the strings.
+  - Reading/writing a column of strings of length 1 has been fixed.
 
 ## Version 0.5.11
 

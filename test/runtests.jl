@@ -688,20 +688,31 @@ end
 
     # String columns, check dimensions and write
     openfits(tempfile, "w!") do fitsfile
-        write(fitsfile, FitsHeader(), [1;;])
+        #write(fitsfile, FitsHeader(), [1;;])
+
+        # column of single character strings
+        let data = ["a","b","c"],
+            hdu = @inferred write(fitsfile, FitsTableHDU, [:col1 => (String, 1)])
+            @test hdu isa FitsTableHDU
+            @test write(hdu, :col1 => data) isa FitsTableHDU
+            @test read(hdu, :col1) == data
+            bytes = read(Array{UInt8}, hdu, :col1)
+            @test bytes isa Array{UInt8}
+            @test size(bytes) == (1,3)
+        end
 
         # 10-char strings
-        let hdu
-            @test (hdu = write(fitsfile, FitsTableHDU, :col1 => (String, 10))) isa FitsTableHDU
-            data = ["abcdefghij", "abcd", "abcdefghi"]
+        let data = ["abcdefghij", "abcd", "abcdefghi"],
+            hdu = @inferred write(fitsfile, FitsTableHDU, :col1 => (String, 10))
+            @test hdu isa FitsTableHDU
             @test write(hdu, :col1 => data) isa FitsTableHDU
             @test read(hdu, :col1) == data
         end
 
         # pairs of 4-char strings
-        let hdu
-            @test (hdu = write(fitsfile, FitsTableHDU, :col1 => (String, (4,2)))) isa FitsTableHDU
-            data = ["abcd" ; "defg" ;; "hijk" ; "lmno" ;; "pq" ; "rstu"]
+        let data = ["abcd" ; "defg" ;; "hijk" ; "lmno" ;; "pq" ; "rstu"],
+            hdu = @inferred write(fitsfile, FitsTableHDU, :col1 => (String, (4,2)))
+            @test hdu isa FitsTableHDU
             @test write(hdu, :col1 => data) isa FitsTableHDU
             @test read(hdu, :col1) == data
         end
@@ -710,8 +721,7 @@ end
         @test_throws ArgumentError write(fitsfile, FitsTableHDU, :col1 => String)
 
         # overlarge String is a failure
-        let hdu
-            hdu = write(fitsfile, FitsTableHDU, :col1 => (String, 3))
+        let hdu = @inferred write(fitsfile, FitsTableHDU, :col1 => (String, 3))
             @test_throws ArgumentError write(hdu, :col1 => ["abcd"])
         end
     end

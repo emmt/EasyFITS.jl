@@ -228,8 +228,8 @@ function read(::Type{A}, hdu::FitsTableHDU, col::Integer, rows::Rows = Colon();
     type, repeat, width = get_eqcoltype(hdu, col)
     type > zero(type) || error("reading variable-length array is not implemented")
 
-    # Get dimension of array to read.
-    dims = size_to_read(hdu, col, rows)
+    # Get dimension of array to read. Only non-string can be shrinked.
+    dims = size_to_read(hdu, col, rows, abs(type) != CFITSIO.TSTRING)
 
     # Allocate array for storing the result, read the data, and eventually
     # convert its element type.
@@ -346,7 +346,8 @@ eltype_to_read(::Type{S}, ::Type{T}) where {S<:ComplexTypes,T<:AllowedTypesFromC
 
 # Yields size of column data as read. If reading numbers and cell has size
 # (1,), an empty size is assumed.
-function size_to_read(hdu::FitsTableHDU, col::Integer, rows::R) where {R<:Rows}
+function size_to_read(hdu::FitsTableHDU, col::Integer, rows::R,
+                      shrink::Bool) where {R<:Rows}
     all_rows = hdu.rows
     if R <: Colon
         nrows = length(all_rows)
@@ -356,12 +357,12 @@ function size_to_read(hdu::FitsTableHDU, col::Integer, rows::R) where {R<:Rows}
             bad_argument("out of bounds row(s) to read")
     end
     dims = read_tdim(hdu, col)
-    shrink = (length(dims) == 1 && first(dims) == 1) # Cells of this column are scalar?
+    shrink &= (length(dims) == 1 && first(dims) == 1) # only shrink if cells are scalars
     if R <: Integer
         # A scalar row is to be read, there is no row index dimension.
         shrink && empty!(dims)
     else
-        # The last dimension is the row index.
+        # Set the last dimension to be the row index.
         if shrink
             dims[firstindex(dims)] = nrows
         else
@@ -1042,8 +1043,10 @@ function write(hdu::FitsTableHDU,
     # Check dimensions. The number of rows is adjusted automatically.
     cell_dims = read_tdim(hdu, num)
     prod(cell_dims) == repeat || error(
-        "unexpected column repeat count ($repeat) and product of cell dimensions ($(prod(cell_dims))) for column $col")
-    if (cell_ndims = length(cell_dims)) == 1 && Base.first(cell_dims) == 1
+        "unexpected column repeat count ($repeat) and product of cell dimensions ($(prod(cell_dims))) for column `$col`")
+    cell_ndims = length(cell_dims)
+    if !(eltype(vals) <: AbstractString) && cell_ndims == 1 && Base.first(cell_dims) == 1
+        # For columns of values, not strings, TDIM = (1,) is the same as no TDIM.
         cell_ndims = 0
     end
     vals_dims = size(vals)
