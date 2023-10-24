@@ -646,9 +646,9 @@ appends rows `rows` of columns `cols` read from FITS table extension `hdu` to
 the vector `vec` and returns it.
 
 """
-function push!(vec::AbstractVector{<:AbstractArray},
+function push!(vec::AbstractVector{A},
                hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
-               case::Bool = false, kwds...)
+               case::Bool = false, kwds...) where {A<:AbstractArray}
     for col in columns_to_read(hdu, cols)
         num = get_colnum(hdu, col; case)
         push!(vec, read(A, hdu, num, rows; kwds...))
@@ -656,9 +656,9 @@ function push!(vec::AbstractVector{<:AbstractArray},
     return vec
 end
 
-function push!(vec::AbstractVector{<:Tuple{<:AbstractArray,String}},
+function push!(vec::AbstractVector{<:Tuple{A,String}},
                hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
-               case::Bool = false, kwds...)
+               case::Bool = false, kwds...) where {A<:AbstractArray}
     for col in columns_to_read(hdu, cols)
         num = get_colnum(hdu, col; case)
         push!(vec, (read(A, hdu, num, rows; kwds...), get_units(hdu, num)))

@@ -1,5 +1,11 @@
 # Things to do in EasyFITS
 
+- Fix `@inferred read(Array{UInt8}, hdu, :col1)` for which inferred type is
+  `Any` not `Array{UInt8}`.
+
+- Reading a table as a vector of columns is not tested. Methods to push a table
+  column in a vector are ambiguous and should probably be removed.
+
 - Make `EasyFITS` understand the rules of CFITSIO for reading multi-dimensional
   cells of strings. Not for writing though.
 
