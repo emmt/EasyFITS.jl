@@ -238,12 +238,12 @@ function read(::Type{A}, hdu::FitsTableHDU, col::Integer, rows::Rows = Colon();
 end
 
 """
-    args_for_read!(S::Type, dims, A::Type) -> (arr, T)
+    EasyFITS.args_for_read!(S::Type, dims, A::Type) -> (arr, T)
 
 given the element type `S` and the dimensions `dims` of the column data in the
-file, and the array type `A` requested by the caller, this function yields an
-array `arr` to store the column values with `read!` and the type `T` of the
-elements of the array to return to the caller.
+file, and the array type `A` requested by the caller, this private function
+yields an array `arr` to store the column values with `read!` and the type `T`
+of the elements of the array to return to the caller.
 
 If `eltype(arr) == T` holds, `arr` can be directly returned to the caller;
 otherwise, a conversion by [`convert_eltype`](@ref) is needed.
