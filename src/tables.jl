@@ -1018,7 +1018,7 @@ function write(hdu::FitsTableHDU,
 
     # Get column equivalent type.
     type, repeat, width = get_eqcoltype(hdu, num)
-    type > zero(type) || error("reading variable length array in column $col is not implemented")
+    type > zero(type) || error("reading variable length array in column `$col` is not implemented")
 
     # Retrieve column values and, if units are specified, check that they are
     # the same as those already set.
@@ -1026,21 +1026,23 @@ function write(hdu::FitsTableHDU,
     if units !== nothing
         card = get(hdu, "TUNIT$num", nothing)
         (card === nothing ? isempty(units) :
-            card.type == FITS_STRING && units == card.string) || bad_argument("invalid column units")
+            card.type == FITS_STRING && units == card.string) || bad_argument(
+                "invalid units for column `$col`")
     end
 
     # Check string case.
     if abs(type) == CFITSIO.TSTRING
         eltype(vals) <: Union{AbstractString,UInt8} || bad_argument(
-            "columns of strings can only be written as bytes or strings")
+            "columns of strings can only be written as bytes or strings in column `$col`")
     else
         eltype(vals) <: AbstractString && bad_argument(
-            "strings can only be written to columns of strings")
+            "strings can only be written to columns of strings in column `$col`")
     end
 
     # Check dimensions. The number of rows is adjusted automatically.
     cell_dims = read_tdim(hdu, num)
-    prod(cell_dims) == repeat || error("unexpected column repeat count ($repeat) and product of cell dimensions ($(prod(cell_dims))) for column $col")
+    prod(cell_dims) == repeat || error(
+        "unexpected column repeat count ($repeat) and product of cell dimensions ($(prod(cell_dims))) for column $col")
     if (cell_ndims = length(cell_dims)) == 1 && Base.first(cell_dims) == 1
         cell_ndims = 0
     end
@@ -1054,22 +1056,24 @@ function write(hdu::FitsTableHDU,
     n = cell_ndims - off # number of dimension to compare
     # a single table row | several table rows
     ((vals_ndims == n) | (vals_ndims == n+1)) || throw(DimensionMismatch(
-        "bad number of dimensions: \"$vals_ndims\" != \"$n\""))
+        "bad number of dimensions for column `$col`, got $vals_ndims instead of $n or $(n+1)"))
     for i in 1:n
-        vals_dims[i] == cell_dims[i+off] || throw(DimensionMismatch("incompatible dimension"))
+        vals_dims[i] == cell_dims[i+off] || throw(DimensionMismatch(
+            "incompatible dimensions for column `$col`"))
     end
 
     # Write column values.
     if eltype(vals) <: AbstractString
-        null isa Union{AbstractString,Nothing} || bad_argument("invalid `null` type")
+        null isa Union{AbstractString,Nothing} || bad_argument(
+            "invalid `null` type for column `$col`")
         fillchar =
             null === nothing || isempty(null) ? '\0' :
-            null == " " ? ' ' : bad_argument("invalid `null` value")
+            null == " " ? ' ' : bad_argument("invalid `null` value for column `$col`")
         firstdim = Base.first(cell_dims) # number of character per string as stored in this column
         temp = convert_eltype(UInt8, vals; firstdim, fillchar)
         unsafe_write_col(hdu, num, first, 1, length(temp), temp, nothing)
     else
-        null isa AbstractString && bad_argument("invalid `null` type")
+        null isa AbstractString && bad_argument("invalid `null` type for column `$col`")
         unsafe_write_col(hdu, num, first, 1, length(vals), dense_array(vals), null)
     end
     return hdu
