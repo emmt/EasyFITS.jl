@@ -210,7 +210,7 @@ pixeltype_to_code(::Type{Bool}) =
 yields the Julia type `T` corresponding to CFITSIO type code `c`.
 
 """
-type_from_code(c::Integer) = type_from_code(Int(c)::Int)
+type_from_code(c::Integer) = type_from_code(as(Int, c))
 
 # Provide default value, if symbol constant is not defined in C FITSIO library
 # (e.g. MS-Windows). Otherwise, check that assumed and actual values agree.
