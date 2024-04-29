@@ -302,7 +302,7 @@ ndims_to_read(dims::Vector{<:Integer}, ::Type{Array{String,N}}) where {N} =
     (n = length(dims)) == N+1 ? Val(N+1) : bad_column_ndims(N, n-1)
 
 ndims_to_read(dims::Vector{<:Integer}, ::Type{Array{T,N}}) where {T,N} =
-    (n = length(dims) == N) ? Val(N) : bad_column_ndims(N, n)
+    (n = length(dims)) == N ? Val(N) : bad_column_ndims(N, n)
 
 @noinline bad_column_ndims(m::Int, n::Int) = throw(DimensionMismatch(
     "bad number of dimensions for column, got $m, should be $n"))
