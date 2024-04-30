@@ -1,5 +1,9 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.13
+
+- Can read columns with given number of dimensions.
+
 ## Version 0.5.12
 
 - Columns of strings in FITS tables:

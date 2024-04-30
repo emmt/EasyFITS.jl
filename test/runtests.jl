@@ -426,19 +426,17 @@ end
 
 @testset "FITS Tables" begin
     # Type conversion for reading.
-    let eltype_to_read = EasyFITS.eltype_to_read
-        @inferred UInt8   eltype_to_read(String)
-        @inferred UInt8   eltype_to_read(String,UInt8)
-        @inferred UInt8   eltype_to_read(String,String)
-        @inferred UInt8   eltype_to_read(UInt8)
-        @inferred Int16   eltype_to_read(UInt8,Int16)
-        @inferred Float64 eltype_to_read(Float64)
-        @inferred Float32 eltype_to_read(Float64,Float32)
-        @inferred Float64 eltype_to_read(Float64,Rational)
-        @test_throws ArgumentError eltype_to_read(String,Int8)
-        @test_throws ArgumentError eltype_to_read(Float64,String)
-        @test_throws ArgumentError eltype_to_read(Float64,Int)
-        @test_throws ArgumentError eltype_to_read(ComplexF32,Int)
+    let eltypes_to_read = EasyFITS.eltypes_to_read
+        @test (String, UInt8) === @inferred eltypes_to_read(nothing,String)
+        @test (String, UInt8) === @inferred eltypes_to_read(String,String)
+        @test (UInt8, UInt8) === @inferred eltypes_to_read(UInt8,String)
+        @test (Int16, Int16) === @inferred eltypes_to_read(Int16,UInt8)
+        @test (Float32, Float32) === @inferred eltypes_to_read(Float32,Float64)
+        @test (Float64, Float64) === @inferred eltypes_to_read(Float64,Float32)
+        @test_throws ArgumentError eltypes_to_read(Int8,String)
+        @test_throws ArgumentError eltypes_to_read(String,Float64)
+        @test_throws ArgumentError eltypes_to_read(Int,Float64)
+        @test_throws ArgumentError eltypes_to_read(Int,ComplexF32)
     end
 
     # Low-level API.

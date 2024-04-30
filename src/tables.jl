@@ -221,173 +221,137 @@ function read(::Type{A}, hdu::FitsTableHDU, col::ColumnName,
 end
 
 function read(::Type{A}, hdu::FitsTableHDU, col::Integer, rows::Rows = Colon();
-              kwds...) where {A<:Array}
-    # Get equivalent type stored by the column.
-    type, repeat, width = get_eqcoltype(hdu, col)
-    type > zero(type) || error("reading variable-length array is not implemented")
-
-    # Get dimension of array to read. Only non-string can be shrinked.
-    dims = size_to_read(hdu, col, rows, abs(type) != CFITSIO.TSTRING)
-
-    # Allocate array for storing the result, read the data, and eventually
-    # convert its element type.
-    return read!(args_for_read!(type_from_code(type), dims, A)...,
-                 hdu, col; first = first_row_to_read(hdu, rows), kwds...)
-end
-
-"""
-    EasyFITS.args_for_read!(S::Type, dims, A::Type) -> (arr, T)
-
-given the element type `S` and the dimensions `dims` of the column data in the
-file, and the array type `A` requested by the caller, this private function
-yields an array `arr` to store the column values with `read!` and the type `T`
-of the elements of the array to return to the caller.
-
-If `eltype(arr) == T` holds, `arr` can be directly returned to the caller;
-otherwise, a conversion by [`convert_eltype`](@ref) is needed.
-
-If `S` is `String`, then:
-
-- if `A` does not specify an element type, `T` is returned as `String`;
-  otherwise, `T` is returned as `eltype(A)` which must be `UInt8` or `String`;
-
-- the number of dimensions `length(dims)` includes the character index and data
-  is read as bytes, so `eltype(arr) == UInt8` holds and, if `A` specifies a
-  number of dimensions `N`, then:
-
-      N == (T == String ? length(dims) - 1 : length(dims))
-
-  must hold.
-
-Otherwise `S` is a numeric type, and
-
-- if `A` does not specify an element type, `T` is returned as `S`;
-  otherwise, `T` is returned as `eltype(A)` and `T <: Real` must hold;
-
-- if `A` specifies a number of dimensions, say `N`, then:
-
-      N == length(dims)
-
-  must hold.
-
-"""
-args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array}) where {S} =
-    # Caller specifies no element type and no number of dimensions.
-    new_array(eltype_to_read(S), dims), S
-args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array{<:Any,N}}) where {S,N} =
-    # Caller specifies the number of dimensions but no element type.
-    new_array(eltype_to_read(S), ndims_to_read(dims, Array{S,N}), dims), S
-args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array{T}}) where {S,T} =
-    # Caller specifies the element type but no number of dimensions.
-    new_array(eltype_to_read(S, T), dims), T
-args_for_read!(::Type{S}, dims::Vector{<:Integer}, ::Type{<:Array{T,N}}) where {S,T,N} =
-    # Caller specifies the element type and the number of dimensions.
-    new_array(eltype_to_read(S, T), ndims_to_read(dims, Array{T,N}), dims), T
-
-"""
-    EasyFITS.ndims_to_read(dims, Array{T,N}) -> Val(length(dims))
-
-yields the number of dimensions of the array to read in a column and checks the
-number of dimensions of the expected result of type `Array{T,N}` after possible
-conversion. This method is type-stable as it yields the following predictable
-result:
-
-    Val(N+1)  if T <: String
-    Val(N)    otherwise
-
-"""
-ndims_to_read(dims::Vector{<:Integer}, ::Type{Array{String,N}}) where {N} =
-    (n = length(dims)) == N+1 ? Val(N+1) : bad_column_ndims(N, n-1)
-
-ndims_to_read(dims::Vector{<:Integer}, ::Type{Array{T,N}}) where {T,N} =
-    (n = length(dims)) == N ? Val(N) : bad_column_ndims(N, n)
-
-@noinline bad_column_ndims(m::Int, n::Int) = throw(DimensionMismatch(
-    "bad number of dimensions for column, got $m, should be $n"))
-
-"""
-    EasyFITS.eltype_to_read(S) -> R
-    EasyFITS.eltype_to_read(S, T) -> R
-
-yield the type `R` of the elements to read for a column with elements of type
-`S`. Optional argument `T` is the element type requested by the caller. An
-exception is thrown if `T` is invalid.
-
-"""
-eltype_to_read(::Type{String}) = UInt8
-eltype_to_read(::Type{S}) where {S<:NumericTypes} = S
-
-# Special case of strings:
-eltype_to_read(::Type{String}, ::Type{T}) where {T<:Union{UInt8,String}} = UInt8
-
-# NOTE: Some conversions like float->integer are not allowed.
-const AllowedTypesFromComplex = Complex{<:Union{AbstractFloat,Rational}}
-const AllowedTypesFromFloat   = Union{AbstractFloat,Rational,AllowedTypesFromComplex}
-const AllowedTypesFromInteger = Union{Integer,AllowedTypesFromFloat}
-
-# Conversions handled by CFITSIO:
-eltype_to_read(::Type{S}, ::Type{T}) where {S<:IntegerTypes,T<:NumericTypes} = T
-eltype_to_read(::Type{S}, ::Type{T}) where {S<:FloatTypes,T<:Union{FloatTypes,ComplexTypes}} = T
-eltype_to_read(::Type{S}, ::Type{T}) where {S<:ComplexTypes,T<:ComplexTypes} = T
-# Conversions not handled by CFITSIO:
-eltype_to_read(::Type{S}, ::Type{T}) where {S<:IntegerTypes,T<:AllowedTypesFromInteger} = S
-eltype_to_read(::Type{S}, ::Type{T}) where {S<:FloatTypes,  T<:AllowedTypesFromFloat  } = S
-eltype_to_read(::Type{S}, ::Type{T}) where {S<:ComplexTypes,T<:AllowedTypesFromComplex} = S
-
-# Error catchers:
-@noinline eltype_to_read(::Type{S}) where {S} = throw(ArgumentError(
-    "reading column values of type `$S` is not supported"))
-@noinline eltype_to_read(::Type{String}, ::Type{T}) where {T} = throw(ArgumentError(
-    "reading column of strings as values of type `$T` is not supported"))
-@noinline eltype_to_read(::Type{S}, ::Type{T}) where {S,T} = throw(ArgumentError(
-    "reading column values of type `$S` as values of type `$T` is not supported"))
-
-# Yields size of column data as read. If reading numbers and cell has size
-# (1,), an empty size is assumed.
-function size_to_read(hdu::FitsTableHDU, col::Integer, rows::R,
-                      shrink::Bool) where {R<:Rows}
+              kwds...)::A where {A<:Array}
+    # Check rows to read.
     all_rows = hdu.rows
-    if R <: Colon
+    if rows isa Colon
         nrows = length(all_rows)
     else
         nrows = length(rows)
         nrows == 0 || ((first(rows) ≥ first(all_rows)) & (last(rows) ≤ last(all_rows))) ||
             bad_argument("out of bounds row(s) to read")
     end
+    read_single_row = (rows isa Integer)
+
+    # Get equivalent type stored by the column.
+    type, repeat, width = get_eqcoltype(hdu, col)
+    type > zero(type) || error("reading variable-length array is not implemented")
+
+    # Get size of cells.
     dims = read_tdim(hdu, col)
-    shrink &= (length(dims) == 1 && first(dims) == 1) # only shrink if cells are scalars
-    if R <: Integer
-        # A scalar row is to be read, there is no row index dimension.
-        shrink && empty!(dims)
+
+    # Figure out whether cells contain strings and how they will be returned.
+    T = output_eltype(A)
+    if abs(type) != CFITSIO.TSTRING
+        # Cells contain numerical values.
+        mode = 0
+        if isone(length(dims)) && isone(first(dims))
+            # Each cell contains a numerical scalar: drop the only dimension.
+            empty!(dims)
+        end
+    elseif T === UInt8
+        # Cells contain strings returned as bytes.
+        mode = 1
+    elseif T === nothing || T === String
+        # Cells contain strings returned as strings.
+        mode = 2
     else
-        # Set the last dimension to be the row index.
-        if shrink
-            dims[firstindex(dims)] = nrows
-        else
-            push!(dims, nrows)
+        throw(ArgumentError("reading column values of type `String` as `$T`"))
+    end
+
+    # Possibly adjust cell dimensions to match requested number of dimensions.
+    N = output_ndims(A)
+    if N !== nothing
+        # Caller has requested a given number of dimensions.
+        N_min = length(dims)
+        if !read_single_row
+            # The rows to read count as an additional last dimension.
+            N_min += 1
+        end
+        if mode == 2
+            # Input cells contain strings that will be returned as strings. The
+            # leading dimension will be consumed by converting bytes to
+            # strings.
+            N_min -= 1
+        end
+        N ≥ N_min || throw(DimensionMismatch(
+            "bad number of dimensions for column, got $N, should be ≥ $N_min"))
+        # Add any number of unit dimnensions (before the row index) to match
+        # requested number of output dimensions.
+        n = length(dims) + (N - N_min)
+        while length(dims) < n
+            push!(dims, 1)
         end
     end
-    return dims
+
+    # Unless reading a single row, append a new dimension for the row index.
+    if !read_single_row
+        push!(dims, nrows)
+    end
+
+    # Dispatch on element type to read and dimension list.
+    return _read(eltypes_to_read(T, type_from_code(type))..., dims, hdu, col;
+                 first = first_row_to_read(hdu, rows), kwds...)
 end
 
-"""
-    read!(wrk::AbstractArray, T::Type, hdu::FitsTableHDU, col) -> arr
-
-overwrites the elements of workspace array `wrk` with values of the column
-`col` read in the FITS table extension `hdu` and returns it with elements of
-type `T`. If `eltype(wrk) <: T` holds, `wrk` is returned as `arr`; otherwise
-`arr` is a freshly allocated array.
-
-If `T` is `String` and `eltype(wrk)` is `UInt8` the result is an array of
-strings built from the bytes along the first dimension of `wrk` for all other
-dimensions of `wrk` and with trailing spaces removed.
-
-"""
-function read!(wrk::AbstractArray, ::Type{T}, hdu::FitsTableHDU,
-               col::Column; kwds...) where {T}
-    return convert_eltype(T, read!(wrk, hdu, col; kwds...))
+function _read(::Type{T}, ::Type{R}, dims::Vector{<:Integer},
+               hdu::FitsTableHDU, col::Integer; kwds...) where {T,R}
+    return _read(T, new_array(R, dims), hdu, col; kwds...)
 end
 
+function _read(::Type{T}, A::Array, hdu::FitsTableHDU, col::Integer; kwds...) where {T}
+    read!(A, hdu, col; kwds...)
+    return convert_eltype(T, A)
+end
+
+# Yield number of dimensions of array type, `nothing` is this parameter is not
+# specified.
+output_ndims(::Type{<:AbstractArray{<:Any,N}}) where {N} = N
+output_ndims(::Type{<:AbstractArray}) = nothing
+
+# Yield elemnt type of array type, `nothing` is this parameter is not
+# specified.
+output_eltype(::Type{<:AbstractArray{T}}) where {T} = T
+output_eltype(::Type{<:AbstractArray}) = nothing
+
+"""
+    EasyFITS.eltypes_to_read(T::Type, S::Type) -> T, R
+    EasyFITS.eltypes_to_read(nothing, S::Type) -> T, R
+
+yields the type `R` of the elements to read for a column with elements of type
+`S` when caller has requested values of type `T` on output. If first argument
+is `nothing`, `T = S` is assumed.
+
+"""
+eltypes_to_read(::Nothing, ::Type{S}) where {S} =
+    eltypes_to_read(S, S) # Caller has specified no element type.
+
+# NOTE: Some conversions like float->integer are not allowed.
+const AllowedTypesFromComplex = Complex{<:Union{AbstractFloat,Rational}}
+const AllowedTypesFromFloat   = Union{AbstractFloat,Rational,AllowedTypesFromComplex}
+const AllowedTypesFromInteger = Union{Integer,AllowedTypesFromFloat}
+
+# Special case of strings:
+eltypes_to_read(::Type{T}, ::Type{String}) where {T<:Union{UInt8,String}} = T, UInt8
+
+# Conversions handled by CFITSIO (T is output type, S is type as stored in file):
+eltypes_to_read(::Type{T}, ::Type{S}) where {T<:NumericTypes,S<:IntegerTypes} = T, T
+eltypes_to_read(::Type{T}, ::Type{S}) where {T<:Union{FloatTypes,ComplexTypes},S<:FloatTypes} = T, T
+eltypes_to_read(::Type{T}, ::Type{S}) where {T<:ComplexTypes,S<:ComplexTypes} = T, T
+# Conversions not handled by CFITSIO:
+eltypes_to_read(::Type{T}, ::Type{S}) where {T<:AllowedTypesFromInteger,S<:IntegerTypes} = T, S
+eltypes_to_read(::Type{T}, ::Type{S}) where {T<:AllowedTypesFromFloat,S<:FloatTypes} = T, S
+eltypes_to_read(::Type{T}, ::Type{S}) where {T<:AllowedTypesFromComplex,S<:ComplexTypes} = T, S
+
+# Error catchers:
+@noinline eltypes_to_read(::Type{S}) where {S} = throw(ArgumentError(
+    "reading column values of type `$S` is not supported"))
+@noinline eltypes_to_read(::Type{T}, ::Type{String}) where {T} = throw(ArgumentError(
+    "reading column of strings as values of type `$T` is not supported"))
+@noinline eltypes_to_read(::Type{T}, ::Type{S}) where {S,T} = throw(ArgumentError(
+    "reading column values of type `$S` as values of type `$T` is not supported"))
+
+# Convert element type of an array with column data.
 convert_eltype(::Type{T}, A::AbstractArray{<:T}) where {T} = A
 convert_eltype(::Type{T}, A::AbstractArray) where {T} = copyto!(similar(A, T), A)
 
@@ -1080,14 +1044,14 @@ function write(hdu::FitsTableHDU,
     return hdu
 end
 
-write(hdu::FitsTableHDU; kdws...) = hdu # nothing to write
+write(hdu::FitsTableHDU; kwds...) = hdu # nothing to write
 @inline function write(hdu::FitsTableHDU, col::ColumnDataPair,
                        cols::ColumnDataPair...; kwds...)
     write(hdu, col; kwds...)
     return write(hdu, cols...; kwds...)
 end
 
-write(hdu::FitsTableHDU, ::Tuple{}; kdws...) = hdu # no more columns to write
+write(hdu::FitsTableHDU, ::Tuple{}; kwds...) = hdu # no more columns to write
 @inline function write(hdu::FitsTableHDU, cols::Tuple{Vararg{ColumnDataPair}};
                        kwds...)
     write(hdu, first(cols); kwds...)
