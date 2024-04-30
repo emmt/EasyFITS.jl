@@ -515,12 +515,14 @@ returned by:
     EasyFITS.new_array(T, Val(N), dims...) -> arr
 
 """
-new_array(::Type{T}, dims::Integer...) where {T} = Array{T}(undef, dims)
 new_array(::Type{T}, dims::NTuple{N,Integer}) where {T,N} = Array{T,N}(undef, dims)
+new_array(::Type{T}, dims::Integer...) where {T} = new_array(T, dims)
+new_array(::Type{T}, ::Val{N}, dims::Integer...) where {T,N} = new_array(T, Val(N), dims)
+new_array(::Type{T}, ::Val{N}, dims::NTuple{L,Integer}) where {T,N,L} =
+    L == N ? new_array(T, dims) : throw(DimensionMismatch("incompatible number of dimensions"))
 new_array(::Type{T}, dims::AbstractVector{<:Integer}) where {T} =
     new_array(T, Val(length(dims)), dims)
-new_array(::Type{T}, n::Val{N}, dims::Integer...) where {T,N} = new_array(T, n, dims)
-@generated function new_array(::Type{T}, ::Val{N}, dims) where {T,N}
+@generated function new_array(::Type{T}, ::Val{N}, dims::AbstractVector{<:Integer}) where {T,N}
     d = [:(dims[$k]) for k in 1:N]
     return quote
         length(dims) == N || throw(DimensionMismatch("incompatible number of dimensions"))

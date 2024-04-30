@@ -172,14 +172,12 @@ function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
     1 ≤ col ≤ 9999 || throw(FitsError(CFITSIO.BAD_COL_NUM))
     ndims = Ref{Cint}()
     dims = Vector{Clonglong}(undef, 5)
-    again = true # recall function?
-    while again
-        check(CFITSIO.fits_read_tdimll(
-            f, col, length(dims), ndims, dims, Ref{Status}(0)))
-        again = ndims[] > length(dims)
+    while true # 1 or 2 passes may be necessary
+        check(CFITSIO.fits_read_tdimll(f, col, length(dims), ndims, dims, Ref{Status}(0)))
+        ok = ndims[] ≤ length(dims)
         ndims[] != length(dims) && resize!(dims, ndims[])
+        ok && return dims
     end
-    return dims
 end
 
 """
