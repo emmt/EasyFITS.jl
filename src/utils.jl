@@ -579,3 +579,12 @@ function maximum_length(A::AbstractArray{<:AbstractString})
     end
     return maxlen
 end
+
+# Yield array dimension.
+to_dim(dim::Int) = dim
+to_dim(dim::Integer) = Int(dim)
+
+# Yield array size.
+to_size(dims::Tuple{Vararg{Int}}) = dims
+to_size(dims::Tuple{Vararg{Integer}}) = map(to_int, dims)
+to_size(dim::Integer) = (to_dim(dim),)

@@ -36,19 +36,19 @@ end
 struct UnitsGetter
     hdu::FitsTableHDU
 end
-(obj::UnitsGetter)(col::Column; case::Bool = false) = get_units(obj.hdu, col; case)
+(obj::UnitsGetter)(col::ColumnIdent; case::Bool = false) = get_units(obj.hdu, col; case)
 Base.getproperty(hdu::FitsTableHDU, ::Val{:column_units}) = UnitsGetter(hdu)
 
 struct ColumnNumberGetter
     hdu::FitsTableHDU
 end
-(obj::ColumnNumberGetter)(col::Column; case::Bool = false) = get_colnum(obj.hdu, col; case)
+(obj::ColumnNumberGetter)(col::ColumnIdent; case::Bool = false) = get_colnum(obj.hdu, col; case)
 Base.getproperty(hdu::FitsTableHDU, ::Val{:column_number}) = ColumnNumberGetter(hdu)
 
 struct ColumnNameGetter
     hdu::FitsTableHDU
 end
-(obj::ColumnNameGetter)(col::Column; case::Bool = false) = get_colname(obj.hdu, col; case)[1]
+(obj::ColumnNameGetter)(col::ColumnIdent; case::Bool = false) = get_colname(obj.hdu, col; case)[1]
 Base.getproperty(hdu::FitsTableHDU, ::Val{:column_name}) = ColumnNameGetter(hdu)
 
 """
@@ -93,7 +93,7 @@ specifies whether the case of letters matters when `col` is a (symbolic) name.
 The result is always a string, possibly empty.
 
 """
-function get_units(hdu::FitsTableHDU, col::Column; case::Bool = false)
+function get_units(hdu::FitsTableHDU, col::ColumnIdent; case::Bool = false)
     num = get_colnum(hdu, col; case)
     card = get(hdu, "TUNIT$num", nothing)
     return (card === nothing || card.type != FITS_STRING ? "" : card.string)
@@ -203,12 +203,12 @@ See [`read!(::DenseArray,::FitsTableHDU,::ColumName)`](@ref) for the other
 possible keywords.
 
 """
-function read(hdu::FitsTableHDU, col::Column, rows::Rows = Colon(); kwds...)
+function read(hdu::FitsTableHDU, col::ColumnIdent, rows::Rows = Colon(); kwds...)
     return read(Array, hdu, col, rows; kwds...)
 end
 
 # Read column values and units.
-function read(::Type{Tuple{A,String}}, hdu::FitsTableHDU, col::Column,
+function read(::Type{Tuple{A,String}}, hdu::FitsTableHDU, col::ColumnIdent,
               rows::Rows = Colon(); case::Bool = false, kwds...) where {A<:Array}
     num = get_colnum(hdu, col; case)
     return (read(A, hdu, num, rows; kwds...), get_units(hdu, num))
@@ -717,99 +717,6 @@ end
 #------------------------------------------------------------------------------
 # WRITING FITS TABLES
 
-# Private functions to parse column definitions. Possible types for `def` are
-# given by the union `ColumnDefinition`.
-
-column_eltype(def::ColumnEltype) = def
-column_eltype(def::Tuple{ColumnEltype}) = def[1]
-column_eltype(def::Tuple{ColumnEltype,ColumnDims}) = def[1]
-column_eltype(def::Tuple{ColumnEltype,ColumnUnits}) = def[1]
-column_eltype(def::Tuple{ColumnEltype,ColumnDims,ColumnUnits}) = def[1]
-column_eltype(def::Tuple{ColumnEltype,ColumnUnits,ColumnDims}) = def[1]
-
-column_dims(def::ColumnEltype) = (1,)
-column_dims(def::Tuple{ColumnEltype}) = (1,)
-column_dims(def::Tuple{ColumnEltype,ColumnUnits}) = (1,)
-column_dims(def::Tuple{ColumnEltype,ColumnDims}) = Tuple(def[2])
-column_dims(def::Tuple{ColumnEltype,ColumnDims,ColumnUnits}) = Tuple(def[2])
-column_dims(def::Tuple{ColumnEltype,ColumnUnits,ColumnDims}) = Tuple(def[3])
-
-column_units(def::ColumnEltype) = ""
-column_units(def::Tuple{ColumnEltype}) = ""
-column_units(def::Tuple{ColumnEltype,ColumnDims}) = ""
-column_units(def::Tuple{ColumnEltype,ColumnUnits}) = def[2]
-column_units(def::Tuple{ColumnEltype,ColumnUnits,ColumnDims}) = def[2]
-column_units(def::Tuple{ColumnEltype,ColumnDims,ColumnUnits}) = def[3]
-
-# Yields TFORM given column definition.
-function column_tform(def::ColumnDefinition)
-    T = column_eltype(def)
-    letter = T isa Char ? T : type_to_letter(T)
-    repeat = prod(column_dims(def))
-    if repeat > 1
-        return string(repeat, letter)
-    else
-        return string(letter)
-    end
-end
-
-# Yields TDIM given column definition.
-function column_tdim(def::ColumnDefinition)
-    dims = column_dims(def)
-    if length(dims) > 1
-        io = IOBuffer()
-        write(io, '(')
-        join(io, dims, ',')
-        write(io, ')')
-        return String(take!(io))
-    else
-        return ""
-    end
-end
-
-# Yields TUNIT given column definition.
-column_tunit(def::ColumnDefinition) = column_units(def)
-
-# Write TDIM header card.
-function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
-                    dims::Tuple{Vararg{Integer}})
-    if Clong === Clonglong || maximum(dims) ≤ typemax(Clong)
-        write_tdim(f, colnum, convert(Tuple{Vararg{Clong}}, dims))
-    else
-        write_tdim(f, colnum, convert(Tuple{Vararg{Clonglong}}, dims))
-    end
-end
-function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
-                    dims::AbstractVector{<:Integer})
-    if Clong === Clonglong || maximum(dims) ≤ typemax(Clong)
-        write_tdim(f, colnum, convert(Vector{Clong}, dims))
-    else
-        write_tdim(f, colnum, convert(Vector{Clonglong}, dims))
-    end
-end
-for T in (Clong === Clonglong ? (Clong,) : (Clong, Clonglong))
-    local cfunc = (T === Clong ? :fits_write_tdim : :fits_write_tdimll)
-    @eval begin
-        function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
-                            dims::DenseVector{$T})
-            check(CFITSIO.$cfunc(f, colnum, length(dims), dims, Ref{Status}(0)))
-        end
-        function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
-                            dims::NTuple{N,$T}) where {N}
-            check(CFITSIO.$cfunc(f, colnum, N, Ref(dims), Ref{Status}(0)))
-        end
-    end
-end
-
-function write_tdim(dest::Union{FitsFile,FitsTableHDU},
-                    def::ColumnDefinition, k::Integer)
-    dims = column_dims(def)
-    if length(dims) > 1
-        write_tdim(dest, k, dims)
-    end
-    nothing
-end
-
 """
     write(file, FitsTableHDU, cols...) -> hdu
 
@@ -872,83 +779,32 @@ end
 function write(file::FitsFile, ::Type{FitsTableHDU},
                cols::Union{AbstractVector{<:Pair{<:ColumnName,<:Any}},
                            Tuple{Vararg{Pair{<:ColumnName,<:Any}}},
-                           NamedTuple};
-               ascii::Bool=false, nrows::Integer=0)
-
-    function parse_column_definition!(ttype::AbstractVector{String},
-                                      tform::AbstractVector{String},
-                                      tunit::AbstractVector{String},
-                                      name::String,
-                                      def::ColumnDefinition,
-                                      k::Integer)
-        # NOTE: see column_tform, column_tunit, and column_tdim
-        T = column_eltype(def)
-        letter = T isa Char ? T : type_to_letter(T)
-        letter === 'A' && def isa DimensionlessColumnDefinition && throw(ArgumentError(
-            "dimensions must be specified for column of strings \"$name\""))
-        repeat = prod(column_dims(def))
-        ttype[k] = name
-        tform[k] = repeat > 1 ? string(repeat, letter) : string(letter)
-        tunit[k] = column_units(def)
-        nothing
-    end
-
-    # Error catcher.
-    function parse_column_definition!(@nospecialize(ttype::AbstractVector{String}),
-                                      @nospecialize(tform::AbstractVector{String}),
-                                      @nospecialize(tunit::AbstractVector{String}),
-                                      name::String,
-                                      @nospecialize(def),
-                                      @nospecialize(k::Integer))
-        bad_argument("invalid definition for column \"$name\"")
-    end
-
-    ascii && error("only creating binary tables is supported")
-    tbl = ascii ? CFITSIO.ASCII_TBL : CFITSIO.BINARY_TBL
-
-    # Write column defintions.
-    ncols = length(cols)
-    ttype = Vector{String}(undef, ncols)
-    tform = Vector{String}(undef, ncols)
-    tunit = Vector{String}(undef, ncols)
-    k = 0
-    for (key, def) in pairs_producer(cols)
-        parse_column_definition!(ttype, tform, tunit, String(key), def, k += 1)
-    end
-    check(CFITSIO.fits_create_tbl(file, tbl, nrows, ncols, ttype, tform, tunit,
-                                  C_NULL, Ref{Status}(0)))
-
-    # Write cell dimensions if needed.
-    k = 0
-    for (key, def) in pairs_producer(cols)
-        write_tdim(file, def, k += 1)
-    end
-
-    # The number of HDUs as returned by fits_get_num_hdus is only incremented
-    # after writing data.
-    n = position(file)
-    if length(file) < n
-        setfield!(file, :nhdus, n)
-    end
-    return FitsTableHDU(BareBuild(), file, n, ascii)
+                           NamedTuple}; kwds...)
+    return create_table(file, cols; kwds...)
 end
-
-# This function yields an iterable object that produces pairs.
-pairs_producer(x::AbstractDict) = x
-pairs_producer(x::AbstractVector{<:Pair}) = x
-pairs_producer(x::Tuple{Vararg{Pair}}) = x
-pairs_producer(x::NamedTuple) = pairs(x)
-pairs_producer(x::Any) = throw(ArgumentError("argument is not a collection of pairs"))
 
 """
     write(hdu::FitsTableHDU, cols...;
           first=hdu.first_row, case=false, null=nothing) -> hdu
 
-writes columns `cols...` into the FITS table extension of `hdu`. Columns
-`cols...` are specified as pairs like `col => vals` or `col => (vals, units)`
-with `col` the column name/number, `vals` an array of column values, and
-`units` optional units. Columns `cols...` can also be named tuples, vectors or
-tuples of pairs.
+writes columns `cols...` into the FITS table extension of `hdu`. Columns are
+specified as pairs like `col => vals` or `col => (vals, units)` with `col` the
+column name/number, `vals` an array of column values, and `units` optional
+units. The following examples are equivalent (assuming `COUNT`, `WEIGHT`, and
+`TIME` are the respective names of the 1st, 2nd, and 3rd columns):
+
+    write(hdu, "COUNT" => cnt, "WEIGHT" => (wgt, "kg"), "TIME" => (t, "s"))
+    write(hdu, :COUNT => cnt, :WEIGHT => (wgt, "kg"), :TIME => (t, "s"))
+    write(hdu, 1 => cnt, 2 => (wgt, "kg"), 3 => (t, "s"))
+
+where `cnt`, `wgt`, and `t` are column data. Note that columns can be specified
+in any order and that writing columns may be split in several calls to `write`.
+
+Columns `cols...` can also be specified as a vector or a tuple of such pairs,
+or as a named tuple. The above examples may also be written as:
+
+    write(hdu, ["COUNT" => cnt, "WEIGHT" => (wgt, "kg"), "TIME" => (t, "s")])
+    write(hdu, (COUNT = cnt, WEIGHT = (wgt, "kg"), TIME = (t, "s")))
 
 For a given column, if `col` is a column name, keyword `case` indicates whether
 the case of letters matters (default is `false`) and, if units are specified,
@@ -967,14 +823,10 @@ The same keywords apply to all columns.
 
 """
 function write(hdu::FitsTableHDU,
-               pair::ColumnDataPair;
+               pair::ColumnIdentDataPair;
                case::Bool = false,
                null::Union{Number,AbstractString,Nothing} = nothing,
                first::Integer = hdu.first_row)
-    # Private function to retrieve the values and the units of a column.
-    data_units(col::Pair{<:Column,<:ColumnData}) = (pair.second, nothing)
-    data_units(col::Pair{<:Column,<:Tuple{ColumnData,ColumnUnits}}) = pair.second
-
     # Get column number.
     col = pair.first
     num = get_colnum(hdu, col; case)
@@ -983,17 +835,18 @@ function write(hdu::FitsTableHDU,
     type, repeat, width = get_eqcoltype(hdu, num)
     type > zero(type) || error("reading variable length array in column `$col` is not implemented")
 
-    # Retrieve column values and, if units are specified, check that they are
-    # the same as those already set.
-    vals, units = data_units(pair)
+    # If units are specified, check that they are the same as those already
+    # set.
+    units = column_units(pair)
     if units !== nothing
         card = get(hdu, "TUNIT$num", nothing)
-        (card === nothing ? isempty(units) :
+        (card === nothing ? isempty(units) : # FIXME card.value == units
             card.type == FITS_STRING && units == card.string) || bad_argument(
                 "invalid units for column `$col`")
     end
 
-    # Check string case.
+    # Retrieve column values and check string case.
+    vals = column_data(pair)
     if abs(type) == CFITSIO.TSTRING
         eltype(vals) <: Union{AbstractString,UInt8} || bad_argument(
             "columns of strings can only be written as bytes or strings in column `$col`")
@@ -1005,7 +858,7 @@ function write(hdu::FitsTableHDU,
     # Check dimensions. The number of rows is adjusted automatically.
     cell_dims = read_tdim(hdu, num)
     prod(cell_dims) == repeat || error(
-        "unexpected column repeat count ($repeat) and product of cell dimensions ($(prod(cell_dims))) for column `$col`")
+        "unequal repeat count ($repeat) and product of cell dimensions ($(prod(cell_dims))) for column `$col`")
     cell_ndims = length(cell_dims)
     if !(eltype(vals) <: AbstractString) && cell_ndims == 1 && Base.first(cell_dims) == 1
         # For columns of values, not strings, TDIM = (1,) is the same as no TDIM.
@@ -1018,13 +871,18 @@ function write(hdu::FitsTableHDU,
     else
         off = 0 # all leading dimensions must be identical
     end
-    n = cell_ndims - off # number of dimension to compare
-    # a single table row | several table rows
-    ((vals_ndims == n) | (vals_ndims == n+1)) || throw(DimensionMismatch(
-        "bad number of dimensions for column `$col`, got $vals_ndims instead of $n or $(n+1)"))
+    n = min(vals_ndims - 1, cell_ndims - off)
     for i in 1:n
         vals_dims[i] == cell_dims[i+off] || throw(DimensionMismatch(
-            "incompatible dimensions for column `$col`"))
+            "incompatible cell dimension(s) for column `$col`"))
+    end
+    for i in (n + 1):(vals_ndims - 1)
+        isone(vals_dims[i]) || throw(DimensionMismatch(
+            "trailing cell dimension(s) not equal to one in source data for column `$col`"))
+    end
+    for i in (n + 1 + off):cell_ndims
+        isone(cell_dims[i]) || throw(DimensionMismatch(
+            "trailing cell dimension(s) not equal to one in destination table for column `$col`"))
     end
 
     # Write column values.
@@ -1044,43 +902,32 @@ function write(hdu::FitsTableHDU,
     return hdu
 end
 
-write(hdu::FitsTableHDU; kwds...) = hdu # nothing to write
-@inline function write(hdu::FitsTableHDU, col::ColumnDataPair,
-                       cols::ColumnDataPair...; kwds...)
-    write(hdu, col; kwds...)
-    return write(hdu, cols...; kwds...)
-end
-
-write(hdu::FitsTableHDU, ::Tuple{}; kwds...) = hdu # no more columns to write
-@inline function write(hdu::FitsTableHDU, cols::Tuple{Vararg{ColumnDataPair}};
-                       kwds...)
-    write(hdu, first(cols); kwds...)
-    return write(hdu, Base.tail(cols)...; kwds...)
-end
-
-function write(hdu::FitsTableHDU, cols::NamedTuple; kwds...)
-    for col in pairs(cols)
-        write(hdu, col; kwds...)
-    end
-    return hdu
-end
-
-function write(hdu::FitsTableHDU,
-               # NOTE: For a vector of input column data, we cannot be very
-               # specific for the key and value types of the pairs if we want
-               # to allow for a mixture of these types. The "error catcher"
-               # version of the `write` method will be eventually called.
-               cols::AbstractVector{<:Pair};
-               kwds...)
-    for col in cols
-        write(hdu, col)
-    end
-    return hdu
-end
-
 # Error catcher.
 @noinline write(hdu::FitsTableHDU, col::Pair{K,V}, args...; kwds...) where {K,V} =
     throw(ArgumentError("invalid column-data pair of type Pair{$K,$V}"))
+
+function write(hdu::FitsTableHDU, cols::Pair{<:ColumnIdent}...; kwds...)
+    for (key, val) in cols
+        # NOTE: The pair `key => val` must be rebuilt to have a more specific
+        #       type than `Any` for `val`.
+        write(hdu, key => val; kwds...)
+    end
+    return hdu
+end
+
+# NOTE: We cannot be very specific for the key and value types of the pairs, if
+#       we want to allow for a mixture of these types. The "error catcher"
+#       version of the `write` method will be eventually called.
+function write(hdu::FitsTableHDU, cols::Union{Tuple{Vararg{Pair{<:ColumnIdent}}},
+                                              AbstractVector{<:Pair{<:ColumnIdent}},
+                                              NamedTuple}; kwds...)
+    for (key, val) in pairs_producer(cols)
+        # NOTE: The pair `key => val` must be rebuilt to have a more specific
+        #       type than `Any` for `val`.
+        write(hdu, key => val; kwds...)
+    end
+    return hdu
+end
 
 """
     write(file::FitsFile, header, cols; ascii=false) -> file
@@ -1093,38 +940,187 @@ units. The collection can be a dictionary, a named tuple, a vector of pairs, or
 a tuple of pairs.
 
 """
-function write(file::FitsFile, header::OptionalHeader,
-               cols::TableData; ascii::Bool=false)
-
-    @noinline bad_column_data(key, val) = throw(ArgumentError("invalid data for column $key"))
-
-    column_definition(key, val::ColumnData{T,1}) where {T} = (type_to_letter(T), ())
-    column_definition(key, val::ColumnData{T,N}) where {T,N} = (type_to_letter(T), size(val)[1:N-1])
-    column_definition(key, val::ColumnData{<:AbstractString,1})  = ('A', (maximum_length(val),))
-    column_definition(key, val::ColumnData{<:AbstractString,N}) where {N} = ('A', (maximum_length(val),
-                                                                                   size(val)[1:N-1]...))
-    column_definition(key, val::Tuple{ColumnData,ColumnUnits}) = (column_definition(key, val[1])..., val[2])
-    column_definition(key, val::Any) = bad_column_data(key, val)
-
-    column_values(key, val::AbstractArray) = val
-    column_values(key, val::Tuple{AbstractArray,String}) = val[1]
-    column_values(key, val::Any) = bad_column_data(key, val)
-
+function write(file::FitsFile, header::OptionalHeader, cols::TableData; kwds...)
     # Create a new FITS table HDU with column definitions.
-    defs = sizehint!(Vector{Pair{String,Any}}(undef, 0), length(cols))
-    for (key, val) in pairs_producer(cols)
-        push!(defs, String(key) => column_definition(key, val))
-    end
-    hdu = write(file, FitsTableHDU, defs; ascii)
+    hdu = create_table(file, cols; kwds...)
 
     # Merge the keywords provided by the caller.
     merge!(hdu, header)
 
     # Write values of columns.
     for (key, val) in pairs_producer(cols)
-        write(hdu, key => column_values(key, val))
+        # NOTE: The pair `key => val` must be rebuilt to have a more specific
+        #       type than `Any` for `val`.
+        write(hdu, key => val)
     end
     return file
 end
 
-#------------------------------------------------------------------------------
+function create_table(file::FitsFile, cols; ascii::Bool=false, nrows::Integer=0)
+    # Write column definitions.
+    ascii && error("only creating binary tables is supported")
+    tabletype = ascii ? CFITSIO.ASCII_TBL : CFITSIO.BINARY_TBL
+    ncols = length(cols)
+    ttype = Vector{String}(undef, ncols)
+    tform = Vector{String}(undef, ncols)
+    tunit = Vector{String}(undef, ncols)
+    for (k, (key, val)) in enumerate(pairs_producer(cols))
+        # NOTE: The pair `key => val` must be rebuilt to have a more specific
+        #       type than `Any` for `val`.
+        parse_column_definition!(ttype, tform, tunit, key => val, k)
+    end
+    check(CFITSIO.fits_create_tbl(file, tabletype, nrows, ncols, ttype, tform, tunit,
+                                  C_NULL, Ref{Status}(0)))
+
+    # Write cell dimensions if needed.
+    for (k, (key, val)) in enumerate(pairs_producer(cols))
+        maybe_write_tdim(file, k, column_dims(key => val))
+    end
+
+    # The number of HDUs as returned by fits_get_num_hdus is only incremented
+    # after writing data.
+    n = position(file)
+    if length(file) < n
+        setfield!(file, :nhdus, n)
+    end
+    return FitsTableHDU(BareBuild(), file, n, ascii)
+end
+
+function parse_column_definition!(ttype::AbstractVector{String},
+                                  tform::AbstractVector{String},
+                                  tunit::AbstractVector{String},
+                                  col::Pair{<:ColumnName,<:Any},
+                                  k::Integer)
+    name = column_name(col)
+    type = column_eltype(col)
+    type === 'A' && !column_has_dims(col) && throw(ArgumentError(
+        "cell dimensions must be specified for column `$name` storing strings"))
+    repeat = prod(column_dims(col))
+    units = column_units(col)
+    ttype[k] = String(name)
+    tform[k] = repeat > 1 ? string(repeat, type) : string(type)
+    tunit[k] = units === nothing ? "" : units
+    nothing
+end
+
+# This function yields an iterable object that produces pairs.
+pairs_producer(x::AbstractDict) = x
+pairs_producer(x::AbstractVector{<:Pair}) = x
+pairs_producer(x::Tuple{Vararg{Pair}}) = x
+pairs_producer(x::NamedTuple) = pairs(x)
+pairs_producer(x::Any) = throw(ArgumentError("argument is not a collection of pairs"))
+
+# Yields TDIM given column definition. FIXME: Unused.
+function format_tdim(dims::Union{AbstractVector{<:Integer},Tuple{Vararg{Integer}}})
+   if length(dims) ≥ 1
+        io = IOBuffer()
+        write(io, '(')
+        join(io, dims, ',')
+        write(io, ')')
+        return String(take!(io))
+    else
+        return ""
+    end
+end
+
+# Write TDIM header card.
+function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
+                    dims::Tuple{Vararg{Integer}})
+    if Clong === Clonglong || maximum(dims) ≤ typemax(Clong)
+        write_tdim(f, colnum, convert(Tuple{Vararg{Clong}}, dims))
+    else
+        write_tdim(f, colnum, convert(Tuple{Vararg{Clonglong}}, dims))
+    end
+end
+
+function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
+                    dims::AbstractVector{<:Integer})
+    if Clong === Clonglong || maximum(dims) ≤ typemax(Clong)
+        write_tdim(f, colnum, convert(Vector{Clong}, dims))
+    else
+        write_tdim(f, colnum, convert(Vector{Clonglong}, dims))
+    end
+end
+
+for T in (Clong === Clonglong ? (Clong,) : (Clong, Clonglong))
+    local cfunc = (T === Clong ? :fits_write_tdim : :fits_write_tdimll)
+    @eval begin
+        function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
+                            dims::DenseVector{$T})
+            check(CFITSIO.$cfunc(f, colnum, length(dims), dims, Ref{Status}(0)))
+        end
+        function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
+                            dims::NTuple{N,$T}) where {N}
+            check(CFITSIO.$cfunc(f, colnum, N, Ref(dims), Ref{Status}(0)))
+        end
+    end
+end
+
+function maybe_write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
+                          dims::Union{AbstractVector{<:Integer},
+                                      Tuple{Vararg{Integer}}})
+    len = length(dims)
+    if len > 1 || (len == 1 && first(dims) > 1)
+        write_tdim(f, colnum, dims)
+    end
+    nothing
+end
+
+# Private functions to parse column parameters.
+
+column_name(col::Pair{<:ColumnName,<:Any}) = first(col)
+column_ident(col::Pair{<:ColumnIdent,<:Any}) = first(col)
+
+column_data(col::Pair{<:ColumnIdent,<:ColumnData}) = last(col)
+column_data(col::Pair{<:ColumnIdent,<:Tuple{ColumnData,ColumnUnits}}) = last(col)[1]
+column_data(col::Pair{<:ColumnIdent,<:Any}) = throw_bad_column_data(col)
+
+column_eltype(col::Pair{<:ColumnIdent,<:ColumnData}) = type_to_letter(eltype(column_data(col)))
+column_eltype(col::Pair{<:ColumnIdent,<:Tuple{ColumnData,ColumnUnits}}) = type_to_letter(eltype(column_data(col)))
+column_eltype(col::Pair{<:ColumnIdent,<:ColumnEltype}) = column_eltype(last(col))
+column_eltype(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype}}) = column_eltype(last(col)[1])
+column_eltype(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnUnits}}) = column_eltype(last(col)[1])
+column_eltype(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims}}) = column_eltype(last(col)[1])
+column_eltype(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims,ColumnUnits}}) = column_eltype(last(col)[1])
+column_eltype(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnUnits,ColumnDims}}) = column_eltype(last(col)[1])
+column_eltype(col::Pair{<:ColumnIdent,<:Any}) = throw_bad_column_settings(col)
+
+column_eltype(letter::Char) = letter
+column_eltype(::Type{T}) where {T} = type_to_letter(T)
+
+column_has_dims(col::Pair{<:ColumnIdent,<:Any}) = false
+column_has_dims(col::Pair{<:ColumnIdent,<:ColumnData}) = true
+column_has_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnData,ColumnUnits}}) = true
+column_has_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims}}) = true
+column_has_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims,ColumnUnits}}) = true
+column_has_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnUnits,ColumnDims}}) = true
+
+# Yield column cell size given column data. NOTE Last dimension is the row index.
+column_dims(col::Pair{<:ColumnIdent,<:ColumnData}) = column_dims_from_data(column_data(col))
+column_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnData,ColumnUnits}}) = column_dims_from_data(column_data(col))
+column_dims(col::Pair{<:ColumnIdent,<:ColumnEltype}) = (1,)
+column_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype}}) = (1,)
+column_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnUnits}}) = (1,)
+column_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims}}) = to_size(last(col)[2])
+column_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims,ColumnUnits}}) = to_size(last(col)[2])
+column_dims(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnUnits,ColumnDims}}) = to_size(last(col)[3])
+column_dims(col::Pair{<:ColumnIdent,<:Any}) = throw_bad_column_settings(col)
+
+column_dims_from_data(A::AbstractArray) = (size(A)[1:end-1]...,)
+column_dims_from_data(A::AbstractArray{<:AbstractString}) = (maximum_length(A), size(A)[1:end-1]...,)
+
+column_units(col::Pair{<:ColumnIdent,<:ColumnData}) = nothing
+column_units(col::Pair{<:ColumnIdent,<:Tuple{ColumnData,ColumnUnits}}) = last(col)[2]
+column_units(col::Pair{<:ColumnIdent,<:ColumnEltype}) = nothing
+column_units(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype}}) = nothing
+column_units(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnUnits}}) = last(col)[2]
+column_units(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims}}) = nothing
+column_units(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnDims,ColumnUnits}}) = last(col)[3]
+column_units(col::Pair{<:ColumnIdent,<:Tuple{ColumnEltype,ColumnUnits,ColumnDims}}) = last(col)[2]
+column_units(col::Pair{<:ColumnIdent,<:Any}) = throw_bad_column_settings(col)
+
+@noinline throw_bad_column_data(col::Pair{<:ColumnIdent,<:Any}) =
+    throw(ArgumentError("invalid data for column `$(first(col))`"))
+
+@noinline throw_bad_column_settings(col::Pair{<:ColumnIdent,<:Any}) =
+    throw(ArgumentError("invalid settings for column `$(first(col))`"))

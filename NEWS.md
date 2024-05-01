@@ -4,6 +4,14 @@
 
 - Can read columns with given number of dimensions.
 
+- Column data dimensions are considered in a more flexible way: the last array
+  dimension is the row index, the other leading dimensions are the cell
+  dimensions. For columns of strings, the first cell dimension is not smaller
+  than the maximal number of bytes (ASCII characters) of any string in that
+  column. The cell dimensions are considered to be the same if the leading
+  dimensions are equal and the extra trailing dimensions, if any, are all ones.
+
+
 ## Version 0.5.12
 
 - Columns of strings in FITS tables:

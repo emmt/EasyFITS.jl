@@ -93,13 +93,13 @@ table extension.
 const ColumnName = Union{AbstractString,Symbol}
 
 """
-    EasyFITS.Column
+    EasyFITS.ColumnIdent
 
 is the union of possible types for identifying a single column in a FITS table
 extension.
 
 """
-const Column = Union{ColumnName,Integer}
+const ColumnIdent = Union{ColumnName,Integer}
 
 """
     EasyFITS.Columns
@@ -114,9 +114,9 @@ The method:
 yields an iterable object over the column indices to read in table.
 
 """
-const Columns = Union{Colon,Column,
+const Columns = Union{Colon,ColumnIdent,
                       OrdinalRange{<:Integer,<:Integer},
-                      AbstractVector{<:Column},
+                      AbstractVector{<:ColumnIdent},
                       # If specified as a tuple, don't mix indices and names:
                       Tuple{Vararg{Integer}},
                       Tuple{Vararg{ColumnName}}}
@@ -174,41 +174,63 @@ FITS table extension.
 """
 const ColumnDims = Union{Integer,Tuple{Vararg{Integer}}}
 
-
 """
-    EasyFITS.DimensionlessColumnDefinition
-
-is similar to [`ColumnDefinition`](@ref) but without cell dimensions.
-
-"""
-const DimensionlessColumnDefinition = Union{ColumnEltype,
-                                            Tuple{ColumnEltype},
-                                            Tuple{ColumnEltype,ColumnUnits}}
-
-"""
-    EasyFITS.ColumnDefinition
+    EasyFITS.ColumnSpec
 
 is the possible type(s) for specifying the type of values, cell dimensions, and
-units of a column of a FITS table extension.
+units of a column of a FITS table extension. The element type is mandatory and
+must be specifed first.
 
 """
-const ColumnDefinition = Union{DimensionlessColumnDefinition,
-                               Tuple{ColumnEltype,ColumnDims},
-                               Tuple{ColumnEltype,ColumnDims,ColumnUnits},
-                               Tuple{ColumnEltype,ColumnUnits,ColumnDims}}
+const ColumnSpec = Union{ColumnEltype,
+                         Tuple{ColumnEltype},
+                         Tuple{ColumnEltype,ColumnUnits},
+                         Tuple{ColumnEltype,ColumnDims},
+                         Tuple{ColumnEltype,ColumnDims,ColumnUnits},
+                         Tuple{ColumnEltype,ColumnUnits,ColumnDims}}
 
-# Union of possible types for specifying column data to write.
 """
-    EasyFITS.ColumnDataPair
+    EasyFITS.ColumnNameSpecPair
+
+is the possible type(s) for specifying a column when creating a table.
+Instances of this kind are pairs like `col => type` or `col =>
+(type,dims,units)` with `col` the column name number, `type` the type of the
+column values, `dims` the cell dimensions, and `units` the units of the values.
+`dims` and `units` are optional and may appear in any order after `type` which
+is mandatory.
+
+"""
+const ColumnNameSpecPair = Pair{<:ColumnName,<:ColumnSpec}
+
+"""
+    EasyFITS.ColumnIdentDataPair
 
 is the possible type(s) for specifying a column with its data and, optionally,
 its units to be written in a FITS table extension. Instances of this kind are
 pairs like `col => vals` or `col => (vals, units)` with `col` the column name
 or number, `vals` the column values, and `units` optional units.
 
+[`EasyFITS.ColumnNameDataPair`](@ref) is similar except that `col` cannot be a
+column number.
+
 """
-const ColumnDataPair = Pair{<:Column,
-                            <:Union{ColumnData,<:Tuple{ColumnData,ColumnUnits}}}
+const ColumnIdentDataPair = Pair{<:ColumnIdent,
+                                 <:Union{ColumnData,Tuple{ColumnData,ColumnUnits}}}
+
+"""
+    EasyFITS.ColumnNameDataPair
+
+is the possible type(s) for specifying a column with its data and, optionally,
+its units to be written in a FITS table extension. Instances of this kind are
+pairs like `col => vals` or `col => (vals, units)` with `col` the column name,
+`vals` the column values, and `units` optional units.
+
+[`EasyFITS.ColumnIdentDataPair`](@ref) is similar except that `col` can be a
+column number.
+
+"""
+const ColumnNameDataPair = Pair{<:ColumnName,
+                                <:Union{ColumnData,Tuple{ColumnData,ColumnUnits}}}
 
 """
     EasyFITS.TableData
