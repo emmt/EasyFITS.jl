@@ -292,10 +292,10 @@ The following table lists all properties of a FITS table HDU.
 | `columns`       | Index range of columns               |
 | `first_column`  | Index of first column                |
 | `last_column`   | Index of last column                 |
-| `column_name`   | Column name getter                   |
+| `column_name`   | Column name accessor                 |
 | `column_names`  | Column names                         |
-| `column_number` | Column number getter                 |
-| `column_units`  | Column units getter                  |
+| `column_number` | Column number accessor               |
+| `column_units`  | Column units accessor                |
 | `data_size`     | Table dimensions                     |
 | `data_ndims`    | Number of table dimensions           |
 | `data_axes`     | Indices along table dimensions       |

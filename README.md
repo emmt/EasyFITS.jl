@@ -15,14 +15,14 @@ sacrificing performances, flexibility, or readability.
 
 The full documentation is available [on-line][doc-dev-url].
 
- The *Flexible Image Transport System* (or
- [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) for short) is a file
- format widely used in Astronomy to store many kinds of data (images, tables,
- etc.) and metadata. FITS files consist in a concatenation of Header Data Units
- (HDUs) which each have a header part followed by a data part.
+The *Flexible Image Transport System* (or
+[FITS](https://fits.gsfc.nasa.gov/fits_standard.html) for short) is a file
+format widely used in Astronomy to store many kinds of data (images, tables,
+etc.) and metadata. FITS files consist in a concatenation of Header Data Units
+(HDUs) which each have a header part followed by a data part.
 
-The following example demonstrates how to write a FITS file with 2 HDUs, an
-*Image Extension* and a *Table Extension*:
+The following example demonstrates how to write a FITS file with 3 HDUs, an
+*Image Extension* and two *Table Extensions*:
 
 ```julia
 using Dates, EasyFITS
@@ -65,18 +65,18 @@ writefits(filename,
           (EXTNAME = ("MY-OTHER-EXTENSION", "Name of this other extension"),
            EXTVER  = (1, "Version of this other extension"),
            COMMENT = "This is an interesting comment"),
-          # Data part is a table in the form of a vector of pairs (colum names
+          # Data part is a table in the form of a vector of pairs (column names
           # can be strings or symbols but not a mixture):
           [:phase => ((180/π).*phase, "deg"),
            :amplitude => (amplitude, "V"),
            :xy => (hcat(x,y)', "V")])
 ```
 
-Each HDU has a the header part (the metadata) and a data part which is
-reflected by the pairs of arguments after the name of the file `filename` in
-the above call to `writefits`. The headers are provided by collections (a
-vector for the 1st one, a tuple for the 2nd) of pairs associating a keyword
-with a value and a comment (both optional). The data in a FITS *Image
+Each HDU has a header part (the metadata) and a data part which is reflected by
+the pairs of arguments after`filename`, the name of the file, in the above call
+to `writefits`. The headers are provided by collections (a vector for the 1st
+one, a tuple for the 2nd) of pairs or by a named tuples (3rd one) associating a
+keyword with a value and a comment (both optional). The data in a FITS *Image
 Extension* is any real-valued Julia array. The data part in a FITS *Table
 Extension* is provided by a collection of column names associated with columns
 values and optional units. The columns in a FITS table must have the same
@@ -99,8 +99,8 @@ dat1 = readfits(filename)
 dat2 = readfits(filename, ext=2)
 ```
 
-will yield an array `dat1` equal to `arr` and a dictionary `dat2` indexed by the
-column names (in uppercase letters by default).  For example:
+will yield an array `dat1` equal to `arr` and a dictionary `dat2` indexed by
+the column names (in uppercase letters by default). For example:
 
 ``` julia
 dat2["SPEED"] == speed
