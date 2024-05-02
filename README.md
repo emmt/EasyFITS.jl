@@ -3,7 +3,6 @@
 [![Doc][doc-dev-img]][doc-dev-url]
 [![License][license-img]][license-url]
 [![Build Status][github-ci-img]][github-ci-url]
-[![Build Status][appveyor-img]][appveyor-url]
 [![Coverage][codecov-img]][codecov-url]
 
 `EasyFITS` is a [Julia][julia-url] package designed to make it easier to read
@@ -147,9 +146,6 @@ header cards).
 
 [github-ci-img]: https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml/badge.svg?branch=master
 [github-ci-url]: https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml?query=branch%3Amaster
-
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/EasyFITS.jl?branch=master
-[appveyor-url]: https://ci.appveyor.com/project/emmt/EasyFITS-jl/branch/master
 
 [codecov-img]: http://codecov.io/github/emmt/EasyFITS.jl/coverage.svg?branch=master
 [codecov-url]: http://codecov.io/github/emmt/EasyFITS.jl?branch=master
