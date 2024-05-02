@@ -6,11 +6,14 @@ for ver in 1.{6..11}; do
     echo "############## julia-$ver"
     rm -f Manifest.toml
     test -r ".Manifest-$ver.toml" && cp -pf ".Manifest-$ver.toml" Manifest.toml
-    # NOTE First develop, then add packages.
-    julia +"$ver" --project --check-bounds=yes --depwarn=yes --color=yes \
+    julia +"$ver" --check-bounds=yes --depwarn=yes --color=yes \
         -e 'import Pkg;
-            Pkg.develop(url = "https://github.com/emmt/FITSHeaders.jl");
+            # Add "extra" dependencies globally.
             Pkg.add("DataFrames");
+            # Activate project and "develop" unregistered dependencies.
+            Pkg.activate(pwd());
+            Pkg.develop(url = "https://github.com/emmt/FITSHeaders.jl");
+            Pkg.instantiate();
             include("test/runtests.jl");'
-    mv -f Manifest.toml ".Manifest-$ver.toml"
+    test -r ".Manifest-$ver.toml" && mv -f Manifest.toml ".Manifest-$ver.toml"
 done
