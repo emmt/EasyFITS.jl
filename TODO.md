@@ -1,7 +1,15 @@
 # Things to do in EasyFITS
 
+- Add properties `hdu.column_eltype`, `hdu.cell_size`, `hdu.cell_ndims`,
+  `hdu.cell_eltype` or alike.
+
 - Fix `@inferred read(Array{UInt8}, hdu, :col1)` for which inferred type is
   `Any` not `Array{UInt8}`.
+
+- Writing of a table columns with a dictionary.
+
+- Check performances of the different ways to dispatch on the pairs specifying
+  columns when writing a FITS table.
 
 - Reading a table as a vector of columns is not tested. Methods to push a table
   column in a vector are ambiguous and should probably be removed.
@@ -20,8 +28,8 @@
 - Abstract type `FitsHDU` and `FitsHeader(hdu::FitsHDU)` should be defined in
   `BaseFITS`.
 
-- In `utils.jl` use a more elegant and secure way to deal with FITS booleans
-  which are implemented as `Cchar` in CFITSIO and thus arrays of booleans are
+- In `utils.jl` use a more elegant and secure way to deal with FITS Booleans
+  which are implemented as `Cchar` in CFITSIO and thus arrays of Booleans are
   unfortunately thought as `CString` by Julia code wrapper.
 
 - Extension `ext` may be specified as a predicate function.
