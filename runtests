@@ -1,0 +1,16 @@
+#! /usr/bin/bash
+exe=`realpath "$0"`
+dir=`dirname "$exe"`
+cd "$dir"
+for ver in 1.{6..11}; do
+    echo "############## julia-$ver"
+    rm -f Manifest.toml
+    test -r ".Manifest-$ver.toml" && cp -pf ".Manifest-$ver.toml" Manifest.toml
+    # NOTE First develop, then add packages.
+    julia +"$ver" --project --check-bounds=yes --depwarn=yes --color=yes \
+        -e 'import Pkg;
+            Pkg.develop(url = "https://github.com/emmt/FITSHeaders.jl");
+            Pkg.add("DataFrames");
+            include("test/runtests.jl");'
+    mv -f Manifest.toml ".Manifest-$ver.toml"
+done
