@@ -840,8 +840,7 @@ function write(hdu::FitsTableHDU,
     units = column_units(pair)
     if units !== nothing
         card = get(hdu, "TUNIT$num", nothing)
-        (card === nothing ? isempty(units) : # FIXME card.value == units
-            card.type == FITS_STRING && units == card.string) || bad_argument(
+        (card === nothing ? isempty(units) : card.value == units) || bad_argument(
                 "invalid units for column `$col`")
     end
 
