@@ -4,17 +4,19 @@ using Test, EasyFITS, Dates, DataFrames
 
 using EasyFITS: FitsInteger, FitsFloat, FitsComplex
 
+const Undef = typeof(undef)
+
 column_values(arg::AbstractArray) = arg
 column_values(arg::Tuple{AbstractArray,AbstractString}) = arg[1]
 
 # Yield type for which we are sure that no possible conversion is implemented.
 other_type(type::FitsCardType) =
-    type === FITS_LOGICAL   ? Missing :
-    type === FITS_INTEGER   ? Missing :
-    type === FITS_FLOAT     ? Missing :
-    type === FITS_COMPLEX   ? Missing :
-    type === FITS_STRING    ? Missing :
-    type === FITS_COMMENT   ? Missing : Int
+    type === FITS_LOGICAL   ? Undef :
+    type === FITS_INTEGER   ? Undef :
+    type === FITS_FLOAT     ? Undef :
+    type === FITS_COMPLEX   ? Undef :
+    type === FITS_STRING    ? Undef :
+    type === FITS_COMMENT   ? Undef : Int
 
 @testset "BITPIX" begin
     let type_to_bitpix = EasyFITS.type_to_bitpix,
@@ -230,7 +232,7 @@ close(io)
 
 @testset "FITS Headers" begin
     #@test FitsCardType(Any)             === FITS_UNKNOWN
-    @test FitsCardType(typeof(undef))    === FITS_UNDEFINED
+    @test FitsCardType(Undef)            === FITS_UNDEFINED
     @test FitsCardType(Missing)          === FITS_UNDEFINED
     @test FitsCardType(Bool)             === FITS_LOGICAL
     @test FitsCardType(Int)              === FITS_INTEGER
@@ -378,7 +380,7 @@ end
                         @test card.string == rstrip(val)
                     elseif val isa Union{Missing,UndefInitializer}
                         @test card.type == FITS_UNDEFINED
-                        @test card.value() === missing
+                        @test card.value() === undef
                     else
                         error("bad card specification: $(repr(key)) => $(repr(dat))")
                     end

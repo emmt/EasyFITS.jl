@@ -239,7 +239,7 @@ end
 reads all records of the header of `hdu`.
 
 """
-function BaseFITS.FitsHeader(hdu::FitsHDU)
+function FITSHeaders.FitsHeader(hdu::FitsHDU)
     file = get_file_at(hdu)
     len = length(hdu)
     hdr = sizehint!(FitsHeader(), len)

@@ -1,7 +1,7 @@
 module EasyFITS
 
 export
-    # Re-export from BaseFITS:
+    # Re-export from FITSHeaders:
     @Fits_str,
     FitsKey,
     FitsCard,
@@ -40,8 +40,8 @@ export
 
 using TypeUtils
 
-using BaseFITS
-using BaseFITS:
+using FITSHeaders
+using FITSHeaders:
     CardComment,
     CardName,
     CardPair,

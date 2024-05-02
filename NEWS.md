@@ -11,6 +11,7 @@
   column. The cell dimensions are considered to be the same if the leading
   dimensions are equal and the extra trailing dimensions, if any, are all ones.
 
+- Package `FITSBase` has been renamed as `FITSHeaders`.
 
 ## Version 0.5.12
 
