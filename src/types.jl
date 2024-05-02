@@ -251,7 +251,7 @@ to detect column with invalid associated data.
 
 Another consequence is that there is a non-empty intersection between
 `EasyFITS.TableData` and `EasyFITS.Header` which imposes to rely on position of
-arguments to distingusih them.
+arguments to distinguish them.
 
 """
 const TableData = Union{AbstractDict{<:ColumnName,<:Any},

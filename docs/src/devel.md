@@ -42,9 +42,9 @@ and to be preserved from being garbage collected in order to warrant that the
 pointer remains valid.
 
 Thanks to this mechanism, it is quite simple to ensure that valid pointers to
-opaque structures of the CFITSIO library be passed a function of this library.
-For example, the code below is how is handled a pointer to a `fitsfile`
-C structure in our code:
+opaque structures of the CFITSIO library be passed to a function of this
+library. For example, the code below is how is handled a pointer to a
+`fitsfile` C structure in our code:
 
 ``` julia
 isnull(ptr::Ptr{T}) where {T} = ptr === Ptr{T}(0)
@@ -77,7 +77,6 @@ library.
 EasyFITS.cfunc
 EasyFITS.ctype
 EasyFITS.cpointer
-EasyFITS.get_field_name
 ```
 
 ## Pixel types
@@ -137,7 +136,7 @@ types.
 | `TBIT`        |                      | `x`          | `_bit`      |
 |               |                      | `u`          | `_null`     |
 
-Complex types `float complex` and `double complex` are stored are pairs of
+Complex types `float complex` and `double complex` are stored as pairs of
 single/double precision floating-point values (this is not guaranteed by C99
 standard so strict equivalence does not hold here).
 

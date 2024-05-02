@@ -1,6 +1,6 @@
 # The *Grammar* of `EasyFITS`
 
-FITS file may have quite complex structure and `*easyFITS` implement a *grammar*
+FITS file may have quite complex structure and `EasyFITS` implement a *grammar*
 that is intended to make clear the intention when reading the code and to help
 to guess the correct syntax when writing code. Most of the assumed rules should
 be familiar to Julia users.
@@ -9,13 +9,12 @@ The general syntax to read some data in a FITS file follows the following
 pattern:
 
 ```julia
-data = read([datatype,] src[, what...])
+data = read([type,] src[, what...])
 ```
 
 where:
 
-- `datatype` is an optional Julia type to specify the expected type of the
-  result.
+- `type` is an optional Julia type to specify the expected type of the result.
 
 - `src` is the source to read: a filename name, a `FitsFile` object
   representing an open FITS file, or a `FitsHDU` object representing a FITS
@@ -59,14 +58,15 @@ Write some data in a FITS file:
 write(file, header, data) -> file
 ```
 
-yields `file` so that chaining calls is possible to write several HDUs in a row:
+which yields `file` so that chaining calls is possible to write several HDUs in
+a row:
 
 ```julia
-write(write(write(file, header1, data1), header2, data2), ...)
+write(write(write(file, header1, data1), header2, data2), header3, data3)
 ```
 
 which is equivalent to the more readable form:
 
 ```julia
-write(file, header1, data1, header2, data2, ...)
+write(file, header1, data1, header2, data2, header3, data3)
 ```

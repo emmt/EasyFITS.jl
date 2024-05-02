@@ -399,7 +399,9 @@ end
     seekstart(file::FitsFile) -> type
 
 moves to the first HDU of FITS file `file` and returns an integer identifying
-the type of the HDU. See [`seek(::FitsFile)`](@ref).
+the type of the HDU.
+
+See also [`seek(::FitsFile)`](@ref).
 
 """
 Base.seekstart(file::FitsFile) = seek(file, firstindex(file))
@@ -408,7 +410,9 @@ Base.seekstart(file::FitsFile) = seek(file, firstindex(file))
     seekend(file::FitsFile) -> type
 
 moves to the last HDU of FITS file `file` and returns an integer identifying
-the type of the HDU. See [`seek(::FitsFile)`](@ref).
+the type of the HDU.
+
+See also [`seek(::FitsFile)`](@ref).
 
 """
 Base.seekend(file::FitsFile) = seek(file, lastindex(file))
@@ -417,7 +421,9 @@ Base.seekend(file::FitsFile) = seek(file, lastindex(file))
     position(file::FitsFile) -> n
 
 yields the current HDU number of FITS file `file`. An error is thrown if the
-file has been closed. See [`seek(::FitsFile)`](@ref).
+file has been closed.
+
+See also [`seek(::FitsFile)`](@ref).
 
 """
 function Base.position(file::FitsFile)
@@ -469,11 +475,12 @@ end
 """
     nameof(hdu::FitsHDU) -> str
 
-yields the name of the FITS header data unit `hdu`. The name is the value of
+yields the name of the FITS header data unit `hdu`. The result is the value of
 the first keyword of `"EXTNAME"` or `"HDUNAME"` which exists and has a string
-value. Otherwise, the name is that of the FITS extension of `hdu`, that is
-`"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"` depending on whether `hdu` is an
-image, an ASCII table, a binary table, or anything else.
+value. If none of these keywords exist, the result is `hdu.xtension` which is
+the name of the FITS extension of `hdu`, that is `"IMAGE"`, `"TABLE"`,
+`"BINTABLE"`, or `"ANY"` depending on whether `hdu` is an image, an ASCII
+table, a binary table, or anything else.
 
 """
 function Base.nameof(hdu::FitsHDU)
