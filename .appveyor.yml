@@ -30,8 +30,7 @@ install:
 
 build_script:
   - C:\julia\bin\julia -e "import Pkg;
-                           Pkg.Registry.add(Pkg.RegistrySpec(\"General\"));
-                           Pkg.Registry.add(Pkg.RegistrySpec(url = \"https://github.com/emmt/EmmtRegistry\"));"
+                           Pkg.develop(url = \"https://github.com/emmt/FITSHeaders.jl\");"
   - echo "%JL_BUILD_SCRIPT%"
   - C:\julia\bin\julia -e "%JL_BUILD_SCRIPT%"
 
