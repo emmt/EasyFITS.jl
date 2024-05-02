@@ -707,7 +707,7 @@ end
         end
 
         # pairs of 4-char strings
-        let data = ["abcd" ; "defg" ;; "hijk" ; "lmno" ;; "pq" ; "rstu"],
+        let data = reshape(["abcd", "efgh", "ijkl", "mnop", "qr", "stuv"], 2, 3),
             hdu = @inferred write(fitsfile, FitsTableHDU, :col1 => (String, (4,2)))
             @test hdu isa FitsTableHDU
             @test write(hdu, :col1 => data) isa FitsTableHDU
