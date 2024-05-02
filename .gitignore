@@ -9,4 +9,5 @@ devel.jl
 work.jl
 temp.jl
 test*.fits*
-Manifest.toml
+/Manifest.toml
+/.Manifest-*.toml
