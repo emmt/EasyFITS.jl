@@ -25,10 +25,9 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - name: Add registries
+      - name: Add dependencies
         run: julia -e 'import Pkg;
-                       Pkg.Registry.add(Pkg.RegistrySpec("General"));
-                       Pkg.Registry.add(Pkg.RegistrySpec(url = "https://github.com/emmt/EmmtRegistry"));'
+                       Pkg.add(url = "https://github.com/emmt/FITSHeaders.jl"), rev = "main");'
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
