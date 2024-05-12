@@ -531,14 +531,14 @@ for func in (:findnext, :findprev)
 end
 
 function Base.findfirst(f::Function, file::FitsFile)
-    @inbounds for i ∈ keys(file)
+    for i ∈ keys(file)
         f(file[i]) && return i
     end
     return nothing
 end
 
 function Base.findlast(f::Function, file::FitsFile)
-    @inbounds for i ∈ reverse(keys(file))
+    for i ∈ reverse(keys(file))
         f(file[i]) && return i
     end
     return nothing
@@ -547,7 +547,7 @@ end
 function Base.findnext(f::Function, file::FitsFile, start::Integer)
     start = as(keytype(file), start)
     start < firstindex(file) && throw(BoundsError(file, start))
-    @inbounds for i ∈ start:lastindex(file)
+    for i ∈ start:lastindex(file)
         f(file[i]) && return i
     end
     return nothing
@@ -556,7 +556,7 @@ end
 function Base.findprev(f::Function, file::FitsFile, start::Integer)
     start = as(keytype(file), start)
     start > lastindex(file) && throw(BoundsError(file, start))
-    @inbounds for i ∈ start:-1:firstindex(file)
+    for i ∈ start:-1:firstindex(file)
         f(file[i]) && return i
     end
     return nothing
@@ -572,14 +572,14 @@ a HDU as argument and returning whether it matches.
 
 For example:
 
-    @inbounds for hdu in eachmatch(pat, file)
+    for hdu in eachmatch(pat, file)
         ... # do something
     end
 
 is a shortcut for:
 
     i = findfirst(pat, file)
-    @inbounds while i !== nothing
+    while i !== nothing
         hdu = file[i]
         ... # do something
         i = findnext(pat, file, i+1)
@@ -587,14 +587,14 @@ is a shortcut for:
 
 while:
 
-    @inbounds for hdu in reverse(eachmatch(pat, file))
+    for hdu in reverse(eachmatch(pat, file))
         ... # do something
     end
 
 is equivalent to:
 
     i = findlast(pat, file)
-    @inbounds while i !== nothing
+    while i !== nothing
         hdu = file[i]
         ... # do something
         i = findprev(pat, file, i-1)
