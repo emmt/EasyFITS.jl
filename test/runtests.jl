@@ -260,6 +260,10 @@ end
             @test hdu === last(file)
             @test firstindex(hdu) == 1
             @test lastindex(hdu) == length(hdu)
+            @test hdu.data_eltype == eltype(A)
+            @test hdu.data_ndims == ndims(A)
+            @test hdu.data_size == size(A)
+            @test hdu.data_axes == map(dim -> 1:dim, size(A))
             @test_throws BoundsError hdu[firstindex(hdu) - 1]
             @test_throws KeyError hdu["DUMMY"]
             let card = hdu["SIMPLE"]

@@ -1,5 +1,9 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.14
+
+- Add property `hdu.data_axes` for FITS Image HDUs.
+
 ## Version 0.5.13
 
 - Can read columns with given number of dimensions.

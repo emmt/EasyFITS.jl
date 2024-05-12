@@ -1,13 +1,14 @@
 #------------------------------------------------------------------------------
 # FITS IMAGES PROPERTIES
 
-Base.propertynames(::FitsImageHDU) = (:data_eltype, :data_size, :data_ndims,
-                                      :extname, :hduname, :file, :number, :type,
-                                      :xtension)
+Base.propertynames(::FitsImageHDU) = (
+    :data_axes, :data_eltype, :data_size, :data_ndims,
+    :extname, :hduname, :file, :number, :type, :xtension)
 
 Base.getproperty(hdu::FitsImageHDU{T,N}, ::Val{:data_eltype}) where {T,N} = T
 Base.getproperty(hdu::FitsImageHDU{T,N}, ::Val{:data_ndims}) where {T,N} = N
 Base.getproperty(hdu::FitsImageHDU,      ::Val{:data_size}) = get_img_size(hdu)
+Base.getproperty(hdu::FitsImageHDU,      ::Val{:data_axes}) = map(Base.OneTo, hdu.data_size)
 
 function get_img_type(f::Union{FitsFile,FitsImageHDU})
     bitpix = Ref{Cint}()

@@ -13,6 +13,7 @@ An image HDU has the following properties:
 | Property      | Description                     |
 |:--------------|:--------------------------------|
 | `data_size`   | Array dimensions                |
+| `data_axes`   | Array axes                      |
 | `data_ndims`  | Number of dimensions `N`        |
 | `data_eltype` | Element type `T`                |
 | `extname`     | Extension name                  |
