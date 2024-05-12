@@ -2,7 +2,7 @@
 
 The `EasyFITS` package provides an interface for reading/writing
 [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) files (widely used in
-Astronomy) in [Julia][julia-url].
+Astronomy) in [Julia](https://julialang.org/).
 
 The source code is on [GitHub](https://github.com/emmt/EasyFITS.jl).
 

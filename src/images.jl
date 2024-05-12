@@ -293,7 +293,7 @@ named `"KEY2"` with value `val2` and comment string `str2`, and yet another one
 named `"KEY3"` with no value and with comment string `str3`. Note that special
 names `"COMMENT"`, `"HISTORY"`, and `""` indicating commentary entries have no
 associated, only a comment string, say `str` which can be specified as `str` or
-as `(,str)`.
+as `(nothing,str)`.
 
 """
 function write(file::FitsFile, ::Type{FitsImageHDU{T}},
@@ -302,7 +302,7 @@ function write(file::FitsFile, ::Type{FitsImageHDU{T}},
     check(CFITSIO.fits_create_img(file, type_to_bitpix(T), N,
                                   Ref(as(NTuple{N,Clong}, dims)),
                                   Ref{Status}(0)))
-    # The number of HDUs as returned by fits_get_num_hdus is only incremented
+    # The number of HDUs as returned by `fits_get_num_hdus` is only incremented
     # after writing data.
     n = position(file)
     if length(file) < n

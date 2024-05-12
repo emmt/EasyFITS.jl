@@ -10,17 +10,17 @@ element type and `N` the number of dimensions.
 
 An image HDU has the following properties:
 
-| Property      | Description               |
-|:--------------|:--------------------------|
-| `data_size`   | Array dimensions          |
-| `data_ndims`  | Number of dimensions `N`  |
-| `data_eltype` | Element type `T`          |
-| `extname`     | Extension name            |
-| `hduname`     | HDU name                  |
-| `file`        | Associated i/o FITS file  |
-| `number`      | HDU number                |
-| `type`        | HDU type `FITS_IMAGE_HDU` |
-| `xtension`    | Extension, i.e. `"IMAGE"` |
+| Property      | Description                     |
+|:--------------|:--------------------------------|
+| `data_size`   | Array dimensions                |
+| `data_ndims`  | Number of dimensions `N`        |
+| `data_eltype` | Element type `T`                |
+| `extname`     | Extension name                  |
+| `hduname`     | HDU name                        |
+| `file`        | Associated i/o FITS file        |
+| `number`      | HDU number                      |
+| `type`        | HDU type, i.e. `FITS_IMAGE_HDU` |
+| `xtension`    | Extension, i.e. `"IMAGE"`       |
 
 
 ## Reading a FITS image
@@ -64,7 +64,7 @@ read!(arr, hdu)
 ```
 
 An hyper-rectangular sub-image can be read using the same syntax as for a Julia
-*view* by specifying indices and/or index ranges after the `hdu` argument.
+`view` by specifying indices and/or index ranges after the `hdu` argument.
 Index ranges may have non-unit steps but steps must all be positive. For
 example:
 
@@ -126,4 +126,4 @@ named `"KEY2"` with value `val2` and comment string `str2`, and yet another one
 named `"KEY3"` with no value and with comment string `str3`. Note that special
 names `"COMMENT"`, `"HISTORY"`, and `""` indicating commentary entries have no
 associated, only a comment string, say `str` which can be specified as `str` or
-as `(,str)`.
+as `(nothing,str)`.
