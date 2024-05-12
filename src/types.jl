@@ -363,8 +363,8 @@ struct FitsImageHDU{T,N} <: FitsHDU
     file::FitsFile
     num::Int
     function FitsImageHDU{T,N}(::BareBuild, file::FitsFile, num::Integer) where {T,N}
-        isbitstype(T) || bad_argument("parameter T=$T is not a plain type")
-        isa(N, Int) && N ≥ 0 || bad_argument("parameter N=$N must be a nonnegative `Int`")
+        isbitstype(T) || bad_argument("parameter `T=$T` is not a plain type")
+        isa(N, Int) && N ≥ 0 || bad_argument("parameter `N=$N` must be a nonnegative `Int`")
         return new{T,N}(file, num)
     end
 end

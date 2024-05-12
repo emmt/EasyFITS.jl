@@ -463,13 +463,12 @@ end
 
 function Base.get(file::FitsFile, i::Integer, def)
     i = as(keytype(file), i)
-    checkbounds(Bool, file, i) ? file[i] : def
+    return checkbounds(Bool, file, i) ? file[i] : def
 end
 
 function Base.get(file::FitsFile, str::AbstractString, def)
     i = findfirst(str, file)
-    i === nothing && return def
-    return file[i]
+    return i === nothing ? def : file[i]
 end
 
 """
