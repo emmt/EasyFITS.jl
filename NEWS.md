@@ -1,5 +1,9 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.15
+
+- Update compatibility for `TypeUtils`.
+
 ## Version 0.5.14
 
 - Add property `hdu.data_axes` for FITS Image HDUs.
