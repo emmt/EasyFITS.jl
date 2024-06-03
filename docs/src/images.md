@@ -94,27 +94,44 @@ read!(arr, hdu, :, :, 3)
 
 ## Creating an image extension
 
-To create a new FITS image extension in an open FITS file
+To create a new FITS image extension in an open FITS `file`, there are several
+possibilities:
 
 ``` julia
-write(file::FitsFile, FitsImageHDU{T}, dims...=()) -> hdu
-write(file::FitsFile, FitsImageHDU, T::Type=UInt8, dims...=()) -> hdu
-write(file::FitsFile, FitsImageHDU, bitpix::Integer, dims=()) -> hdu
+hdu = FitsImageHDU(file, dims...; bitpix=...)
+hdu = FitsImageHDU{T}(file, dims...)
+hdu = FitsImageHDU{T,N}(file, dims...)
 ```
 
-create a new primary array or image extension in FITS file `file` with a
-specified pixel type `T` and size `dims...`. If the FITS file is currently
-empty then a primary array is created, otherwise a new image extension is
-appended to the file. Pixel type can be specified as a numeric type `T` or as
-an integer BITPIX code `bitpix`.
+with pixel type specified by its Julia data-type via the parameter `T` or by
+its FITS BITPIX code via the keyword `bitpix` and image size given by
+`dims...`. The number of dimensions `N` can be inferred from the image size but
+may be explicitly specified for better type-stability.
 
-An object to manage the new extension is returned which can be used to push
-header cards and then to write the data.
+If the FITS file is currently empty then a primary array is created, otherwise
+a new image extension is appended to the file.
+
+The returned `hdu` is an object to manage the new extension is returned which
+can be used to push header cards and then to write the data.
+
+If the array `arr` to be written is available, the element type and dimensions
+can be inferred from `arr` itself:
+
+``` julia
+hdu = FitsImageHDU(file, arr)
+hdu = FitsImageHDU{T}(file, arr)
+hdu = FitsImageHDU{T,N}(file, arr)
+```
+
+where `T = eltype(arr)` and `N = ndims(arr)` are assumed if these parameters
+are not explicitly specified. Specifying a different pixel type than
+`eltype(arr)` is possible, conversion will automatically be performed when
+writing the array values.
 
 For example:
 
 ``` julia
-hdu = write(file, FitsImageHDU, eltype(arr), size(arr))
+hdu = FitsImageHDU(file, arr)
 hdu["KEY1"] = val1             # add a 1st header record
 hdu["KEY2"] = (val2, str2)     # add a 2nd header record
 hdu["KEY3"] = (nothing, str3)  # add a 3rd header record

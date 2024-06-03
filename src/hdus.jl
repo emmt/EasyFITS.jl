@@ -1,56 +1,5 @@
 # Management of FITS header data units (HDUs) and of FITS header cards.
 
-"""
-    FitsHDU(file::FitsFile, i) -> hdu
-    getindex(file::FitsFile, i) -> hdu
-    file[i] -> hdu
-
-yield the `i`-th FITS header data unit of FITS file `file`.
-
-The returned object has the following read-only properties:
-
-    hdu.file     # associated FITS file
-    hdu.number   # HDU number (the index `i` above)
-    hdu.type     # same as FitsHDUType(hdu)
-    hdu.xtension # value of the XTENSION card (never nothing)
-    hdu.extname  # value of the EXTNAME card or nothing
-    hdu.hduname  # value of the HDUNAME card or nothing
-
-"""
-function FitsHDU(file::FitsFile, i::Integer)
-    status = Ref{Status}(0)
-    type = Ref{Cint}()
-    check(CFITSIO.fits_movabs_hdu(file, i, type, status))
-    type = FitsHDUType(type[])
-    if type == FITS_ASCII_TABLE_HDU
-        return FitsTableHDU(BareBuild(), file, i, true)
-    elseif type == FITS_BINARY_TABLE_HDU
-        return FitsTableHDU(BareBuild(), file, i, false)
-    elseif type == FITS_IMAGE_HDU
-        bitpix = Ref{Cint}()
-        check(CFITSIO.fits_get_img_equivtype(file, bitpix, status))
-        ndims = Ref{Cint}()
-        check(CFITSIO.fits_get_img_dim(file, ndims, status))
-        N = Int(ndims[])::Int
-        T = type_from_bitpix(bitpix[])
-        return FitsImageHDU{T,N}(BareBuild(), file, i)
-    else
-        return FitsAnyHDU(BareBuild(), file, i)
-    end
-end
-
-FitsHDU(file::FitsFile, s::AbstractString) = file[s]
-
-FitsTableHDU(file::FitsFile, i::Union{Integer,AbstractString}) =
-    FitsHDU(file, i)::FitsTableHDU
-
-FitsImageHDU(file::FitsFile, i::Union{Integer,AbstractString}) =
-    FitsHDU(file, i)::FitsImageHDU
-FitsImageHDU{T}(file::FitsFile, i::Union{Integer,AbstractString}) where {T} =
-    FitsHDU(file, i)::FitsImageHDU{T}
-FitsImageHDU{T,N}(file::FitsFile, i::Union{Integer,AbstractString}) where {T,N} =
-    FitsHDU(file, i)::FitsImageHDU{T,N}
-
 Base.propertynames(::FitsHDU) = (:extname, :hduname, :file, :number, :type, :xtension)
 Base.getproperty(hdu::FitsHDU, sym::Symbol) = getproperty(hdu, Val(sym))
 

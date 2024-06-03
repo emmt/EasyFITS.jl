@@ -1,5 +1,16 @@
 # User visible changes for EasyFITS
 
+## Version 0.6.0
+
+- HDUs are created using their constructor, `FitsImageHDU` or `FitsTableHDU`. Users should
+  replace calls like `write(file,FitsImageHDU{T},dims)` by `FitsImageHDU{T}(file,dims)`
+  and calls like `write(file,FitsTableHDU,cols)` by `FitsTableHDU{T}(file,cols)`.
+
+- Calling an HDU constructor to retrieve the HDU of a specific extension in a FITS file is
+  no longer supported. Users should use the `file[ext]` syntax or call the `getindex` base
+  method, possibly, with a type assertion. For example write
+  `file[ext]::FitsImageHDU{Float32,3}` instead of `FitsImageHDU{Float32,3}(file,ext)`.
+
 ## Version 0.5.16
 
 - `FITSHeaders` is an official package.

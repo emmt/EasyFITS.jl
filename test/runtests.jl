@@ -255,7 +255,7 @@ end
         @test length(file) == 0
 
         # Add a simple IMAGE extension.
-        let hdu = write(file, FitsImageHDU, eltype(A), size(A))
+        let hdu = FitsImageHDU(file, A)
             @test length(file) == 1
             @test hdu === last(file)
             @test firstindex(hdu) == 1
@@ -311,7 +311,7 @@ end
         for pass in 1:2
             # Add IMAGE extensions with no data, just header cards.
             local cards = pass == 1 ? cards_1 : cards_2
-            local hdu = write(file, FitsImageHDU)
+            local hdu = FitsImageHDU(file)
             len = length(hdu)
             merge!(hdu, cards)
             @test length(hdu) == len + length(cards)
@@ -453,8 +453,8 @@ end
     # Low-level API.
     openfits(tempfile, "w!") do file
         @test length(file) == 0
-        hdu = write(file, FitsTableHDU, ["Col#1" => ('E', "m/s"),
-                                         "Col#2" => ('D', "Hz")])
+        hdu = FitsTableHDU(file, ["Col#1" => ('E', "m/s"),
+                                  "Col#2" => ('D', "Hz")])
         @test length(file) == 2 # a table cannot not be the primary HDU
         @test hdu === last(file)
         @test hdu.file === file
@@ -690,15 +690,15 @@ end
 
     # write (version with columns given as varargs)
     openfits(tempfile, "w!") do fitsfile
-        @test write(fitsfile, FitsTableHDU, :col1 => Float32) isa FitsTableHDU
-        @test write(fitsfile, FitsTableHDU, :col1 => Float32, :col2 => Int) isa FitsTableHDU
+        @test FitsTableHDU(fitsfile, :col1 => Float32) isa FitsTableHDU
+        @test FitsTableHDU(fitsfile, :col1 => Float32, :col2 => Int) isa FitsTableHDU
     end
 
     # String columns, check dimensions and write
     openfits(tempfile, "w!") do fitsfile
         # column of single character strings
         let data = ["a","b","c"],
-            hdu = @inferred write(fitsfile, FitsTableHDU, [:col1 => (String, 1)])
+            hdu = @inferred FitsTableHDU(fitsfile, [:col1 => (String, 1)])
             @test hdu isa FitsTableHDU
             @test write(hdu, :col1 => data) isa FitsTableHDU
             @test read(hdu, :col1) == data
@@ -709,7 +709,7 @@ end
 
         # 10-char strings
         let data = ["abcdefghij", "abcd", "abcdefghi"],
-            hdu = @inferred write(fitsfile, FitsTableHDU, :col1 => (String, 10))
+            hdu = @inferred FitsTableHDU(fitsfile, :col1 => (String, 10))
             @test hdu isa FitsTableHDU
             @test write(hdu, :col1 => data) isa FitsTableHDU
             @test read(hdu, :col1) == data
@@ -717,17 +717,17 @@ end
 
         # pairs of 4-char strings
         let data = reshape(["abcd", "efgh", "ijkl", "mnop", "qr", "stuv"], 2, 3),
-            hdu = @inferred write(fitsfile, FitsTableHDU, :col1 => (String, (4,2)))
+            hdu = @inferred FitsTableHDU(fitsfile, :col1 => (String, (4,2)))
             @test hdu isa FitsTableHDU
             @test write(hdu, :col1 => data) isa FitsTableHDU
             @test read(hdu, :col1) == data
         end
 
         # dimension is mandatory
-        @test_throws ArgumentError write(fitsfile, FitsTableHDU, :col1 => String)
+        @test_throws ArgumentError FitsTableHDU(fitsfile, :col1 => String)
 
         # overlarge String is a failure
-        let hdu = @inferred write(fitsfile, FitsTableHDU, :col1 => (String, 3))
+        let hdu = @inferred FitsTableHDU(fitsfile, :col1 => (String, 3))
             @test_throws ArgumentError write(hdu, :col1 => ["abcd"])
         end
     end

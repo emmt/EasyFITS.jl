@@ -454,7 +454,46 @@ Base.IndexStyle(::Type{FitsFile}) = IndexLinear()
 Base.firstindex(::FitsFile) = 1
 Base.lastindex(file::FitsFile) = length(file)
 Base.keys(file::FitsFile) = Base.OneTo(length(file))
-Base.getindex(file::FitsFile, i::Int) = FitsHDU(file, i)
+
+"""
+    getindex(file::FitsFile, ext) -> hdu
+    file[ext] -> hdu
+
+yield the FITS Header Data Unit (HDU) of the FITS file `file` at `ext`, the FITS extension
+number or name.
+
+The returned object has the following read-only properties:
+
+    hdu.file     # associated FITS file
+    hdu.number   # HDU number (the index `i` above)
+    hdu.type     # same as FitsHDUType(hdu)
+    hdu.xtension # value of the XTENSION card (never nothing)
+    hdu.extname  # value of the EXTNAME card or nothing
+    hdu.hduname  # value of the HDUNAME card or nothing
+
+"""
+function Base.getindex(file::FitsFile, i::Integer)
+    status = Ref{Status}(0)
+    type = Ref{Cint}()
+    check(CFITSIO.fits_movabs_hdu(file, i, type, status))
+    type = FitsHDUType(type[])
+    if type == FITS_ASCII_TABLE_HDU
+        return FitsTableHDU(BareBuild(), file, i, true)
+    elseif type == FITS_BINARY_TABLE_HDU
+        return FitsTableHDU(BareBuild(), file, i, false)
+    elseif type == FITS_IMAGE_HDU
+        bitpix = Ref{Cint}()
+        check(CFITSIO.fits_get_img_equivtype(file, bitpix, status))
+        ndims = Ref{Cint}()
+        check(CFITSIO.fits_get_img_dim(file, ndims, status))
+        N = as(Int, ndims[])
+        T = type_from_bitpix(bitpix[])
+        return FitsImageHDU{T,N}(BareBuild(), file, i)
+    else
+        return FitsAnyHDU(BareBuild(), file, i)
+    end
+end
+
 function Base.getindex(file::FitsFile, str::AbstractString)
     i = findfirst(str, file)
     i === nothing && error("no FITS Header Data Unit named \"$str\"")

@@ -5,6 +5,10 @@ const IndexRange = OrdinalRange{<:Integer,<:Integer}
 const SubArrayIndex = Union{Colon,Integer,IndexRange}
 const SubArrayIndices{N} = NTuple{N,SubArrayIndex}
 
+# Alias for specifying array size. C functions directly take vectors of integers (if of
+# the correct type) and tuples of integers (if passed by reference).
+const DimsLike = Union{Tuple{Vararg{Integer}},AbstractVector{<:Integer}}
+
 """
     EasyFITS.Header
 

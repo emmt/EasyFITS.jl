@@ -1,14 +1,5 @@
 # Things to do in EasyFITS
 
-- Replace `hdu = write(file::FitsFile, FitsImageHDU, dims...)` by
-  `hdu = FitsImageHDU{T}(file, dims...)` and similarly for tables.
-
-``` sh
-#ack --jul 'FitsHDU\(' ~/work ~/git
-ack --jul 'FitsTableHDU\(' ~/work ~/git
-ack --jul 'FitsImageHDU(\{[^}]\})?\(' ~/work ~/git
-```
-
 - Add properties `hdu.column_eltype`, `hdu.cell_size`, `hdu.cell_ndims`,
   `hdu.cell_eltype` or alike.
 

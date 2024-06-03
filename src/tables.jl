@@ -718,7 +718,7 @@ end
 # WRITING FITS TABLES
 
 """
-    write(file, FitsTableHDU, cols...) -> hdu
+    hdu = FitsTableHDU(file, cols...)
 
 creates a new FITS table extension in FITS file `file` with columns defined by
 `cols...`. Each column definition is a pair `name => format` where `name` is
@@ -758,7 +758,7 @@ string. By default, `dims = (1,)` and `units = ""`.
 The returned object can be used to add FITS keywords to the header of the table
 and, then, to write column data. Typically:
 
-    hdu = write(file, FitsTableHDU, cols)
+    hdu = FitsTableHDU(file, cols)
     push!(hdu, key1 => val1) # add a first header keyword
     ...                      # add other header keywords
     write(hdu, col1 => arr1) # write a first column
@@ -771,15 +771,14 @@ table may be created in a single call:
     write(file, [key1 => val1, key2 => val2, ...], [col1 => arr1, col2 => arr2, ...])
 
 """
-function write(file::FitsFile, ::Type{FitsTableHDU},
-               cols::Pair{<:ColumnName,<:Any}...; kwds...)
-    return write(file, FitsTableHDU, cols; kwds...)
+function FitsTableHDU(file::FitsFile, cols::Pair{<:ColumnName,<:Any}...; kwds...)
+    return FitsTableHDU(file, cols; kwds...)
 end
 
-function write(file::FitsFile, ::Type{FitsTableHDU},
-               cols::Union{AbstractVector{<:Pair{<:ColumnName,<:Any}},
-                           Tuple{Vararg{Pair{<:ColumnName,<:Any}}},
-                           NamedTuple}; kwds...)
+function FitsTableHDU(file::FitsFile,
+                      cols::Union{AbstractVector{<:Pair{<:ColumnName,<:Any}},
+                                  Tuple{Vararg{Pair{<:ColumnName,<:Any}}},
+                                  NamedTuple}; kwds...)
     return create_table(file, cols; kwds...)
 end
 

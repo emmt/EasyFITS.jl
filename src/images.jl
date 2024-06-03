@@ -267,9 +267,9 @@ end
 # WRITING FITS IMAGES
 
 """
-    write(file::FitsFile, FitsImageHDU{T}, dims...=()) -> hdu
-    write(file::FitsFile, FitsImageHDU, T::Type=UInt8, dims...=()) -> hdu
-    write(file::FitsFile, FitsImageHDU, bitpix::Integer, dims=()) -> hdu
+    hdu = FitsImageHDU(file::FitsFile, dims...; bitpix=...)
+    hdu = FitsImageHDU{T}(file::FitsFile, dims...)
+    hdu = FitsImageHDU{T,N}(file::FitsFile, dims...)
 
 create a new primary array or image extension in FITS file `file` with a
 specified pixel type `T` and size `dims...`. If the FITS file is currently
@@ -280,9 +280,14 @@ an integer BITPIX code `bitpix`.
 An object to manage the new extension is returned which can be used to push
 header cards and then to write the data.
 
+If the array to be written is available, the element type and dimensions can be inferred
+from the array itself:
+
+    hdu = FitsImageHDU{T=eltype(arr),N=ndims(arr)}(file::FitsFile, arr::AbstractArray)
+
 For example:
 
-    hdu = write(file, FitsImageHDU, eltype(arr), size(arr))
+    hdu = FitsImageHDU(file, arr)
     hdu["KEY1"] = val1             # add a 1st header record
     hdu["KEY2"] = (val2, str2)     # add a 2nd header record
     hdu["KEY3"] = (nothing, str3)  # add a 3rd header record
@@ -297,11 +302,13 @@ associated, only a comment string, say `str` which can be specified as `str` or
 as `(nothing,str)`.
 
 """
-function write(file::FitsFile, ::Type{FitsImageHDU{T}},
-               dims::NTuple{N,Integer} = ()) where {T,N}
+function FitsImageHDU{T,N}(file::FitsFile, dims::DimsLike) where {T,N}
     # NOTE: All variants end up calling this type-stable version.
+    length(dims) == N || throw(DimensionMismatch(
+        "incompatible number of dimensions, type parameter `N = $N` while `length(dims) = $(length(dims))`"))
+
     check(CFITSIO.fits_create_img(file, type_to_bitpix(T), N,
-                                  Ref(as(NTuple{N,Clong}, dims)),
+                                  size_for_fits_create_img(dims),
                                   Ref{Status}(0)))
     # The number of HDUs as returned by `fits_get_num_hdus` is only incremented
     # after writing data.
@@ -312,46 +319,50 @@ function write(file::FitsFile, ::Type{FitsImageHDU{T}},
     return FitsImageHDU{T,N}(BareBuild(), file, n)
 end
 
-function write(file::FitsFile, ::Type{FitsImageHDU},
-               ::Type{T} = UInt8, dims::Union{Tuple{Vararg{Integer}},
-                                              AbstractVector{<:Integer}} = ()) where {T}
-    return write(file, FitsImageHDU{T}, dims)
+# Yield array size in a form suitable for `fits_create_img`.
+size_for_fits_create_img(dims::Tuple{Vararg{Clong}}) = Ref(dims)
+size_for_fits_create_img(dims::Tuple{Vararg{Integer}}) = size_for_fits_create_img(map(Clong, dims))
+size_for_fits_create_img(dims::Vector{Clong}) = dims
+size_for_fits_create_img(dims::AbstractVector{<:Integer}) = convert(Vector{Clong}, dims)
+
+function FitsImageHDU{T}(file::FitsFile, dims::DimsLike) where {T}
+    N = length(dims)
+    return FitsImageHDU{T,N}(file, dims)
 end
 
-function write(file::FitsFile, ::Type{FitsImageHDU{T,N}},
-               dims::Union{Tuple{Vararg{Integer}},
-                           AbstractVector{<:Integer}} = ()) where {T,N}
-    length(dims) == N || throw(DimensionMismatch("incompatible number of dimensions"))
-    return write(file, FitsImageHDU{T}, dims)
+function FitsImageHDU{T}(file::FitsFile, dims::Integer...) where {T}
+    return FitsImageHDU{T}(file, dims)
 end
 
-# Just convert bitpix to type.
-function write(file::FitsFile, ::Type{FitsImageHDU}, bitpix::Integer,
-               dims::Union{Tuple{Vararg{Integer}},
-                           AbstractVector{<:Integer}} = ())
-    return write(file, FitsImageHDU, type_from_bitpix(bitpix), dims)
+function FitsImageHDU{T,N}(file::FitsFile, dims::Integer...) where {T,N}
+    return FitsImageHDU{T,N}(file, dims)
 end
 
-# Just pack the dimensions.
-function write(file::FitsFile, ::Type{FitsImageHDU{T}},
-               dims::Integer...) where {T}
-    return write(file, FitsImageHDU{T}, dims)
-end
-function write(file::FitsFile, ::Type{FitsImageHDU}, ::Type{T},
-               dims::Integer...) where {T}
-    return write(file, FitsImageHDU, T, dims)
+function FitsImageHDU(file::FitsFile, dims::Integer...; bitpix::Integer)
+    return FitsImageHDU(file, dims; bitpix=bitpix)
 end
 
-# Just convert the dimensions.
-function write(file::FitsFile, ::Type{FitsImageHDU{T}},
-               dims::AbstractVector{<:Integer}) where {T}
-    off = firstindex(dims) - 1
-    return write(file, FitsImageHDU{T}, ntuple(i -> Clong(dims[i+off]), length(dims)))
+function FitsImageHDU(file::FitsFile, dims::DimsLike; bitpix::Integer)
+    T = type_from_bitpix(bitpix)
+    return FitsImageHDU{T}(file, dims)
 end
-function write(file::FitsFile, ::Type{FitsImageHDU}, T::Union{Integer,Type},
-               dims::AbstractVector{<:Integer})
-    off = firstindex(dims) - 1
-    return write(file, FitsImageHDU, T, ntuple(i -> Clong(dims[i+off]), length(dims)))
+
+# Special case of empty Image HDU.
+function FitsImageHDU(file::FitsFile)
+    return FitsImageHDU{UInt,0}(file, ())
+end
+
+# Infer element type and dimensions from the array to be written.
+function FitsImageHDU(file::FitsFile, arr::AbstractArray{T,N}) where {T,N}
+    return FitsImageHDU{T}(file, arr)
+end
+
+function FitsImageHDU{T}(file::FitsFile, arr::AbstractArray{<:Any,N}) where {T,N}
+    return FitsImageHDU{T,N}(file, arr)
+end
+
+function FitsImageHDU{T,N}(file::FitsFile, arr::AbstractArray) where {T,N}
+    return FitsImageHDU{T,N}(file, size(arr))
 end
 
 """
@@ -363,7 +374,7 @@ specified by `hdr` and data specified by array `arr`.
 """
 function write(file::FitsFile, hdr::OptionalHeader,
                arr::AbstractArray{T,N}) where {T<:Number,N}
-    write(merge!(write(file, FitsImageHDU, T, size(arr)), hdr), arr)
+    write(merge!(FitsImageHDU{T,N}(file, size(arr)), hdr), arr)
     return file # returns the file not the HDU
 end
 
