@@ -1,5 +1,9 @@
 # User visible changes for EasyFITS
 
+## Version 0.5.16
+
+- `FITSHeaders` is an official package.
+
 ## Version 0.5.15
 
 - Update compatibility for `TypeUtils`.
