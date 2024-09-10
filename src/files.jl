@@ -620,6 +620,9 @@ function Base.findprev(f::Function, file::FitsFile, start::Integer)
     return nothing
 end
 
+Base.haskey(file::FitsFile, ext::Integer) = 1 ≤ ext ≤ length(file)
+Base.haskey(file::FitsFile, ext::AbstractString) = findfirst(ext, file) !== nothing
+
 """
     eachmatch(pat, file::FitsFile)
 

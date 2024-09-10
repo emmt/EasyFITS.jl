@@ -7,6 +7,8 @@
 
 - Fix `Base.show` and `Base.length` for closed `FitsFile`.
 
+- Extend `Base.haskey` for `FitsFile`.
+
 ## Version 0.6.0
 
 - HDUs are created using their constructor, `FitsImageHDU` or `FitsTableHDU`. Users should
