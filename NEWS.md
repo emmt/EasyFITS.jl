@@ -5,6 +5,8 @@
 - Avoid an ambiguity: union `EasyFITS.ColumnIdent` is for specifying a single column while
   union `EasyFITS.Columns` is for specifying several columns.
 
+- Fix `Base.show` and `Base.length` for closed `FitsFile`.
+
 ## Version 0.6.0
 
 - HDUs are created using their constructor, `FitsImageHDU` or `FitsTableHDU`. Users should

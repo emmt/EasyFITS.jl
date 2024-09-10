@@ -447,13 +447,33 @@ Base.flush(f::Union{FitsFile,FitsHDU}) =
     check(CFITSIO.fits_flush_buffer(f, 0, Ref{Status}(0)))
 
 # Implement abstract array API for FitsFile objects.
-Base.length(file::FitsFile) = getfield(file, :nhdus)
+Base.length(file::FitsFile) = isopen(file) ? getfield(file, :nhdus) : 0
 Base.size(file::FitsFile) = (length(file),)
 Base.axes(file::FitsFile) = (keys(file),)
 Base.IndexStyle(::Type{FitsFile}) = IndexLinear()
 Base.firstindex(::FitsFile) = 1
 Base.lastindex(file::FitsFile) = length(file)
 Base.keys(file::FitsFile) = Base.OneTo(length(file))
+
+Base.show(io::IO, file::FitsFile) = show(io, MIME"text/plain"(), file)
+function Base.show(io::IO, mime::MIME"text/plain", file::FitsFile)
+    if isopen(file)
+        # Mimics `show` for abstract vectors.
+        len = length(file)
+        print(io, len, "-element FitsFile")
+        if len > zero(len)
+            println(io, ":")
+            for i in 1:len
+                print(io, " ")
+                show(io, mime, file[i])
+                i < len && println(io)
+            end
+        end
+    else
+        print(io, "closed FitsFile")
+    end
+    nothing
+end
 
 """
     getindex(file::FitsFile, ext) -> hdu
