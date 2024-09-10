@@ -14,7 +14,7 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 
 [compat]
-CFITSIO_jll = "3, 4"
+CFITSIO_jll = "4.3"
 Clang = "0.14, 0.15, 0.16, 0.17, 0.18"
 FITSHeaders = "0.4"
 Requires = "1.3"
