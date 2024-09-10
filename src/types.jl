@@ -108,8 +108,7 @@ const ColumnIdent = Union{ColumnName,Integer}
 """
     EasyFITS.Columns
 
-is the union of possible types for specifying one or several columns in a FITS
-table extension.
+is the union of possible types for specifying several columns in a FITS table extension.
 
 The method:
 
@@ -118,7 +117,7 @@ The method:
 yields an iterable object over the column indices to read in table.
 
 """
-const Columns = Union{Colon,ColumnIdent,
+const Columns = Union{Colon,
                       OrdinalRange{<:Integer,<:Integer},
                       AbstractVector{<:ColumnIdent},
                       # If specified as a tuple, don't mix indices and names:

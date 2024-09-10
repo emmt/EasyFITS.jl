@@ -501,7 +501,22 @@ end
         @test hdu.ncols == ncol(hdu) == 2
         let a = read(hdu, 1)
             @test a isa Vector{Cfloat}
-            @test size(a) == (n1,)
+            @test size(a) == size(x1)
+            @test a == x1
+        end
+        let a = read(Vector{Cdouble}, hdu, 1)
+            @test a isa Vector{Cdouble}
+            @test size(a) == size(x1)
+            @test a ≈ x1
+        end
+        let a = read(Vector, hdu, 1)
+            @test a isa Vector{Cfloat}
+            @test size(a) == size(x1)
+            @test a == x1
+        end
+        let a = read(Array, hdu, 1)
+            @test a isa Vector{Cfloat}
+            @test size(a) == size(x1)
             @test a == x1
         end
         write(hdu, "col#2" => y1)
@@ -509,7 +524,7 @@ end
         @test hdu.ncols == ncol(hdu) == 2
         let a = read(hdu, 2)
             @test a isa Vector{Cdouble}
-            @test size(a) == (n1,)
+            @test size(a) == size(y1)
             @test a == y1
         end
         n2 = 3
