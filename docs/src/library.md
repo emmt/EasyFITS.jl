@@ -1,9 +1,6 @@
 # Reference
 
-## ltoh
-## ntoh
-## readchomp
-## read!
+## Types
 
 ```@docs
 EasyFITS.Header

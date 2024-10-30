@@ -25,6 +25,7 @@ The following example demonstrates how to write a FITS file with 3 HDUs, an
 
 ```julia
 using Dates, EasyFITS
+filename = "/tmp/test.fits";
 arr = rand(Float32, (3,4,5));
 nrows = 20;
 inds = 1:nrows;

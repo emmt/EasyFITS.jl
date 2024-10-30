@@ -21,7 +21,7 @@ An image HDU has the following properties:
 | `file`        | Associated i/o FITS file        |
 | `number`      | HDU number                      |
 | `type`        | HDU type, i.e. `FITS_IMAGE_HDU` |
-| `xtension`    | Extension, i.e. `"IMAGE"`       |
+| `xtension`    | Extension name, i.e. `"IMAGE"`  |
 
 
 ## Reading a FITS image

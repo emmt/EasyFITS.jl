@@ -40,6 +40,7 @@ implement the usual behavior of a base method:
 - Deprecate `write(FitsFile,filename,...)` and `write!(FitsFile,filename,...)` in favor of
   `writefits(filename,...)` and `writefits!(filename,...)`.
 
+
 ## Version 0.6.1
 
 - Avoid an ambiguity: union `EasyFITS.ColumnIdent` is for specifying a single column while

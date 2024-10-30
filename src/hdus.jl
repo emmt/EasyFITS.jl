@@ -162,8 +162,8 @@ end
     end
 end
 
-# This function is needed to truncate C-string at 1st null, we take the
-# opportunity of this filtering to strip trailing spaces.
+# This function is needed to truncate C-string at 1st null, we take the opportunity of
+# this filtering to strip trailing spaces.
 # FIXME: This maybe done elsewhere?
 function parse_cstring(::Type{FitsCard}, buf::AbstractVector{UInt8})
     first = firstindex(buf)
@@ -344,8 +344,8 @@ updated to be `com`.
 """
 update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::Nothing) = hdu
 function update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::AbstractString)
-    # BUG: When modifying the comment of an existing keyword which has an
-    #      undefined value, the keyword becomes a commentary keyword.
+    # BUG: When modifying the comment of an existing keyword which has an undefined value,
+    #      the keyword becomes a commentary keyword.
     check(CFITSIO.fits_modify_comment(hdu, key, com, Ref{Status}(0)))
     return hdu
 end

@@ -271,33 +271,33 @@ all columns.
 
 The following table lists all properties of a FITS table HDU.
 
-| Property        | Description                          |
-|:----------------|:-------------------------------------|
-| `nrows`         | Number of rows                       |
-| `rows`          | Index range of rows                  |
-| `first_row`     | Index of first row                   |
-| `last_row`      | Index of last row                    |
-| `ncols`         | Number of columns                    |
-| `columns`       | Index range of columns               |
-| `first_column`  | Index of first column                |
-| `last_column`   | Index of last column                 |
-| `column_name`   | Column name accessor                 |
-| `column_names`  | Column names                         |
-| `column_number` | Column number accessor               |
-| `column_units`  | Column units accessor                |
-| `data_size`     | Table dimensions                     |
-| `data_ndims`    | Number of table dimensions           |
-| `data_axes`     | Indices along table dimensions       |
-| `extname`       | Extension name                       |
-| `hduname`       | HDU name                             |
-| `file`          | Associated FITS file                 |
-| `num`           | HDU number                           |
-| `type`          | HDU type: `FITS_BINARY_TABLE_HDU`    |
-| `xtension`      | Extension: `"BINTABLE"` or `"TABLE"` |
+| Property        | Description                                                 |
+|:----------------|:------------------------------------------------------------|
+| `nrows`         | Number of rows                                              |
+| `rows`          | Index range of rows                                         |
+| `first_row`     | Index of first row                                          |
+| `last_row`      | Index of last row                                           |
+| `ncols`         | Number of columns                                           |
+| `columns`       | Index range of columns                                      |
+| `first_column`  | Index of first column                                       |
+| `last_column`   | Index of last column                                        |
+| `column_name`   | Column name accessor                                        |
+| `column_names`  | Column names                                                |
+| `column_number` | Column number accessor                                      |
+| `column_units`  | Column units accessor                                       |
+| `data_size`     | Table dimensions                                            |
+| `data_ndims`    | Number of table dimensions                                  |
+| `data_axes`     | Indices along table dimensions                              |
+| `extname`       | Extension name                                              |
+| `hduname`       | HDU name                                                    |
+| `file`          | Associated FITS file                                        |
+| `num`           | HDU number                                                  |
+| `type`          | HDU type: `FITS_BINARY_TABLE_HDU` or `FITS_ASCII_TABLE_HDU` |
+| `xtension`      | Extension name: `"BINTABLE"` or `"TABLE"`                   |
 
-To retrieve the units, the number, or the name of column `col` in the FITS
-table `hdu` object, use the properties `column_units`, `column_number`, or
-`column_name` properties as follows:
+To retrieve the units, the number, or the name of column `col` in the FITS table `hdu`
+object, use the properties `column_units`, `column_number`, or `column_name` properties as
+follows:
 
 ```julia
 hdu.column_units(col; case=false) -> units::String
