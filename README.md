@@ -130,7 +130,7 @@ to the official Julia packages if you never have used the package manager before
 The [FITSIO](https://github.com/JuliaAstro/FITSIO.jl) package is another alternative to
 read/write FITS files. `EasyFITS` is no longer based on `FITSIO` and now exploits
 [Clang.jl][clang-url] to directly call the functions of the [CFITSIO][cfitsio-url] library
-and [`BaseFITS`](https://github.com/emmt/BaseFITS.jl) to parse metadata (FITS header
+and [`FITSHeaders`](https://github.com/emmt/FITSHeaders.jl) to parse metadata (FITS header
 cards).
 
 
