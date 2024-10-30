@@ -242,16 +242,6 @@ To push more than one record, call `merge!` instead of `push!`.
 
 """
 function Base.push!(hdu::FitsHDU, card::FitsCard; append::Bool = false)
-    # Private method.
-    function set_key(hdu::FitsHDU, key::String, val, com::String; append::Bool = false)
-        if append
-            write_key(hdu, key, val, com)
-        else
-            update_key(hdu, key, val, com)
-        end
-        nothing
-    end
-
     if card.type === FITS_LOGICAL
         set_key(hdu, card.name, card.logical, card.comment; append)
     elseif card.type === FITS_INTEGER
@@ -397,6 +387,15 @@ for func in (:update_key, :write_key),
             return dst
         end
     end
+end
+
+function set_key(hdu::FitsHDU, key::String, val, com::String; append::Bool = false)
+    if append
+        write_key(hdu, key, val, com)
+    else
+        update_key(hdu, key, val, com)
+    end
+    nothing
 end
 
 # Implement abstract vector API for HDUs.
