@@ -1,5 +1,31 @@
 # User visible changes for EasyFITS
 
+## Version 0.6.2
+
+### Deprecations
+
+Deprecate some methods that are either redundant with shorter calls or which do not
+implement the usual behavior of a base method (below, the ellipsis `...` denotes optional
+arguments and keywords):
+
+- Deprecate `hdu = write(T::Type{<:FitsHDU},file::FitsFile,...)` in favor of `hdu =
+  T(file,...)` because (i) it is shorter to directly call the constructor, (ii) creating
+  the HDU does not actually write something to the file (this is deferred until data is
+  written or another HDU is created), and (iii) is is unusual in Julia to store the value
+  returned by a `write` call in a variable for further use.
+
+- Deprecate `file = open(FitsFile,filename,...)` in favor of `file =
+  openfits(filename,...)` or `file = FitsFile(filename,...)`.
+
+- Deprecate `read([R::Type,]FitsFile,filename,...)` in favor of
+  `readfits([R::Type,],filename,...)`.
+
+- Deprecate `read!(dest,FitsFile,filename,...)` in favor of
+  `readfits!(dest,filename,...)`.
+
+- Deprecate `write(FitsFile,filename,...)` and `write!(FitsFile,filename,...)` in favor of
+  `writefits(filename,...)` and `writefits!(filename,...)`.
+
 ## Version 0.6.1
 
 - Avoid an ambiguity: union `EasyFITS.ColumnIdent` is for specifying a single column while

@@ -13,18 +13,6 @@ function openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...)
 end
 
 """
-    open(FitsFile, filename, mode="r"; kwds...) -> file
-
-opens FITS file named `filename` with access `mode`. See [`FitsFile`](@ref) and
-[`openfits`](@ref) for the different modes and keywords.
-
-"""
-function Base.open(::Type{FitsFile}, filename::AbstractString,
-                   mode::AbstractString = "r"; kwds...)
-    return openfits(filename, mode; kwds...)
-end
-
-"""
     FitsFile(filename, mode="r"; kwds...) do file
         ... # use file
     end
@@ -54,21 +42,6 @@ See [`FitsFile`](@ref) for the different modes and keywords.
 function openfits(func::Function, filename::AbstractString,
                   mode::AbstractString = "r"; kwds...)
     return FitsFile(func, filename, mode; kwds...)
-end
-
-"""
-    open(FitsFile, filename, mode="r"; kwds...) do file
-        ... # use file
-    end
-
-do-block syntax to open a FITS file which is automatically closed at the end of
-the block. See [`FitsFile`](@ref) and [`openfits`](@ref) for the different
-modes and keywords.
-
-"""
-function Base.open(func::Function, ::Type{FitsFile}, filename::AbstractString,
-                   mode::AbstractString = "r"; kwds...)
-    return openfits(func, filename, mode; kwds...)
 end
 
 #----------------------------------------------------------------------------------------
@@ -116,22 +89,6 @@ function readfits(::Type{R}, filename::AbstractString, args...; extended::Bool =
     openfits(filename, "r"; extended) do file
         return read(R, file[ext], args...; kwds...)
     end
-end;
-
-"""
-    read([R::Type,] FitsFile, filename, args...; kwds...) -> data
-
-reads some data in FITS file `filename`. See [`readfits`](@ref) for the meaning
-of arguments and for possible keywords.
-
-"""
-function read(::Type{FitsFile}, filename::AbstractString, args...; kwds...)
-    return readfits(filename, args...; kwds...)
-end
-
-function read(::Type{R}, ::Type{FitsFile}, filename::AbstractString, args...;
-              kwds...) where {R}
-    return readfits(R, filename, args...; kwds...)
 end
 
 """
@@ -150,18 +107,6 @@ function readfits!(dest, filename::AbstractString, args...; extended::Bool = fal
     openfits(filename, "r"; extended) do file
         return read!(dest, file[ext], args...; kwds...)
     end
-end
-
-"""
-    read!(dest, FitsFile, filename, args...; kwds...) -> dest
-
-overwrites destination `dest` with some data read from FITS file named
-`filename`. See [`readfits!`](@ref) for the meaning of arguments and for
-possible keywords.
-
-"""
-function read!(dest, ::Type{FitsFile}, filename::AbstractString, args...; kwds...)
-    return readfits!(dest, filename, args...; kwds...)
 end
 
 #----------------------------------------------------------------------------------------
@@ -190,23 +135,6 @@ function writefits(filename::AbstractString, args...;
 end
 
 """
-    write(FitsFile, filename, args...; overwrite = false, kwds...)
-
-creates a new FITS file named `filename` whose contents is specified by
-`args...`. If the file already exists, the method fails unless keyword
-`overwrite` is `true`. This method is equivalent to:
-
-    writefits(filename, args...; overwrite = false, kwds...)
-
-See [`writefits`](@ref) for the meaning of `args...` and [`FitsFile`](@ref) for
-other keywords that may be specified when opening the file.
-
-"""
-function write(::Type{FitsFile}, filename::AbstractString, args...; kwds...)
-    return writefits(filename, args...; kwds...)
-end
-
-"""
     writefits!(filename, args...; kwds...)
 
 creates a new FITS file named `filename` whose contents is specified by `args...`. If the
@@ -222,22 +150,6 @@ function writefits!(filename::AbstractString, args...; kwds...)
     return writefits(filename, args...; overwrite = true, kwds...)
 end
 
-"""
-    write!(FitsFile, filename, args...; kwds...)
-
-creates a new FITS file named `filename` whose contents is specified by
-`args...`. If the file already exists, it is (silently) overwritten. This
-method is equivalent to:
-
-    writefits(filename, args...; overwrite = true, kwds...)
-
-See [`writefits`](@ref) for the meaning of `args...` and [`FitsFile`](@ref) for
-other keywords that may be specified when opening the file.
-
-"""
-function write!(::Type{FitsFile}, filename::AbstractString, args...; kwds...)
-    return writefits(filename, args...; overwrite = true, kwds...)
-end
 
 # NOTE: It is assumed that:
 #
