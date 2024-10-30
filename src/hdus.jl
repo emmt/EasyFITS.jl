@@ -241,7 +241,7 @@ with `key` the keyword of the record, `val` its value and `com` its comment.
 To push more than one record, call `merge!` instead of `push!`.
 
 """
-function push!(hdu::FitsHDU, card::FitsCard; append::Bool = false)
+function Base.push!(hdu::FitsHDU, card::FitsCard; append::Bool = false)
     # Private method.
     function set_key(hdu::FitsHDU, key::String, val, com::String; append::Bool = false)
         if append
@@ -280,7 +280,7 @@ function push!(hdu::FitsHDU, card::FitsCard; append::Bool = false)
     return hdu
 end
 
-push!(hdu::FitsHDU, rec; kwds...) = push!(hdu, FitsCard(rec); kwds...)
+Base.push!(hdu::FitsHDU, rec; kwds...) = push!(hdu, FitsCard(rec); kwds...)
 
 """
     merge!(hdu::FitsHDU, recs) -> hdu
@@ -298,7 +298,7 @@ In most cases, calling `merge!` is a shortcut to:
     end
 
 """
-function merge!(hdu::FitsHDU, hdr::Header; append::Bool = false)
+function Base.merge!(hdu::FitsHDU, hdr::Header; append::Bool = false)
     # By default, assume an iterable object producing cards or equivalent.
     for rec in hdr
         push!(hdu, rec; append)
@@ -306,9 +306,9 @@ function merge!(hdu::FitsHDU, hdr::Header; append::Bool = false)
     return hdu
 end
 
-merge!(hdu::FitsHDU, recs::Nothing; append::Bool = false) = hdu
+Base.merge!(hdu::FitsHDU, recs::Nothing; append::Bool = false) = hdu
 
-function merge!(hdu::FitsHDU, hdr::NamedTuple; append::Bool = false)
+function Base.merge!(hdu::FitsHDU, hdr::NamedTuple; append::Bool = false)
     for key in keys(hdr)
         push!(hdu, key => hdr[key]; append)
     end

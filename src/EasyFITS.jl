@@ -58,7 +58,7 @@ using FITSHeaders:
 
 using Base: @propagate_inbounds, string_index_err
 using Base.Order: Ordering, Forward, Reverse
-import Base: open, read, read!, write, merge, merge!, push!
+import Base: open, read, read!, write
 
 let file = joinpath(@__DIR__, "..", "deps", "deps.jl")
     if !isfile(file)
