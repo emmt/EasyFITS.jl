@@ -8,9 +8,8 @@ opens FITS file named `filename` with access `mode`. See [`FitsFile`](@ref) for 
 different modes and keywords.
 
 """
-function openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...)
-    return FitsFile(filename, mode; kwds...)
-end
+openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...) =
+    FitsFile(filename, mode; kwds...)
 
 """
     FitsFile(filename, mode="r"; kwds...) do file
@@ -39,10 +38,8 @@ do-block syntax to open a FITS file which is automatically closed at the end of 
 See [`FitsFile`](@ref) for the different modes and keywords.
 
 """
-function openfits(func::Function, filename::AbstractString,
-                  mode::AbstractString = "r"; kwds...)
-    return FitsFile(func, filename, mode; kwds...)
-end
+openfits(func::Function, filename::AbstractString, mode::AbstractString = "r"; kwds...) =
+    FitsFile(func, filename, mode; kwds...)
 
 #----------------------------------------------------------------------------------------
 # Read FITS files.
@@ -56,8 +53,11 @@ yields the header of the `ext` extension of the FITS file `filename`. See
 """
 function read(::Type{FitsHeader}, filename::AbstractString;
               ext::Union{AbstractString,Integer} = 1, kwds...)
-    return FitsFile(filename, "r"; kwds...) do file; FitsHeader(file[ext]) end
+    FitsFile(filename, "r"; kwds...) do file
+        FitsHeader(file[ext])
+    end
 end
+
 
 """
     readfits([R::Type,] filename, args...; ext=1, extended=false, kwds...) -> data
@@ -80,14 +80,14 @@ and rows.
 function readfits(filename::AbstractString, args...; extended::Bool = false,
                   ext::Union{AbstractString,Integer} = 1, kwds...)
     openfits(filename, "r"; extended) do file
-        return read(file[ext], args...; kwds...)
+        read(file[ext], args...; kwds...)
     end
 end
 
 function readfits(::Type{R}, filename::AbstractString, args...; extended::Bool = false,
                   ext::Union{AbstractString,Integer} = 1, kwds...)  where {R}
     openfits(filename, "r"; extended) do file
-        return read(R, file[ext], args...; kwds...)
+        read(R, file[ext], args...; kwds...)
     end
 end
 
@@ -105,7 +105,7 @@ See [`readfits`](@ref) for the meaning of arguments and for possible keywords.
 function readfits!(dest, filename::AbstractString, args...; extended::Bool = false,
                    ext::Union{AbstractString,Integer} = 1, kwds...)
     openfits(filename, "r"; extended) do file
-        return read!(dest, file[ext], args...; kwds...)
+        read!(dest, file[ext], args...; kwds...)
     end
 end
 
@@ -146,28 +146,21 @@ See [`writefits`](@ref) for the meaning of `args...` and [`FitsFile`](@ref) for 
 keywords that may be specified when opening the file.
 
 """
-function writefits!(filename::AbstractString, args...; kwds...)
-    return writefits(filename, args...; overwrite = true, kwds...)
-end
-
-
-# NOTE: It is assumed that:
-#
-#    write(file::FitsFile, header, data)
-#
-# is implemented elsewhere for different data types (image or table).
-
-function write(file::FitsFile)
-    # Nothing to do.
-    return file
-end
+writefits!(filename::AbstractString, args...; kwds...) =
+    writefits(filename, args...; overwrite = true, kwds...)
 
 function write(file::FitsFile, header::OptionalHeader,
                data::Union{ImageData,TableData}, args...)
+    # NOTE: It is assumed that:
+    #
+    #    write(file::FitsFile, header, data)
+    #
+    # is implemented elsewhere for different data types (image or table).
     write(file, header, data)
     write(file, args...)
-    return file
 end
+
+write(file::FitsFile) = file # nothing to do but return the argumnent
 
 # catch errors
 @noinline function write(file::FitsFile,
@@ -447,8 +440,10 @@ of `hdu`, that is `"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"` depending on wh
 
 """
 function Base.nameof(hdu::FitsHDU)
-    (str = hdu.hduname) === nothing || return str
-    (str = hdu.extname) === nothing || return str
+    str = hdu.hduname
+    str === nothing || return str
+    str = hdu.extname
+    str === nothing || return str
     return hdu.xtension
 end
 
@@ -468,11 +463,18 @@ on whether `hdu` is an image, an ASCII table, a binary table, or anything else.
 
 """
 is_named(hdu::FitsHDU, pat::Union{AbstractString,Regex}) =
-    # Since a match only fails if no matching name is found, the order of the
-    # tests is irrelevant. We therefore start with the costless ones.
-    same_name(hdu.xtension, pat) ||
-    same_name(hdu.hduname, pat) ||
-    same_name(hdu.extname, pat)
+    # Since a match only fails if no matching name is found, the order of the tests is
+    # irrelevant. We therefore start with the costless ones.
+    same_name(hdu.xtension, pat) || same_name(hdu.hduname, pat) || same_name(hdu.extname, pat)
+
+"""
+    EasyFITS.is_named(pat) -> pred
+
+yields e predicate function `pred` that can be used to check whether pattern `pat` is
+equal to (in the FITS sense if `pat` is a string) or matches (if `pat` is a regular
+expression) the extension of the FITS header data units (HDUs).
+
+"""
 is_named(pat::Union{AbstractString,Regex}) = Base.Fix2(is_named, pat)
 
 # Compare HDU name with some pattern , HDU name may be `nothing` which can
@@ -570,8 +572,7 @@ Base.eachmatch(pat, file::FitsFile) = FileIterator(pat, file)
 struct FileIterator{O<:Ordering,P}
     pattern::P
     file::FitsFile
-    FileIterator(ord::O, pat::P, file::FitsFile) where {O,P} =
-        new{O,P}(pat, file)
+    FileIterator(ord::O, pat::P, file::FitsFile) where {O,P} = new{O,P}(pat, file)
 end
 FileIterator(pat, file::FitsFile) = FileIterator(Forward, pat, file)
 FileIterator(ord::Ordering, pat::AbstractString, file::FitsFile) =
