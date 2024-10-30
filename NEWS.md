@@ -2,6 +2,12 @@
 
 ## Version 0.6.2
 
+## New features
+
+- `hdu = file[pred]` can be used to retrieve the first HDU of the FITS `file` for which
+  predicate function `pred` is true.
+
+
 ### Breaking changes
 
 - `read!(dict::AbstractDict,hdu::FitsTableHDU,...)` merges some columns of the FITS table

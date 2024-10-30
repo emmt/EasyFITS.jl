@@ -407,6 +407,7 @@ end
     @test B == A
     openfits(tempfile) do file
         hdu = file[2]
+        @test hdu === file[x -> x.number == 2]
         @test hdu["KEY_B1"].value() === true
         @test hdu["KEY_B2"].value() === false
         # Read sub-regions.

@@ -379,7 +379,8 @@ end
     file[ext] -> hdu
 
 yield the FITS Header Data Unit (HDU) of the FITS file `file` at `ext`, the FITS extension
-number or name.
+number or name. The `ext` argument may also be a predicate function to retrieve the first
+HDU of `file` for which this function yields true.
 
 The returned object has the following read-only properties:
 
@@ -417,6 +418,13 @@ function Base.getindex(file::FitsFile, str::AbstractString)
     i = findfirst(str, file)
     i === nothing && error("no FITS Header Data Unit named \"$str\"")
     return file[i]
+end
+
+function Base.getindex(file::FitsFile, f::Function)
+    for hdu in file
+        f(hdu) && return hdu
+    end
+    error("predicate function is false for all FITS HDUs")
 end
 
 function Base.get(file::FitsFile, i::Integer, def)
