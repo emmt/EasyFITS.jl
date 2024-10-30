@@ -5,9 +5,9 @@
 [![Build Status][github-ci-img]][github-ci-url]
 [![Coverage][codecov-img]][codecov-url]
 
-`EasyFITS` is a [Julia][julia-url] package designed to make it easier to read
-and write data in [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) format without
-sacrificing performances, flexibility, or readability.
+`EasyFITS` is a [Julia][julia-url] package designed to make it easier to read and write
+data in [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) format without sacrificing
+performances, flexibility, or readability.
 
 
 ## A few examples
@@ -71,18 +71,18 @@ writefits(filename,
            :xy => (hcat(x,y)', "V")])
 ```
 
-Each HDU has a header part (the metadata) and a data part which is reflected by
-the pairs of arguments after`filename`, the name of the file, in the above call
-to `writefits`. The headers are provided by collections (a vector for the 1st
-one, a tuple for the 2nd) of pairs or by a named tuples (3rd one) associating a
-keyword with a value and a comment (both optional). The data in a FITS *Image
-Extension* is any real-valued Julia array. The data part in a FITS *Table
-Extension* is provided by a collection of column names associated with columns
-values and optional units. The columns in a FITS table must have the same
-trailing dimension (interpreted as the rows of the table) but may have
-different leading dimensions corresponding to the sizes of the column cells. In
-the above example, the `"Position"` column has 3 values per cell (presumably
-the 3D coordinates), while other columns have a single value per cell.
+Each HDU has a header part (the metadata) and a data part which is reflected by the pairs
+of arguments after`filename`, the name of the file, in the above call to `writefits`. The
+headers are provided by collections (a vector for the 1st one, a tuple for the 2nd one) of
+pairs or by a named tuples (3rd one) associating a keyword with a value and a comment
+(both optional). In a FITS *Image Extension*, the data can be any real-valued Julia array.
+In a FITS *Table Extension* , the data part is provided by a collection of column names
+associated with columns values and optional units. The columns in a FITS table must have
+the same trailing dimension (interpreted as the rows of the table) but may have different
+leading dimensions corresponding to the sizes of the column cells. In the above example,
+the `"Position"` column has 3 values per cell (presumably the 3D coordinates), while other
+columns have a single value per cell. Note that the 1st HDU, so-called *Primary HDU*, of a
+FITS file must be a *Fits Image* (possibly empty), not a *FITS Table*.
 
 To read the headers of the 1st and 2nd HDU of the file:
 
@@ -98,8 +98,8 @@ dat1 = readfits(filename)
 dat2 = readfits(filename, ext=2)
 ```
 
-will yield an array `dat1` equal to `arr` and a dictionary `dat2` indexed by
-the column names (in uppercase letters by default). For example:
+will yield an array `dat1` equal to `arr` and a dictionary `dat2` indexed by the column
+names (in uppercase letters by default). For example:
 
 ``` julia
 dat2["SPEED"] == speed
@@ -120,19 +120,17 @@ pkg"registry add https://github.com/emmt/EmmtRegistry"
 pkg"add EasyFITS"
 ```
 
-Adding the `General` registry (2nd line of the above example) is mandatory to
-have access to the official Julia packages if you never have used the package
-manager before.
+Adding the `General` registry (2nd line of the above example) is mandatory to have access
+to the official Julia packages if you never have used the package manager before.
 
 
 ## Related projects
 
-The [FITSIO](https://github.com/JuliaAstro/FITSIO.jl) package is another
-alternative to read/write FITS files. `EasyFITS` is no longer based on `FITSIO`
-and now exploits [Clang.jl][clang-url] to directly call the functions of the
-[CFITSIO][cfitsio-url] library and
-[`BaseFITS`](https://github.com/emmt/BaseFITS.jl) to parse metadata (FITS
-header cards).
+The [FITSIO](https://github.com/JuliaAstro/FITSIO.jl) package is another alternative to
+read/write FITS files. `EasyFITS` is no longer based on `FITSIO` and now exploits
+[Clang.jl][clang-url] to directly call the functions of the [CFITSIO][cfitsio-url] library
+and [`BaseFITS`](https://github.com/emmt/BaseFITS.jl) to parse metadata (FITS header
+cards).
 
 
 [doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg

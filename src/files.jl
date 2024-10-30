@@ -1,11 +1,11 @@
-#------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------
 # Open FITS files.
 
 """
     openfits(filename, mode="r"; kwds...) -> file
 
-opens FITS file named `filename` with access `mode`. See [`FitsFile`](@ref) for
-the different modes and keywords.
+opens FITS file named `filename` with access `mode`. See [`FitsFile`](@ref) for the
+different modes and keywords.
 
 """
 function openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...)
@@ -29,8 +29,7 @@ end
         ... # use file
     end
 
-do-block syntax to open a FITS file which is automatically closed at the end of
-the block.
+do-block syntax to open a FITS file which is automatically closed at the end of the block.
 
 """
 function FitsFile(func::Function, filename::AbstractString,
@@ -48,8 +47,8 @@ end
         ... # use file
     end
 
-do-block syntax to open a FITS file which is automatically closed at the end of
-the block. See [`FitsFile`](@ref) for the different modes and keywords.
+do-block syntax to open a FITS file which is automatically closed at the end of the block.
+See [`FitsFile`](@ref) for the different modes and keywords.
 
 """
 function openfits(func::Function, filename::AbstractString,
@@ -72,7 +71,7 @@ function Base.open(func::Function, ::Type{FitsFile}, filename::AbstractString,
     return openfits(func, filename, mode; kwds...)
 end
 
-#------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------
 # Read FITS files.
 
 """
@@ -90,20 +89,19 @@ end
 """
     readfits([R::Type,] filename, args...; ext=1, extended=false, kwds...) -> data
 
-reads some data in extension `ext` (a Header Data Unit number or a name) in
-FITS file `filename`. Specify keyword `extended = true` to use CFITSIO extended
-filename syntax.
+reads some data in extension `ext` (a Header Data Unit number or a name) in FITS file
+`filename`. Specify keyword `extended = true` to use CFITSIO extended filename syntax.
 
-If `R` is specified, the data is returned as an object of type `R`. Array type
-parameters may be specified in `R`. For example, specify `R = Array{Float32}`
-to ensure that the result be a single precision floating-point array.
+If `R` is specified, the data is returned as an object of type `R`. Array type parameters
+may be specified in `R`. For example, specify `R = Array{Float32}` to ensure that the
+result be a single precision floating-point array.
 
-If the extension is an image, `args...` specifies the ranges of pixels to read
-along the dimensions. The default is to read all pixels.
+If the extension is an image, `args...` specifies the ranges of pixels to read along the
+dimensions. The default is to read all pixels.
 
-If the extension is a table, `args...` consist in up to 2 arguments `cols` and
-`rows` to select a subset of columns and of rows respectively. The default is
-to read all columns and rows.
+If the extension is a table, `args...` consist in up to 2 arguments `cols` and `rows` to
+select a subset of columns and of rows respectively. The default is to read all columns
+and rows.
 
 """
 function readfits(filename::AbstractString, args...; extended::Bool = false,
@@ -139,8 +137,8 @@ end
 """
     readfits!(dest, filename, args...; kwds...) -> dest
 
-overwrites destination `dest` with some data read from FITS file named
-`filename`. This is more efficient but is similar to:
+overwrites destination `dest` with some data read from FITS file named `filename`. This is
+more efficient but is similar to:
 
     copyto!(dest, readfits(typeof(dest), filename, args...; kwds...))
 
@@ -166,20 +164,19 @@ function read!(dest, ::Type{FitsFile}, filename::AbstractString, args...; kwds..
     return readfits!(dest, filename, args...; kwds...)
 end
 
-#------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------
 # Write FITS files.
 
 """
     writefits(filename, hdr, dat, args...; overwrite = false, kwds...)
 
-creates a new FITS file named `filename` whose contents is specified by `hdr`,
-`dat`, and `args...`. If the file already exists, the method fails unless
-keyword `overwrite` is `true`. See [`FitsFile`](@ref) for other keywords that
-may be specified when opening the file.
+creates a new FITS file named `filename` whose contents is specified by `hdr`, `dat`, and
+`args...`. If the file already exists, the method fails unless keyword `overwrite` is
+`true`. See [`FitsFile`](@ref) for other keywords that may be specified when opening the
+file.
 
-Arguments `hdr` and `dat` are the header and the data of a 1st Header Data Unit
-(HDU) to write. Trailing arguments `args...` are headers and data of optional
-additional HDUs.
+Arguments `hdr` and `dat` are the header and the data of a 1st Header Data Unit (HDU) to
+write. Trailing arguments `args...` are headers and data of optional additional HDUs.
 
 See also [`writefits!`](@ref) and [`FitsFile`](@ref).
 
@@ -212,14 +209,13 @@ end
 """
     writefits!(filename, args...; kwds...)
 
-creates a new FITS file named `filename` whose contents is specified by
-`args...`. If the file already exists, it is (silently) overwritten. This
-method is equivalent to:
+creates a new FITS file named `filename` whose contents is specified by `args...`. If the
+file already exists, it is (silently) overwritten. This method is equivalent to:
 
     writefits(filename, args...; overwrite = true, kwds...)
 
-See [`writefits`](@ref) for the meaning of `args...` and [`FitsFile`](@ref) for
-other keywords that may be specified when opening the file.
+See [`writefits`](@ref) for the meaning of `args...` and [`FitsFile`](@ref) for other
+keywords that may be specified when opening the file.
 
 """
 function writefits!(filename::AbstractString, args...; kwds...)
@@ -268,27 +264,25 @@ end
     error("no method to write FITS extension for data of type $(typeof(data))")
 end
 
-#------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------
 # Interface to FITS files.
 
 """
     EasyFITS.get_handle(file::FitsFile)
 
-yields the pointer to the opaque FITS file structure for `file`. It is the
-caller responsibility to insure that the pointer is and remains valid as long
-as it is needed.
+yields the pointer to the opaque FITS file structure for `file`. It is the caller
+responsibility to insure that the pointer is and remains valid as long as it is needed.
 
 !!! warning
-    This function should never be directly called. When calling a function of
-    the CFITSIO library (with `ccall` or equivalent), directly pass the
-    `FitsFile` object so that (1) the validity of the pointer is checked and
-    (2) the `FitsFile` object is preserved to not be garbage collected before
-    the C function be called thus eliminating the risk of the file being closed
-    and the pointer becoming invalid. `EasyFITS` simply achieves this by
-    properly extending `Base.cconvert` and `Base.unsafe_convert`. In fact there
-    are only 2 functions in `EasyFITS` which calls `get_handle`: `Base.isopen`
-    which amounts to just checking whether the pointer is not null and, of
-    course, `Base.unsafe_convert`.
+    This function should never be directly called. When calling a function of the CFITSIO
+    library (with `ccall` or equivalent), directly pass the `FitsFile` object so that (1)
+    the validity of the pointer is checked and (2) the `FitsFile` object is preserved to
+    not be garbage collected before the C function be called thus eliminating the risk of
+    the file being closed and the pointer becoming invalid. `EasyFITS` simply achieves
+    this by properly extending `Base.cconvert` and `Base.unsafe_convert`. In fact there
+    are only 2 functions in `EasyFITS` which calls `get_handle`: `Base.isopen` which
+    amounts to just checking whether the pointer is not null and, of course,
+    `Base.unsafe_convert`.
 
 """
 get_handle(file::FitsFile) = getfield(file, :handle)
@@ -339,8 +333,8 @@ Base.pathof(file::FitsFile) = getfield(file, :path)
 """
     filemode(file::FitsFile)
 
-yields `:r`, `:rw`, or `:w` depending whether `file` is open for reading, reading
-and writing, or writing.
+yields `:r`, `:rw`, or `:w` depending whether `file` is open for reading, reading and
+writing, or writing.
 
 """
 Base.filemode(file::FitsFile) = getfield(file, :mode)
@@ -372,8 +366,8 @@ Base.iswritable(file::FitsFile) = (filemode(file) !== :r) && isopen(file)
 """
     seek(file::FitsFile, n) -> type
 
-moves to `n`-th HDU of FITS file `file` and returns an integer identifying the
-type of the HDU:
+moves to `n`-th HDU of FITS file `file` and returns an integer identifying the type of the
+HDU:
 
 * `FITS_IMAGE_HDU` if the `n`-th HDU contains an image.
 
@@ -398,8 +392,8 @@ end
 """
     seekstart(file::FitsFile) -> type
 
-moves to the first HDU of FITS file `file` and returns an integer identifying
-the type of the HDU.
+moves to the first HDU of FITS file `file` and returns an integer identifying the type of
+the HDU.
 
 See also [`seek(::FitsFile)`](@ref).
 
@@ -409,8 +403,8 @@ Base.seekstart(file::FitsFile) = seek(file, firstindex(file))
 """
     seekend(file::FitsFile) -> type
 
-moves to the last HDU of FITS file `file` and returns an integer identifying
-the type of the HDU.
+moves to the last HDU of FITS file `file` and returns an integer identifying the type of
+the HDU.
 
 See also [`seek(::FitsFile)`](@ref).
 
@@ -420,8 +414,8 @@ Base.seekend(file::FitsFile) = seek(file, lastindex(file))
 """
     position(file::FitsFile) -> n
 
-yields the current HDU number of FITS file `file`. An error is thrown if the
-file has been closed.
+yields the current HDU number of FITS file `file`. An error is thrown if the file has been
+closed.
 
 See also [`seek(::FitsFile)`](@ref).
 
@@ -533,12 +527,11 @@ end
 """
     nameof(hdu::FitsHDU) -> str
 
-yields the name of the FITS header data unit `hdu`. The result is the value of
-the first keyword of `"EXTNAME"` or `"HDUNAME"` which exists and has a string
-value. If none of these keywords exist, the result is `hdu.xtension` which is
-the name of the FITS extension of `hdu`, that is `"IMAGE"`, `"TABLE"`,
-`"BINTABLE"`, or `"ANY"` depending on whether `hdu` is an image, an ASCII
-table, a binary table, or anything else.
+yields the name of the FITS header data unit `hdu`. The result is the value of the first
+keyword of `"EXTNAME"` or `"HDUNAME"` which exists and has a string value. If none of
+these keywords exist, the result is `hdu.xtension` which is the name of the FITS extension
+of `hdu`, that is `"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"` depending on whether
+`hdu` is an image, an ASCII table, a binary table, or anything else.
 
 """
 function Base.nameof(hdu::FitsHDU)
@@ -550,18 +543,16 @@ end
 """
     EasyFITS.is_named(hdu, pat) -> bool
 
-yields whether pattern `pat` is equal to (in the FITS sense if `pat` is a
-string) or matches (if `pat` is a regular expression) the extension of the FITS
-header data unit `hdu`, or to the value of one of its `"EXTNAME"` or
-`"HDUNAME"` keywords. These are respectively given by `hdu.xtension`,
-`hdu.extname`, or `hdu.hduname`.
+yields whether pattern `pat` is equal to (in the FITS sense if `pat` is a string) or
+matches (if `pat` is a regular expression) the extension of the FITS header data unit
+`hdu`, or to the value of one of its `"EXTNAME"` or `"HDUNAME"` keywords. These are
+respectively given by `hdu.xtension`, `hdu.extname`, or `hdu.hduname`.
 
-This method is used as a predicate for the search methods `findfirst`,
-`findlast`, `findnext`, and `findprev`.
+This method is used as a predicate for the search methods `findfirst`, `findlast`,
+`findnext`, and `findprev`.
 
-The extension `hdu.xtension` is `"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"`
-depending on whether `hdu` is an image, an ASCII table, a binary table, or
-anything else.
+The extension `hdu.xtension` is `"IMAGE"`, `"TABLE"`, `"BINTABLE"`, or `"ANY"` depending
+on whether `hdu` is an image, an ASCII table, a binary table, or anything else.
 
 """
 is_named(hdu::FitsHDU, pat::Union{AbstractString,Regex}) =
@@ -626,10 +617,10 @@ Base.haskey(file::FitsFile, ext::AbstractString) = findfirst(ext, file) !== noth
 """
     eachmatch(pat, file::FitsFile)
 
-yields an iterator over the Header Data Units (HDUs) of FITS `file` matching
-pattern `pat`. Pattern `pat` can be a string or a regular expression to be
-matched against the name of the HDUs of `file` or a predicate function taking
-a HDU as argument and returning whether it matches.
+yields an iterator over the Header Data Units (HDUs) of FITS `file` matching pattern
+`pat`. Pattern `pat` can be a string or a regular expression to be matched against the
+name of the HDUs of `file` or a predicate function taking a HDU as argument and returning
+whether it matches.
 
 For example:
 
