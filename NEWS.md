@@ -2,11 +2,25 @@
 
 ## Version 0.6.2
 
+### Breaking changes
+
+- `read!(dict::AbstractDict,hdu::FitsTableHDU,...)` merges some columns of the FITS table
+  in `hdu` with the contents of `dict` but no longer deletes existing contents of `dict`.
+  Call `read!(empty!(dict),hdu,...)` for that.
+
+- `merge!(dict::AbstractDict,hdu::FitsTableHDU,...)` to merge some columns of the FITS
+  table in `hdu` with the contents of `dict` is no longer supported as it is inconsistent
+  with the ususal meaning of `merge!`. Call `read!(dict,hdu,...)` instead.
+
+- `push!(vec::AbstractVector,hdu::FitsTableHDU,...)` to append some columns of the FITS
+  table in `hdu` to the vector `vec` is no longer supported as it is inconsistent with the
+  ususal meaning of `push!`. Call `append!(vec, read(Vector,hdu,...))` instead.
+
+
 ### Deprecations
 
 Deprecate some methods that are either redundant with shorter calls or which do not
-implement the usual behavior of a base method (below, the ellipsis `...` denotes optional
-arguments and keywords):
+implement the usual behavior of a base method:
 
 - Deprecate `hdu = write(T::Type{<:FitsHDU},file::FitsFile,...)` in favor of `hdu =
   T(file,...)` because (i) it is shorter to directly call the constructor, (ii) creating

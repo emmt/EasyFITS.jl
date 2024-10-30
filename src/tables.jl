@@ -498,7 +498,7 @@ function read(::Type{D}, hdu::FitsTableHDU,
               cols::Columns = Colon(), rows::Rows = Colon();
               kwds...) where {D<:Union{Dict{String,<:AbstractArray},
                                        Dict{String,<:Tuple{<:AbstractArray,String}}}}
-    return merge!(D(), hdu, cols, rows; kwds...)
+    return read!(D(), hdu, cols, rows; kwds...)
 end
 
 # The default is to read table columns as a dictionary.
@@ -510,28 +510,25 @@ end
 """
     read!(dict, hdu::FitsTableHDU[, cols[, rows]]) -> dict
 
-overwrites the contents of the dictionary `dict` with the colum(s) `cols` read
-from the FITS table extension in `hdu` and returns the dictionary. Any previous
-contents is erased, call `merge!(dict,hdu,...)` to preserve contents.
+merges the contents of the dictionary `dict` with the column(s) `cols` read from the
+FITS table extension in `hdu` and returns the dictionary.
+
+Previous contents of `dict` is not erased, call `read!(empty!(dict),hdu,...)` to erase any
+contents prior to reading.
+
+The `case` keyword specify whether to consider the case of characters in column names. By
+default, `case = false`.
+
+The `rename` keyword may be specified with a function that converts the column names into
+dictionary keys. If unspecified, the default is to convert column names to uppercase
+characters if keyword `case` is `false` and to leave column names unchanged otherwise.
 
 """
-function read!(dict::AbstractDict, hdu::FitsTableHDU,
-               cols::Columns = Colon(), rows::Rows = Colon(); kwds...)
-    return merge!(empty!(dict), hdu, cols, rows; kwds...)
-end
-
-"""
-    merge!(dict, hdu::FitsTableHDU[, cols[, rows]]) -> dict
-
-merges the contents of the dictionary `dict` with the colum(s) `cols` read from the FITS
-table extension in `hdu` and returns the dictionary.
-
-"""
-function merge!(dict::AbstractDict{K,V}, hdu::FitsTableHDU,
-                cols::Columns = Colon(), rows::Rows = Colon();
-                case::Bool = false, rename::Function = (case ? identity : uppercase),
-                kwds...) where {K<:String,V<:Union{AbstractArray,
-                                                   Tuple{AbstractArray,String}}}
+function read!(dict::AbstractDict{K,V}, hdu::FitsTableHDU,
+               cols::Columns = Colon(), rows::Rows = Colon();
+               case::Bool = false, rename::Function = (case ? identity : uppercase),
+               kwds...) where {K<:String,V<:Union{AbstractArray,
+                                                  Tuple{AbstractArray,String}}}
     names = hdu.column_names
     for col in columns_to_read(hdu, cols)
         num = get_colnum(hdu, col; case)
@@ -588,33 +585,6 @@ function read(::Type{V}, hdu::FitsTableHDU,
     i = firstindex(vec) - 1
     for col in cols
         vec[i += 1] = read(T, hdu, col, rows; kwds...)
-    end
-    return vec
-end
-
-"""
-    push!(vec, hdu::FitsTableHDU[, cols[, rows]]) -> vec
-
-appends rows `rows` of columns `cols` read from FITS table extension `hdu` to the vector
-`vec` and returns it.
-
-"""
-function push!(vec::AbstractVector{A},
-               hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
-               case::Bool = false, kwds...) where {A<:AbstractArray}
-    for col in columns_to_read(hdu, cols)
-        num = get_colnum(hdu, col; case)
-        push!(vec, read(A, hdu, num, rows; kwds...))
-    end
-    return vec
-end
-
-function push!(vec::AbstractVector{<:Tuple{A,String}},
-               hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon();
-               case::Bool = false, kwds...) where {A<:AbstractArray}
-    for col in columns_to_read(hdu, cols)
-        num = get_colnum(hdu, col; case)
-        push!(vec, (read(A, hdu, num, rows; kwds...), get_units(hdu, num)))
     end
     return vec
 end
