@@ -20,7 +20,7 @@
 
 - `push!(vec::AbstractVector,hdu::FitsTableHDU,...)` to append some columns of the FITS
   table in `hdu` to the vector `vec` is no longer supported as it is inconsistent with the
-  ususal meaning of `push!`. Call `append!(vec, read(Vector,hdu,...))` instead.
+  usual meaning of `push!`. Call `append!(vec, read(Vector,hdu,...))` instead.
 
 
 ### Deprecations
