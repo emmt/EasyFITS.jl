@@ -246,7 +246,7 @@ end
 @testset "FITS Images" begin
     # Write a simple FITS image.
     A = convert(Array{Int16}, reshape(1:60, 3,4,5))
-    openfits(tempfile, "w!") do file
+    FitsFile(tempfile, "w!") do file
         @test file isa FitsFile
         @test !isreadable(file)
         @test !isreadonly(file)
@@ -405,7 +405,7 @@ end
     @test eltype(B) == eltype(A)
     @test size(B) == size(A)
     @test B == A
-    openfits(tempfile) do file
+    FitsFile(tempfile) do file
         hdu = file[2]
         @test hdu === file[x -> x.number == 2]
         @test hdu["KEY_B1"].value() === true
@@ -452,7 +452,7 @@ end
     end
 
     # Low-level API.
-    openfits(tempfile, "w!") do file
+    FitsFile(tempfile, "w!") do file
         @test length(file) == 0
         hdu = FitsTableHDU(file, ["Col#1" => ('E', "m/s"),
                                   "Col#2" => ('D', "Hz")])
@@ -705,13 +705,13 @@ end
     @test x3["LABEL"] == label
 
     # write (version with columns given as varargs)
-    openfits(tempfile, "w!") do fitsfile
+    FitsFile(tempfile, "w!") do fitsfile
         @test FitsTableHDU(fitsfile, :col1 => Float32) isa FitsTableHDU
         @test FitsTableHDU(fitsfile, :col1 => Float32, :col2 => Int) isa FitsTableHDU
     end
 
     # String columns, check dimensions and write
-    openfits(tempfile, "w!") do fitsfile
+    FitsFile(tempfile, "w!") do fitsfile
         # column of single character strings
         let data = ["a","b","c"],
             hdu = @inferred FitsTableHDU(fitsfile, [:col1 => (String, 1)])

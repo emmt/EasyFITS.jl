@@ -46,6 +46,8 @@ implement the usual behavior of a base method:
 - Deprecate `write(FitsFile,filename,...)` and `write!(FitsFile,filename,...)` in favor of
   `writefits(filename,...)` and `writefits!(filename,...)`.
 
+- Deprecate `openfits` method in favor of constructor `FitsFile`.
+
 
 ## Version 0.6.1
 

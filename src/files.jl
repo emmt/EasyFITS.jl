@@ -2,16 +2,6 @@
 # Open FITS files.
 
 """
-    openfits(filename, mode="r"; kwds...) -> file
-
-opens FITS file named `filename` with access `mode`. See [`FitsFile`](@ref) for the
-different modes and keywords.
-
-"""
-openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...) =
-    FitsFile(filename, mode; kwds...)
-
-"""
     FitsFile(filename, mode="r"; kwds...) do file
         ... # use file
     end
@@ -28,18 +18,6 @@ function FitsFile(func::Function, filename::AbstractString,
         close(file)
     end
 end
-
-"""
-    openfits(filename, mode="r"; kwds...) do file
-        ... # use file
-    end
-
-do-block syntax to open a FITS file which is automatically closed at the end of the block.
-See [`FitsFile`](@ref) for the different modes and keywords.
-
-"""
-openfits(func::Function, filename::AbstractString, mode::AbstractString = "r"; kwds...) =
-    FitsFile(func, filename, mode; kwds...)
 
 #----------------------------------------------------------------------------------------
 # Read FITS files.
@@ -79,14 +57,14 @@ and rows.
 """
 function readfits(filename::AbstractString, args...; extended::Bool = false,
                   ext::Union{AbstractString,Integer} = 1, kwds...)
-    openfits(filename, "r"; extended) do file
+    FitsFile(filename, "r"; extended) do file
         read(file[ext], args...; kwds...)
     end
 end
 
 function readfits(::Type{R}, filename::AbstractString, args...; extended::Bool = false,
                   ext::Union{AbstractString,Integer} = 1, kwds...)  where {R}
-    openfits(filename, "r"; extended) do file
+    FitsFile(filename, "r"; extended) do file
         read(R, file[ext], args...; kwds...)
     end
 end
@@ -104,7 +82,7 @@ See [`readfits`](@ref) for the meaning of arguments and for possible keywords.
 """
 function readfits!(dest, filename::AbstractString, args...; extended::Bool = false,
                    ext::Union{AbstractString,Integer} = 1, kwds...)
-    openfits(filename, "r"; extended) do file
+    FitsFile(filename, "r"; extended) do file
         read!(dest, file[ext], args...; kwds...)
     end
 end
@@ -128,7 +106,7 @@ See also [`writefits!`](@ref) and [`FitsFile`](@ref).
 """
 function writefits(filename::AbstractString, args...;
                    overwrite::Bool = false, kwds...)
-    openfits(filename, overwrite ? "w!" : "w"; kwds...) do file
+    FitsFile(filename, overwrite ? "w!" : "w"; kwds...) do file
         write(file, args...)
     end
     nothing

@@ -7,3 +7,5 @@ import Base: open, read, read!, write
 @deprecate write!(::Type{FitsFile}, filename::AbstractString, args...; kwds...) writefits(filename, args...; overwrite = true, kwds...) false
 @deprecate write(::Type{FitsFile}, filename::AbstractString, args...; kwds...) writefits(filename, args...; kwds...) false
 @deprecate write(::Type{T}, file::FitsFile, args...; kwds...) where {T<:FitsHDU} T(file, args...; kwds...) false
+@deprecate openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...) FitsFile(filename, mode; kwds...)
+@deprecate openfits(func::Function, filename::AbstractString, mode::AbstractString = "r"; kwds...) FitsFile(func, filename, mode; kwds...)

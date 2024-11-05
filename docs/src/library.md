@@ -13,9 +13,6 @@ FitsLogic
 
 ```@docs
 FitsFile
-openfits
-open(::Type{FitsFile}, ::AbstractString)
-open(::Function, ::Type{FitsFile})
 readfits
 readfits!
 read(::Type{FitsFile}, ::AbstractString)

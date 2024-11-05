@@ -278,7 +278,7 @@ abstract type FitsHDU <: AbstractVector{FitsCard} end
 end
 
 """
-    FitsFile(filename, mode="r"; extended=false) -> file
+    file = FitsFile(filename, mode="r"; extended=false)
 
 opens FITS file `filename` for reading if `mode` is `"r"`, for reading and writing if mode
 is "r+", or creates a new file if mode is `"w"` or `"w!"`. File must not exists if mode is
