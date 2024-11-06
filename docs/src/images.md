@@ -1,8 +1,8 @@
-# FITS image extensions
+# FITS Image HDUs
 
-FITS image extensions store multi-dimensional arrays with numerical values exactly as
-regular Julia arrays. In `EasyFITS`, a FITS image extension in an open file is represented
-by an object of type `FitsImageDHU{T,N}` with `T` the element type and `N` the number of
+FITS Image HDUs store multi-dimensional arrays with numerical values exactly as regular
+Julia arrays. In `EasyFITS`, a FITS Image HDU is represented by an object of type
+[`FitsImageDHU{T,N}`](@ref FitsImageHDU) with `T` the element type and `N` the number of
 dimensions.
 
 
@@ -27,7 +27,7 @@ An image HDU has the following properties:
 ## Reading a FITS image
 
 To read the data stored by the *Header Data Unit* (HDU) object `hdu` of type
-`FitsImageDHU` HDU as an array `arr`, call [`read`](@ref) as:
+`FitsImageDHU` HDU as an array `arr`, call [`read`](@ref read(::FitsImageHDU)) as:
 
 ``` julia
 arr = read(hdu)
@@ -57,7 +57,7 @@ arr = read(Matrix{Float32}, hdu)
 both warrant that `arr` will be a 2-dimensional image with pixels of type `Float32`.
 
 Call [`read!`](@ref) to overwrite the elements of an existing array with the contents of
-the FITS image extension. For example:
+the FITS image HDU. For example:
 
 ``` julia
 read!(arr, hdu)
@@ -90,10 +90,9 @@ read!(arr, hdu, :, :, 3)
 ```
 
 
-## Creating an image extension
+## Creating an image HDU
 
-To create a new FITS image extension in an open FITS `file`, there are several
-possibilities:
+To create a new FITS image HDU in an open FITS `file`, there are several possibilities:
 
 ``` julia
 hdu = FitsImageHDU(file, dims...; bitpix=...)
@@ -107,10 +106,10 @@ dimensions `N` can be inferred from the image size but may be explicitly specifi
 better type-stability.
 
 If the FITS file is currently empty then a primary array is created, otherwise a new image
-extension is appended to the file.
+HDU is appended to the file.
 
-The returned `hdu` is an object to manage the new extension, it can be used to push header
-cards and then to write the data.
+The returned `hdu` is an object to manage the new HDU, it can be used to push header cards
+and then to write the data.
 
 If the array `arr` to be written is available, the element type and dimensions can be
 inferred from `arr` itself:

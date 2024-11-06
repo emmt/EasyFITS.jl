@@ -40,35 +40,37 @@ end
 # READING IMAGES
 
 """
-    read(R::Type = Array, hdu::FitsImageHDU) -> arr::R
+    read(R::Type = Array, hdu::FitsImageHDU[, inds...]) -> arr::R
 
-reads the FITS image extension in `hdu`. Optional argument `R` is to restrict the ouput
-type and improve type-stability. For example:
+reads the FITS image data in `hdu` or the rectangular sub-region defined by the indices
+`inds...` if specified.
+
+Optional argument `R` is to restrict the ouput type and improve type-stability. For
+example:
 
     arr = convert(Array{Float32}, read(hdu))
     arr = read(Array{Float32}, hdu)
-    arr = read(Array{Float32,2}, hdu)
+    arr = read(Array{Float32,3}, hdu)
 
-yield similar results if `hdu` is a 2-D image extension but the 2nd example is more
-efficient than the 1st one as no temporary array is needed if the pixel type is not
+yield similar results if `hdu` is a 3-dimensional image extension but the 2nd example is
+more efficient than the 1st one as no temporary array is needed if the pixel type is not
 equivalent to `Float32` and the 3rd example is completely type-stable.
 
 Keywords `anynull` and `null` may be specified to deal with undefined pixel values (see
-documentation for
-[`read!(::DenseArray{<:Number},::FitsImageHDU,::SubArrayIndex...)`](@ref)).
+documentation for [`read!`](@ref read!(::Array,::FitsImageHDU))).
 
-"""
-function read(hdu::FitsImageHDU{T,N}; kwds...) where {T,N}
-    return read(Array{T,N}, hdu; kwds...)
-end
+""" read(::FitsImageHDU)
 
-function read(::Type{Array}, hdu::FitsImageHDU{T,N}; kwds...) where {T,N}
-    return read(Array{T,N}, hdu; kwds...)
-end
+# Read all image data.
 
-function read(::Type{Array{T}}, hdu::FitsImageHDU{<:Any,N}; kwds...) where {T<:Number,N}
-    return read(Array{T,N}, hdu; kwds...)
-end
+read(hdu::FitsImageHDU{T,N}; kwds...) where {T,N} =
+    read(Array{T,N}, hdu; kwds...)
+
+read(::Type{Array}, hdu::FitsImageHDU{T,N}; kwds...) where {T,N} =
+    read(Array{T,N}, hdu; kwds...)
+
+read(::Type{Array{T}}, hdu::FitsImageHDU{<:Any,N}; kwds...) where {T<:Number,N} =
+    read(Array{T,N}, hdu; kwds...)
 
 function read(::Type{Array{T,N}}, hdu::FitsImageHDU{<:Any,N};
               null::Union{DenseArray{Bool,N},Ref{T},Nothing} = nothing,
@@ -77,37 +79,19 @@ function read(::Type{Array{T,N}}, hdu::FitsImageHDU{<:Any,N};
     return read!(arr, hdu; null, anynull)
 end
 
-"""
-    read(R::Type = Array, hdu::FitsImageHDU, inds...) -> arr::R
+# Read a rectangular sub-region.
 
-reads a rectangular sub-region of the FITS image extension in `hdu` defined by the indices
-`inds...`. Keywords `anynull` and `null` may be specified to deal with undefined pixel
-values (see documentation for
-[`read!(::DenseArray{<:Number},::FitsImageHDU,::SubArrayIndex...)`](@ref)).
+read(hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) =
+    read(hdu, inds; kwds...)
 
-The result is similar to:
+read(hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T} =
+    read(Array{T}, hdu, inds; kwds...)
 
-    arr = read(R, hdu)[inds...]
+read(::Type{R}, hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) where {R<:Array} =
+    read(R, hdu, inds; kwds...)
 
-but is generally more efficient as no array other than the result is allocated and fewer
-values are read.
-
-"""
-function read(hdu::FitsImageHDU{T}, inds::SubArrayIndex...; kwds...) where {T}
-    return read(Array{T}, hdu, inds; kwds...)
-end
-
-function read(hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T}
-    return read(Array{T}, hdu, inds; kwds...)
-end
-
-function read(::Type{R}, hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) where {R<:Array}
-    return read(R, hdu, inds; kwds...)
-end
-
-function read(::Type{Array}, hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T}
-    return read(Array{T}, hdu, inds; kwds...)
-end
+read(::Type{Array}, hdu::FitsImageHDU{T}, inds::SubArrayIndices; kwds...) where {T} =
+    read(Array{T}, hdu, inds; kwds...)
 
 function read(::Type{Array{T}}, hdu::FitsImageHDU, inds::SubArrayIndices; kwds...) where {T}
     N = count(i -> !isa(i, Integer), inds) # count number of output dimensions
@@ -125,37 +109,17 @@ function read(::Type{Array{T,N}}, hdu::FitsImageHDU, inds::SubArrayIndices;
 end
 
 """
-    read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU, inds...) -> arr
-
-overwrites `arr` with a rectangular sub-region of the FITS image extension in `hdu`
-defined by the indices `inds...`. The destination array must have the same dimensions as
-the rectangular sub-region to read (the same rules as for sub-indexing an array are
-applied to determine the dimensions of the sub-region). Keywords `anynull` and `null` may
-be specified to deal with undefined pixel values.
-
-"""
-function read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU,
-               inds::SubArrayIndex...; kwds...)
-    return read!(arr, hdu, inds; kwds...)
-end
-
-function read!(arr::DenseArray{T,L}, hdu::FitsImageHDU{<:Any,N},
-               inds::SubArrayIndices{N};
-               null::Union{DenseArray{Bool,L},Ref{T},Nothing} = nothing,
-               anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,L,N}
-    img_dims = get_img_size(hdu)
-    arr_dims, first, step, last = subarray_params(img_dims, inds)
-    size(arr) == arr_dims || throw(DimensionMismatch("output array has invalid dimensions"))
-    return read!(arr, hdu; null, anynull, first, step, last)
-end
-
-"""
-    read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU) -> arr
+    read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU[, inds...]) -> arr
 
 overwrites all the elements of the array `arr` with pixel values read from the FITS image
-extension of the header data unit `hdu` and returns `arr`. Pixel values are converted to
-the element type of `arr`. The default is to read the complete image. This behavior may be
-changed by specifying another value than `nothing` for the keywords `first` and/or `last`:
+data in `hdu` and returns `arr`. Pixel values are converted to the element type of `arr`.
+
+If `inds...` are specified, only the rectangular sub-region defined by `inds...` is read
+and the destination array must have the same dimensions as this region (the same rules as
+for sub-indexing an array are applied to determine the dimensions of the sub-region).
+
+If `inds...` are not specified, the complete image is read unless another value than
+`nothing` (the default) is given to the keywords `first` and/or `last`:
 
 * To read a rectangular sub-image, set keywords `first` and `last` with `N`-tuple of
   integers indicating the coordinates of the first and last pixels to read. Optionally,
@@ -182,7 +146,21 @@ pixels and to `false` elsewhere.
 Output arrays `arr` and `null` must have contiguous elements, in other words, they must be
 *dense arrays*.
 
-"""
+""" read!(::Array, ::FitsImageHDU)
+
+read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU, inds::SubArrayIndex...; kwds...) =
+    read!(arr, hdu, inds; kwds...)
+
+function read!(arr::DenseArray{T,L}, hdu::FitsImageHDU{<:Any,N},
+               inds::SubArrayIndices{N};
+               null::Union{DenseArray{Bool,L},Ref{T},Nothing} = nothing,
+               anynull::Union{Nothing,Ref{Bool}} = nothing) where {T<:Number,L,N}
+    img_dims = get_img_size(hdu)
+    arr_dims, first, step, last = subarray_params(img_dims, inds)
+    size(arr) == arr_dims || throw(DimensionMismatch("output array has invalid dimensions"))
+    return read!(arr, hdu; null, anynull, first, step, last)
+end
+
 function read!(arr::DenseArray{T,L},
                hdu::FitsImageHDU{<:Any,N};
                null::Union{DenseArray{Bool,L},Ref{T},Nothing} = nothing,
@@ -397,7 +375,8 @@ the `BLANK` keyword (an error is returned if the BLANK keyword doesn't exist). F
 floating point FITS images the special IEEE NaN (Not-a-Number) value will be written into
 the FITS file.
 
-"""
+""" write(::FitsImageHDU, ::Array)
+
 function write(hdu::FitsImageHDU{<:Any,N},
                arr::AbstractArray{T,L};
                first::Union{Integer,NTuple{N,Integer},Nothing} = nothing,

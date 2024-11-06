@@ -1,13 +1,14 @@
 SOURCES = \
     make.jl \
+    src/index.md \
+    src/structure.md \
+    src/reading.md \
+    src/writing.md \
     src/files.md \
-    src/hdus.md \
-    src/headers.md \
     src/images.md \
     src/tables.md \
-    src/install.md \
-    src/grammar.md \
-    src/library.md
+    src/library.md \
+    src/links.md
 
 default: build/index.html
 

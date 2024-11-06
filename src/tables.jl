@@ -183,8 +183,8 @@ end
 """
     read([R=Array,] hdu::FitsTableHDU, col[, rows]; kwds...) -> vals::R
 
-reads column `col` of the FITS table extension in `hdu` and returns its values and,
-possibly, its units.
+reads a single column `col` of the FITS table extension in `hdu` and returns its values
+and, possibly, its units.
 
 The column `col` may be specified by its name or by its number. If `col` is a string or a
 symbol, keyword `case` specifies whether the case of letters matters (`case = false` by
@@ -199,13 +199,15 @@ single row, a unit range of integers to read these rows, or a colon `:` to read 
 (the default). Use `hdu.first_row` and `hdu.last_row` to retrieve the first and last row
 numbers.
 
-See [`read!(::DenseArray,::FitsTableHDU,::ColumName)`](@ref) for the other possible
+See [`read!`](@ref read!(::Array,::FitsTableHDU,::String)) for the other possible
 keywords.
 
-"""
+""" read(::FitsTableHDU, ::String)
+
 function read(hdu::FitsTableHDU, col::ColumnIdent, rows::Rows = Colon(); kwds...)
     return read(Array, hdu, col, rows; kwds...)
 end
+
 
 # Read column values and units.
 function read(::Type{Tuple{A,String}}, hdu::FitsTableHDU, col::ColumnIdent,
@@ -457,7 +459,7 @@ is_null(c::Char) = c == '\0'
 """
     read([Dict,] hdu::FitsTableHDU[, cols[, rows]]) -> dict
 
-reads some columns of the FITS table extension in `hdu` as a dictionary indexed by the
+reads several columns of the FITS table extension in `hdu` as a dictionary indexed by the
 column names. The columns to read can be specified by `cols` which may be a single column
 name/index, a tuple/range/vector of column names/numbers, or a colon `:` to read all
 columns (the default). Column names may be strings or symbols (not a mixture of these).
@@ -481,7 +483,12 @@ To avoid the `units` keyword, the following methods are provided:
 to yield the same result as `read(hdu,...)` with respectively `units=nothing` and
 `units=String`.
 
-"""
+""" read(::FitsTableHDU)
+
+function read(hdu::FitsTableHDU, cols::Columns = Colon(), rows::Rows = Colon(); kwds...)
+    return read(Dict, hdu, cols, rows; kwds...)
+end
+
 function read(::Type{Dict}, hdu::FitsTableHDU,
               cols::Columns = Colon(), rows::Rows = Colon();
               units = nothing, kwds...)
@@ -501,12 +508,6 @@ function read(::Type{D}, hdu::FitsTableHDU,
     return read!(D(), hdu, cols, rows; kwds...)
 end
 
-# The default is to read table columns as a dictionary.
-function read(hdu::FitsTableHDU,
-              cols::Columns = Colon(), rows::Rows = Colon(); kwds...)
-    return read(Dict, hdu, cols, rows; kwds...)
-end
-
 """
     read!(dict, hdu::FitsTableHDU[, cols[, rows]]) -> dict
 
@@ -523,7 +524,8 @@ The `rename` keyword may be specified with a function that converts the column n
 dictionary keys. If unspecified, the default is to convert column names to uppercase
 characters if keyword `case` is `false` and to leave column names unchanged otherwise.
 
-"""
+""" read!(::Dict, ::FitsTableHDU)
+
 function read!(dict::AbstractDict{K,V}, hdu::FitsTableHDU,
                cols::Columns = Colon(), rows::Rows = Colon();
                case::Bool = false, rename::Function = (case ? identity : uppercase),
@@ -562,7 +564,8 @@ following 2 methods are provided:
 to yield the same result as `read(hdu,...)` with respectively `units=nothing` and
 `units=String`.
 
-"""
+""" read(::Type{Vector}, ::FitsTableHDU)
+
 function read(::Type{Vector}, hdu::FitsTableHDU,
               cols::Columns = Colon(), rows::Rows = Colon();
               units = nothing, kwds...)
@@ -613,7 +616,8 @@ undefined values. Keyword `null` may also be set with an array of `Bool` of same
 Output arrays `arr` and `null` must have contiguous elements, in other words, they must be
 *dense arrays*.
 
-"""
+""" read!(::Array, ::FitsTableHDU, ::String)
+
 function read!(arr::DenseArray, hdu::FitsTableHDU, col::ColumnName;
                case::Bool = false, kwds...)
     return read!(arr, hdu, get_colnum(hdu, col; case); kwds...)

@@ -1,100 +1,112 @@
-# Access to FITS files
+# Navigating in FITS files
 
-## Direct reading of data
+This section explains how to open and navigate into a FITS file, that is move to a given
+HDU.
 
-The simplest way to read some data in a FITS file is to call [`readfits`](@ref):
+## Open a FITS file
+
+In `EasyFITS`, a FITS file is represented by an instance of [`FitsFile`](@ref). To create
+a new FITS file or to open an existing FITS file, simply call the [`FitsFile`](@ref)
+constructor:
 
 ```julia
-data = readfits(filename, args...; kwds...)
+file = FitsFile(filename, mode="r"; extended=false)
 ```
 
-with `filename` the name of the file.
+with `filename` the name of the FITS file and one of the following modes:
 
-By default, the data of the first FITS extension in `filename` is read. Keyword `ext` may
-however be set with a number, a name, or a symbol to select another extension. Another
-possibility is to specify the keyword `extended = true` to open the file using the
-[extended file name
+- `"r"` (the default) to open an existing FITS file for reading only.
+
+- `"r+"` to open an existing FITS file for reading and appending to its contents.
+
+- `"w"` to create a new FITS file, throwing an error if the file already exists.
+
+- `"w!"` to create a new FITS file, silently overwriting the file if it already exists.
+
+The `extended` keyword specifies whether to use the [extended file name
 syntax](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/c/c_user/node83.html)
 implemented by the `CFITSIO` library.
 
-The default is to read all the data part of the selected FITS extension but optional
-arguments `args...` and keywords `kwds...` may be specified to restrict the read contents:
+It is not mandatory to call `close(file)` to close the FITS file, this is automatically
+done when the `file` object is garbage collected. Calling `close(file)` is however needed
+to ensure that a FITS file open for writing is up to date before `file` be garbage
+collected. To make sure the file contents is up to date without explicitly closing it,
+call `flush(file)` instead. To automatically close a FITS file, use the `do`-block syntax:
 
-- If the FITS extension is an image, `args...` specifies the ranges of pixels to read
-  along the dimensions. For example:
-
-  ```julia
-  data = readfits(filename, :, :, 5)
-  ```
-
-  would read the 5th slice in a 3-dimensional image. This is equivalent but more efficient
-  than:
-
-  ```julia
-  data = readfits(filename)[:, :, 5]
-  ```
-
-  which amounts to reading all the data and then only keep the 5th slice.
-
-- If the FITS extension is a table, `args...` may be up to 2 arguments, `cols` and `rows`,
-  to respectively select a subset of columns and rows. For example:
-
-  ```julia
-  A = readfits(filename, ("Speed", "Height"))
-  B = readfits(filename, :, 11:40)
-  ```
-
-  respectively yield the columns named `Speed` and `Height` of the table and all the
-  columns of the table but only for rows in the range `11:40`. Keyword `case` may be used
-  to indicate whether letter case does matter in the column names.
-
- !!! note
-     In `EasyFITS`, the rows of a table correspond to the last dimension of arrays. This
-     is to have the same storage order in memory and in the FITS file. Method
-     `permutedims` can be used is this convention does not suit you.
-
-The type of the object returned by [`readfits`](@ref) depends on the kind of the FITS
-extension and may also depend on the optional arguments `args...` and on the keywords
-`kwds...`:
-
-- If the FITS extension is an image, the data is returned as a Julia `Array`.
-
-- If the FITS extension is a table, then, if `cols` is a single column name or number, an
-  array of the columns values is returned, otherwise, a dictionary indexed by the column
-  names is returned. Note that, a column range like `4:4` would yield a dictionary with a
-  single column (the 4th one) in that context. Keywords `case` and `rename` are available
-  to indicate how to search the columns by name in the table and how to translate these
-  names into dictionary keys.
-
-To avoid ambiguities or for improved type-stability, a leading type argument can be
-specified in [`readfits`](@ref) to indicate the expected type for the returned data:
-
-```julia
-data = readfits(R::Type, filename, args...; kwds...)
+``` julia
+FitsFile("test.fits.gz", "w!") do file
+    do_something_with(file)
+end
 ```
 
-which warrants that `data isa R` holds.
-
-Array type parameters such as the element type and the number of dimensions may be
-specified in `R`. For example:
+Standard Julia methods for file-like objects are available for an open FITS file:
 
 ```julia
-data = readfits(Array{Float32,3}, filename)
+isopen(file) # yields whether file is open
+close(file) # close the file
+pathof(file) # yields the path to the file
+filemode(file) # yields the mode `:r` or `:w`
+isreadable(file) # yields whether file is readable
+isreadonly(file) # yields whether file is readable and not writable
+iswritable(file) # yields whether file is writable
 ```
 
-ensures that `data` is a single precision floating-point 3-dimensional array; while:
+## Indexing and searching HDUs
+
+An instance, say `file`, of `FitsFile` can be thought as an abstract vector of FITS HDUs
+indexed by their number: `file[1]` is the primary HDU, `file[2]` is the second HDU,
+`file[end]` is the last HDU, and so on.
+
+The index may also be the HDU name (given by the `HDUNAME` or `EXTNAME` keywords)
+or a predicate function. For example:
 
 ```julia
-data = readfits(Dict, filename, cols; ext=2)
+hdu = file[x -> nameof(x) == "SOME_NAME"]
+hdu = file["SOME_NAME"]
 ```
 
-ensures that the table in 2nd FITS Header Data Unit is returned as a dictionary even
-though `cols` specifies a single column.
+both yield the first HDU in `file` whose name is `"SOME_NAME"`. In the latter case, the
+comparison is done ignoring letter case as assumed by FITS standard for comparing strings.
 
-## Reading Header
+To find the index of the first (resp. last) HDU matching `w` call:
+
+```julia
+i = findfirst(w, file)
+i = findlast(w, file)
+```
+
+where `w` is a string, a regular expression or a predicate function. On return, `i` is
+`nothing` if no match is found and an integer index otherwise. Then, to find the next
+(resp. previous) HDU matching `w` after (resp. before) `start`, call:
+
+```julia
+i = findnext(w, file, start)
+i = findprev(w, file, start)
+```
+
+which also return `nothing` or an integer. The method `eachmatch` may be used to execute
+some code on each HDU matching `w`:
+
+```julia
+for hdu in eachmatch(w, file)
+    ... # do something
+end
+```
+
+```julia
+haskey(file::FitsFile, key::Union{AbstractString,Integer})
+get(file::FitsFile, key::Union{AbstractString,Integer}, def)
+```
+
+## Stream-like operations
+
+A `FitsFile` instance may also be thought as a stream of HDUs:
 
 
-## Direct writing of data
-
-In principle, directly writing data in a FITS file is as simple as direct
-reading of data.
+```julia
+seek(file, n)
+hdutype = seekstart(file::FitsFile)
+hdutype = seekend(file::FitsFile)
+hdunum = position(file::FitsFile)
+flush(f::Union{FitsFile,FitsHDU})
+```

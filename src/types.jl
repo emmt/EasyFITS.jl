@@ -283,7 +283,9 @@ end
 opens FITS file `filename` for reading if `mode` is `"r"`, for reading and writing if mode
 is "r+", or creates a new file if mode is `"w"` or `"w!"`. File must not exists if mode is
 `"w"`. File is overwritten if it exists and mode is `"w!"`. The file is automatically
-closed when the `file` object is finalized so it is not necessary to call `close(file)`.
+closed when the `file` object is finalized, it is however necessary to call
+[`close(file)`](@ref close(::FitsFile)) or [`flush(file)`](@ref flush(::FitsFile)) when
+`mode` is `"w"` or `"w!"` to make sure its content is up to date.
 
 Keyword `extended` specifies whether to use extended file name syntax featured by the
 CFITSIO library.

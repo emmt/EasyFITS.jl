@@ -1,17 +1,19 @@
-# FITS Table extensions
+# FITS Table HDUs
 
-In a given table column, cells may contain more than a single value.
+FITS Table HDUs store table data. In a given table column, cells may contain more than a
+single value. In `EasyFITS`, a FITS Table HDU is represented by an object of type
+[`FitsTableDHU`](@ref FitsTableHDU).
 
 !!! note
-    The elements of a column of a FITS table extension are stored in the same memory order
-    as in an ordinary Julia array. As a result, the **rows** of a column in a FITS table
-    extension correspond to the **last** index in the equivalent Julia array. Method
-    `permutedims` can be used is this convention does not suit you.
+    The elements of a column of a FITS table HDU are stored in the same memory order as in
+    an ordinary Julia array. As a result, the **rows** of a column in a FITS table HDU
+    correspond to the **last** index in the equivalent Julia array. Method `permutedims`
+    can be used is this convention does not suit you.
 
 
 ## Reading a single table column
 
-To read a single column in a FITS table extension as an array `arr`, call `read` as:
+To read a single column in a FITS table HDU as an array `arr`, call `read` as:
 
 ``` julia
 arr = read(hdu, col)
@@ -170,9 +172,9 @@ push!(vect, hdu, cols, rows)
 ```
 
 
-## Creating a table extension
+## Creating a table HDU
 
-To create a new FITS table extension in the FITS file `file`, call:
+To create a new FITS table HDU in the FITS file `file`, call:
 
 ``` julia
 hdu = write(file, FitsTableHDU, cols)
@@ -246,7 +248,7 @@ methods. Similarly, the columns may be specified in various forms as explained b
 
 ## Writing table columns
 
-To write a single column into the FITS table extension `hdu`:
+To write a single column into the FITS table HDU `hdu`:
 
 ```julia
 write(hdu, col => arr, ...; first=hdu.first_row, case=false, null=nothing) -> hdu

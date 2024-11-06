@@ -6,6 +6,7 @@ using EasyFITS
 import EasyFITS:
     Rows, Columns, ColumnIdent, ColumnName, ColumnData,
     TableData, ImageData, Header, SubArrayIndex
+using FITSHeaders
 
 DEPLOYDOCS = (get(ENV, "CI", nothing) == "true")
 
@@ -17,14 +18,14 @@ makedocs(
     authors = "Éric Thiébaut and contributors",
     pages = [
         "index.md",
+        "structure.md",
+        "reading.md",
+        "writing.md",
         "files.md",
-        "hdus.md",
-        "headers.md",
         "images.md",
         "tables.md",
-        "install.md",
-        "grammar.md",
         "library.md",
+        "links.md",
     ]
 )
 

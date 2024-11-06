@@ -183,7 +183,8 @@ end
 """
     FitsHeader(hdu::FitsHDU)
 
-reads all records of the header of `hdu`.
+reads all records of the header of `hdu` and returns an efficient object representing
+them.
 
 """
 function FITSHeaders.FitsHeader(hdu::FitsHDU)
