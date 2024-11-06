@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         version: ['1.6', '1', 'nightly']
-        os: ['ubuntu-latest', 'windows']
+        os: ['ubuntu-latest']
         arch: ['x64', 'x86']
     steps:
       - uses: actions/checkout@v4
@@ -38,5 +38,5 @@ jobs:
       - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-        if: ${{ matrix.os =='ubuntu-latest' }}

@@ -2,12 +2,13 @@
 
 [![Doc][doc-dev-img]][doc-dev-url]
 [![License][license-img]][license-url]
-[![Build Status][github-ci-img]][github-ci-url]
-[![Coverage][codecov-img]][codecov-url]
+[![Build Status](https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/EasyFITS.jl?svg=true)](https://ci.appveyor.com/project/emmt/EasyFITS-jl)
+[![Coverage](https://codecov.io/gh/emmt/EasyFITS.jl/graph/badge.svg?token=7QTvjQqn5O)](https://codecov.io/gh/emmt/EasyFITS.jl)
 
-`EasyFITS` is a [Julia][julia-url] package designed to make it easier to read and write
-data in [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) format without sacrificing
-performances, flexibility, or readability.
+`EasyFITS` is a [Julia](https://julialang.org/) package designed to make it easier to read
+and write data in [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) format without
+sacrificing performances, flexibility, or readability.
 
 
 ## A few examples
@@ -129,7 +130,7 @@ to the official Julia packages if you never have used the package manager before
 
 The [FITSIO](https://github.com/JuliaAstro/FITSIO.jl) package is another alternative to
 read/write FITS files. `EasyFITS` is no longer based on `FITSIO` and now exploits
-[Clang.jl][clang-url] to directly call the functions of the [CFITSIO][cfitsio-url] library
+[Clang.jl](https://github.com/JuliaInterop/Clang.jl) to directly call the functions of the [CFITSIO](https://github.com/JuliaAstro/CFITSIO.jl) library
 and [`FITSHeaders`](https://github.com/emmt/FITSHeaders.jl) to parse metadata (FITS header
 cards).
 
@@ -141,20 +142,4 @@ cards).
 [doc-dev-url]: https://emmt.github.io/EasyFITS.jl/dev
 
 [license-url]: ./LICENSE.md
-[license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
-
-[github-ci-img]: https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml/badge.svg?branch=master
-[github-ci-url]: https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml?query=branch%3Amaster
-
-[codecov-img]: http://codecov.io/github/emmt/EasyFITS.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/emmt/EasyFITS.jl?branch=master
-
-[julia-url]: https://julialang.org/
-[julia-pkgs-url]: https://pkg.julialang.org/
-
-[fitsbase-url]: https://github.com/emmt/FITSIO.jl
-[fitsio-url]: https://github.com/JuliaAstro/FITSIO.jl
-[cfitsio-url]: https://github.com/JuliaAstro/CFITSIO.jl
-[julia-url]: http://julialang.org/
-[libcfitsio-url]: http://heasarc.gsfc.nasa.gov/fitsio/
-[clang-url]:https://github.com/JuliaInterop/Clang.jl
+[license-img]: https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
