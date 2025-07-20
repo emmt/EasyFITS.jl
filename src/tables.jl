@@ -554,9 +554,9 @@ may be strings or symbols (not a mixture of these). The rows to read can be spec
 (the default). `V` is the type of the result.
 
 Keyword `units` can be used to indicate whether to retrieve the units of the columns. If
-`units` is `String`, the values of the dictionary will be 2-tuples `(data,units)` with
+`units` is `String`, the elements of the result will be 2-tuples `(data,units)` with
 `data` the column data and `units` the column units as a string. Otherwise, if
-`units=nothing` (the default), the values of the dictionary will just be the columns data.
+`units=nothing` (the default), the elements of the result will just be the columns data.
 
 To avoid the `units` keyword and allow more control on the type of the result, the
 following 2 methods are provided:
@@ -718,7 +718,7 @@ where `type` is either a Julia type (`Number` or `String`) or a letter (see tabl
 | `Float64`          | `'D'`  |                  |
 | `Complex{Float32}` | `'C'`  |                  |
 | `Complex{Float64}` | `'M'`  |                  |
-| `FitsBit`          | `'X'`  |  bits
+| `FitsBit`          | `'X'`  | bits             |
 
 The returned object can be used to add FITS keywords to the header of the table and, then,
 to write column data. Typically:
