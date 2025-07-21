@@ -1,5 +1,12 @@
 # User visible changes for EasyFITS
 
+## Unreleased
+
+## Changed
+
+- `Clang.jl` is no longer used to generate the wrapper code. The new generator is a simple
+  parser of CFITSIO header files, it is faster and has no dependencies other than `CFITSIO_jll`.
+
 ## Version 0.6.2
 
 ## New features

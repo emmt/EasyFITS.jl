@@ -1,5 +1,3 @@
-deps.jl
-gendeps
-*.o
-*.bak
-build.log
+/Manifest*.toml
+/ccalls-*.jl
+/cfitsio.jl*

@@ -147,12 +147,6 @@ let expr = :(bad_argument("invalid BITPIX value"))
     @eval type_from_bitpix(b::Int) = $expr
 end
 
-# A few type assertions.
-CFITSIO.LONGLONG === Clonglong || throw(AssertionError(
-    "CFITSIO.LONGLONG = `$(CFITSIO.LONGLONG)` while Clonglong = `$Clonglong`"))
-CFITSIO.ULONGLONG === Culonglong || throw(AssertionError(
-    "CFITSIO.LONGLONG = `$(CFITSIO.ULONGLONG)` while Culonglong = `$Culonglong`"))
-
 """
     EasyFITS.type_to_code(T)
 
