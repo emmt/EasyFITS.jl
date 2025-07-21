@@ -3,9 +3,9 @@ using Requires
 """
     EasyFITS.CFITSIO_VERSION
 
-is the version number of the CFITSIO library for which `EasyFITS` has been
-built. When `EasyFITS` is loaded, it is checked that the version of the CFITSIO
-library does match this version.
+is the version number of the CFITSIO library for which `EasyFITS` has been built. When
+`EasyFITS` is loaded, it is checked that the version of the CFITSIO library does match this
+version.
 
 """
 const CFITSIO_VERSION = VersionNumber(CFITSIO.CFITSIO_MAJOR,

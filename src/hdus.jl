@@ -18,8 +18,8 @@ Base.setproperty!(hdu::FitsHDU, sym::Symbol, x) =
     hdu.hduname
     EasyFITS.hduname(hdu::FitsHDU)
 
-yield the value of the keyword `HDUNAME` in the FITS Header Data Unit `hdu` or `nothing`
-if no such keyword exists.
+yield the value of the keyword `HDUNAME` in the FITS Header Data Unit `hdu` or `nothing` if
+no such keyword exists.
 
 It is suggested that foreign packages extend this function so that:
 
@@ -168,8 +168,9 @@ end
 
 unsafe_cstring(buf::AbstractVector{T}) where {T<:Union{UInt8,Int8}} = Cstring(pointer(buf))
 
-# This function is needed to truncate C-string at 1st null, we take the opportunity of
-# this filtering to strip trailing spaces.
+# This function is needed to truncate C-string at 1st null, we take the opportunity of this
+# filtering to strip trailing spaces.
+#
 # FIXME: This maybe done elsewhere?
 function parse_cstring(::Type{FitsCard}, buf::AbstractVector{UInt8})
     first = firstindex(buf)
@@ -189,8 +190,7 @@ end
 """
     FitsHeader(hdu::FitsHDU)
 
-reads all records of the header of `hdu` and returns an efficient object representing
-them.
+reads all records of the header of `hdu` and returns an efficient object representing them.
 
 """
 function FITSHeaders.FitsHeader(hdu::FitsHDU)
@@ -225,10 +225,10 @@ end
     hdu[key] = x
     push!(hdu, key => x)
 
-updates or appends a record associating the keyword `key` with `x` in the header of the
-FITS header data unit `hdu` (see `push!`). Depending on the type of the FITS keyword
-`key`, the argument `x` can be `val`, `com`, or `(val,com)` with `val` and `com` the value
-and the comment of the FITS card.
+updates or appends a record associating the keyword `key` with `x` in the header of the FITS
+header data unit `hdu` (see `push!`). Depending on the type of the FITS keyword `key`, the
+argument `x` can be `val`, `com`, or `(val,com)` with `val` and `com` the value and the
+comment of the FITS card.
 
 """
 Base.setindex!(hdu::FitsHDU, x, key::CardName) = push!(hdu, key => x)
@@ -236,13 +236,13 @@ Base.setindex!(hdu::FitsHDU, x, key::CardName) = push!(hdu, key => x)
 """
     push!(hdu::FitsHDU, rec; append=false) -> hdu
 
-updates or appends header record `rec` to FITS Header Data Units `hdu`. If the name of
-`rec` does not yet exist in the header part of `hdu` or if it is a commentary or
-continuation FITS keyword (`"COMMENT"`, `"HISTORY"`, `""`, or `"CONTINUE"`), a new record
-is appended to the header part of `hdu`; otherwise, the existing record in `hdu` is
-updated. If keyword `append` is set true, the record is appended whether another record
-with the same name already exists or not. Forcing append is not recommended as it may
-result in an invalid header.
+updates or appends header record `rec` to FITS Header Data Units `hdu`. If the name of `rec`
+does not yet exist in the header part of `hdu` or if it is a commentary or continuation FITS
+keyword (`"COMMENT"`, `"HISTORY"`, `""`, or `"CONTINUE"`), a new record is appended to the
+header part of `hdu`; otherwise, the existing record in `hdu` is updated. If keyword
+`append` is set true, the record is appended whether another record with the same name
+already exists or not. Forcing append is not recommended as it may result in an invalid
+header.
 
 Argument `rec` may be a FITS card (of type `FitsCard`) or anything that can be converted
 into a FITS card. This includes a pair `key => val`, `key => com`, or `key => (val,com)`
@@ -335,21 +335,21 @@ end
 """
     EasyFITS.write_key(dst, key, val, com=nothing) -> dst
 
-appends a new FITS header card in `dst` associating value `val` and comment
-`com` to the keyword `key`.
+appends a new FITS header card in `dst` associating value `val` and comment `com` to the
+keyword `key`.
 
 """ write_key
 
 """
     EasyFITS.update_key(dst, key, val, com=nothing) -> dst
 
-updates or appends a FITS header card in `dst` associating value `val` and comment `com`
-to the keyword `key`.
+updates or appends a FITS header card in `dst` associating value `val` and comment `com` to
+the keyword `key`.
 
 The card is considered to have an undefined value if `val` is `missing` or `undef`.
 
-If `val` is `nothing` and `com` is a string, the comment of the FITS header card is
-updated to be `com`.
+If `val` is `nothing` and `com` is a string, the comment of the FITS header card is updated
+to be `com`.
 
 """
 update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::Nothing) = hdu

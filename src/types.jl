@@ -20,12 +20,12 @@ is the (union of) type(s) that are accepted to specify a FITS header in
 `EasyFITS` package.
 
 A header may be a vector of pairs like `key => val`, `key => (val,com)`, or `key => com`
-with `key` the keyword name, `val` its value, and `com` its comment. The keyword name
-`key` is a string or a symbol which is automatically converted to uppercase letters and
-trailing spaces discarded. The syntax `key => com`, with `com` a string, is only allowed
-for commentary keywords `COMMENT` or `HISTORY`. For other keywords, the value is mandatory
-but the comment is optional, not specifying the comment is like specifying `nothing` for
-the comment; otherwise, the comment must be a string. The value `val` may be `missing` or
+with `key` the keyword name, `val` its value, and `com` its comment. The keyword name `key`
+is a string or a symbol which is automatically converted to uppercase letters and trailing
+spaces discarded. The syntax `key => com`, with `com` a string, is only allowed for
+commentary keywords `COMMENT` or `HISTORY`. For other keywords, the value is mandatory but
+the comment is optional, not specifying the comment is like specifying `nothing` for the
+comment; otherwise, the comment must be a string. The value `val` may be `missing` or
 `undef` to indicate that it is undefined. If the comment is too long, it is automatically
 split across multiple records for commentary keywords and it is truncated for other
 keywords. A non-commentary keyword may have units specified in square brackets at the
@@ -51,9 +51,9 @@ value and no comments, a keyword `COUNT` having an integer value and a comment, 
 string value, keywords `AGE` and `JOB` having comments but undefined values, and a few
 additional commentary keywords.
 
-A header may also be specified as a named tuple with entries `key = val`, `key =
-(val,com)`, or `key = com`. The same rules apply as above except that `key` must be
-allowed as a variable symbolic name (no embedded hyphen `'-'`).
+A header may also be specified as a named tuple with entries `key = val`, `key = (val,com)`,
+or `key = com`. The same rules apply as above except that `key` must be allowed as a
+variable symbolic name (no embedded hyphen `'-'`).
 
 Finally, most methods assume that `nothing` can be used to indicate an empty header.
 
@@ -135,8 +135,8 @@ The following methods are provided:
     EasyFITS.first_row_to_read(hdu::FitsTableHDU, rows::Rows)
     EasyFITS.last_row_to_read(hdu::FitsTableHDU, rows::Rows)
 
-to yield a iterable object over the row indices to read in table and the first/last such
-row indices.
+to yield a iterable object over the row indices to read in table and the first/last such row
+indices.
 
 """
 const Rows = Union{Colon,Integer,AbstractUnitRange{<:Integer}}
@@ -144,8 +144,8 @@ const Rows = Union{Colon,Integer,AbstractUnitRange{<:Integer}}
 """
     EasyFITS.ColumnData{T,N}
 
-is the possible type(s) for the cells of a `N`-dimensional column with values of type `T`
-in a FITS table extension.
+is the possible type(s) for the cells of a `N`-dimensional column with values of type `T` in
+a FITS table extension.
 
 """
 const ColumnData{T,N} = AbstractArray{T,N}
@@ -180,8 +180,7 @@ const ColumnDims = Union{Integer,Tuple{Vararg{Integer}}}
     EasyFITS.ColumnSpec
 
 is the possible type(s) for specifying the type of values, cell dimensions, and units of a
-column of a FITS table extension. The element type is mandatory and must be specifed
-first.
+column of a FITS table extension. The element type is mandatory and must be specified first.
 
 """
 const ColumnSpec = Union{ColumnEltype,
@@ -206,10 +205,10 @@ const ColumnNameSpecPair = Pair{<:ColumnName,<:ColumnSpec}
 """
     EasyFITS.ColumnIdentDataPair
 
-is the possible type(s) for specifying a column with its data and, optionally, its units
-to be written in a FITS table extension. Instances of this kind are pairs like `col =>
-vals` or `col => (vals, units)` with `col` the column name or number, `vals` the column
-values, and `units` optional units.
+is the possible type(s) for specifying a column with its data and, optionally, its units to
+be written in a FITS table extension. Instances of this kind are pairs like `col => vals` or
+`col => (vals, units)` with `col` the column name or number, `vals` the column values, and
+`units` optional units.
 
 [`EasyFITS.ColumnNameDataPair`](@ref) is similar except that `col` cannot be a column
 number.
@@ -221,13 +220,12 @@ const ColumnIdentDataPair = Pair{<:ColumnIdent,
 """
     EasyFITS.ColumnNameDataPair
 
-is the possible type(s) for specifying a column with its data and, optionally, its units
-to be written in a FITS table extension. Instances of this kind are pairs like `col =>
-vals` or `col => (vals, units)` with `col` the column name, `vals` the column values, and
-`units` optional units.
+is the possible type(s) for specifying a column with its data and, optionally, its units to
+be written in a FITS table extension. Instances of this kind are pairs like `col => vals` or
+`col => (vals, units)` with `col` the column name, `vals` the column values, and `units`
+optional units.
 
-[`EasyFITS.ColumnIdentDataPair`](@ref) is similar except that `col` can be a column
-number.
+[`EasyFITS.ColumnIdentDataPair`](@ref) is similar except that `col` can be a column number.
 
 """
 const ColumnNameDataPair = Pair{<:ColumnName,
@@ -237,14 +235,14 @@ const ColumnNameDataPair = Pair{<:ColumnName,
     EasyFITS.TableData
 
 is the union of types that can possibly be that of FITS table data. Instances of this kind
-are collections of `key => vals` or `key => (vals, units)` pairs with `key` the column
-name, `vals` the column values, and `units` the optional units of these values. Such
-collections can be dictionaries, named tuples, vectors, or tuples.
+are collections of `key => vals` or `key => (vals, units)` pairs with `key` the column name,
+`vals` the column values, and `units` the optional units of these values. Such collections
+can be dictionaries, named tuples, vectors, or tuples.
 
 For table data specified by dictionaries or vectors, the names of the columns must all be
 of the same type.
 
-Owing to the variety of posibilities for representing column values with optional units,
+Owing to the variety of possibilities for representing column values with optional units,
 `EasyFITS.TableData` cannot be specific for the values of the pairs in the collection. The
 package therefore rely on *error catcher* methods to detect column with invalid associated
 data.
@@ -261,12 +259,12 @@ const TableData = Union{AbstractDict{<:ColumnName,<:Any},
 """
     FitsHDU
 
-is the abstract type of FITS Header Data Units which consists in a header and a data
-parts. Concrete instances of `FitsHDU` behave as vectors whose elements are FITS header
-records, a.k.a. FITS cards, and which can be indexed by integers or by names.
+is the abstract type of FITS Header Data Units which consists in a header and a data parts.
+Concrete instances of `FitsHDU` behave as vectors whose elements are FITS header records,
+a.k.a. FITS cards, and which can be indexed by integers or by names.
 
-For faster access to the records of a header, consider creating a FITS header object from
-a HDU object:
+For faster access to the records of a header, consider creating a FITS header object from a
+HDU object:
 
     hdr = FitsHeader(hdu::FitsHDU)
 
@@ -286,10 +284,10 @@ end
 
 opens FITS file `filename` for reading if `mode` is `"r"`, for reading and writing if mode
 is "r+", or creates a new file if mode is `"w"` or `"w!"`. File must not exists if mode is
-`"w"`. File is overwritten if it exists and mode is `"w!"`. The file is automatically
-closed when the `file` object is finalized, it is however necessary to call
-[`close(file)`](@ref close(::FitsFile)) or [`flush(file)`](@ref flush(::FitsFile)) when
-`mode` is `"w"` or `"w!"` to make sure its content is up to date.
+`"w"`. File is overwritten if it exists and mode is `"w!"`. The file is automatically closed
+when the `file` object is finalized, it is however necessary to call [`close(file)`](@ref
+close(::FitsFile)) or [`flush(file)`](@ref flush(::FitsFile)) when `mode` is `"w"` or `"w!"`
+to make sure its content is up to date.
 
 Keyword `extended` specifies whether to use extended file name syntax featured by the
 CFITSIO library.
@@ -385,8 +383,8 @@ operation. For example:
 
     isequal(FitsLogic(), s1, s2)
 
-compares strings `s1` and `s2` according to FITS rules, that is case of letters and
-trailing spaces are irrelevant.
+compares strings `s1` and `s2` according to FITS rules, that is case of letters and trailing
+spaces are irrelevant.
 
     isequal(FitsLogic(), x) -> f
 
@@ -400,8 +398,8 @@ struct Bit end
 """
     FitsError <: Exception
 
-is the type of exceptions thrown when an error occurs in the FITSIO library used to
-manage FITS files.
+is the type of exceptions thrown when an error occurs in the FITSIO library used to manage
+FITS files.
 
 """
 struct FitsError <: Exception

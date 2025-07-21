@@ -1,5 +1,4 @@
-#----------------------------------------------------------------------------------------
-# FITS IMAGES PROPERTIES
+#----------------------------------------------------------------------- Images properties -
 
 Base.propertynames(::FitsImageHDU) = (
     :data_axes, :data_eltype, :data_size, :data_ndims,
@@ -36,8 +35,7 @@ function get_img_size(hdu::FitsImageHDU{T,N}) where {T,N}
     return Dims{N}(dims[])
 end
 
-#----------------------------------------------------------------------------------------
-# READING IMAGES
+#-------------------------------------------------------------------------- Reading images -
 
 """
     read(R::Type = Array, hdu::FitsImageHDU[, inds...]) -> arr::R
@@ -45,8 +43,7 @@ end
 reads the FITS image data in `hdu` or the rectangular sub-region defined by the indices
 `inds...` if specified.
 
-Optional argument `R` is to restrict the ouput type and improve type-stability. For
-example:
+Optional argument `R` is to restrict the ouput type and improve type-stability. For example:
 
     arr = convert(Array{Float32}, read(hdu))
     arr = read(Array{Float32}, hdu)
@@ -114,34 +111,34 @@ end
 overwrites all the elements of the array `arr` with pixel values read from the FITS image
 data in `hdu` and returns `arr`. Pixel values are converted to the element type of `arr`.
 
-If `inds...` are specified, only the rectangular sub-region defined by `inds...` is read
-and the destination array must have the same dimensions as this region (the same rules as
-for sub-indexing an array are applied to determine the dimensions of the sub-region).
+If `inds...` are specified, only the rectangular sub-region defined by `inds...` is read and
+the destination array must have the same dimensions as this region (the same rules as for
+sub-indexing an array are applied to determine the dimensions of the sub-region).
 
 If `inds...` are not specified, the complete image is read unless another value than
 `nothing` (the default) is given to the keywords `first` and/or `last`:
 
 * To read a rectangular sub-image, set keywords `first` and `last` with `N`-tuple of
   integers indicating the coordinates of the first and last pixels to read. Optionally,
-  keyword `step` may be set to an `N`-tuple of integers to indicate the increment along
-  each dimensions. Increments must be positive. Here `N` is the number of dimensions of
-  the FITS image extension.
+  keyword `step` may be set to an `N`-tuple of integers to indicate the increment along each
+  dimensions. Increments must be positive. Here `N` is the number of dimensions of the FITS
+  image extension.
 
 * To read consecutive pixels, specify at least one of the keywords `first` and/or `last`
   with an integer indicating the index of the first and/or last pixels to read.
 
-When at least one of the keywords `first` and/or `last` is not `nothing`, the dimensions
-of the destination `arr` are not considered. In any case, the number of elements of `arr`
-must be equal to the number of pixels to read.
+When at least one of the keywords `first` and/or `last` is not `nothing`, the dimensions of
+the destination `arr` are not considered. In any case, the number of elements of `arr` must
+be equal to the number of pixels to read.
 
-Keyword `anynull` may be specified with a reference to a boolean (`Ref{Bool}()`) to
-retrieve whether any of the read pixels is undefined.
+Keyword `anynull` may be specified with a reference to a boolean (`Ref{Bool}()`) to retrieve
+whether any of the read pixels is undefined.
 
-Keyword `null` may be specified with a reference to a value of the same type as the
-elements of the destination `arr` (`Ref{eltype(arr)}()`) to retrieve the value of
-undefined pixels. Unless reading a rectangular sub-image, keyword `null` may be set with
-an array of `Bool` of same size as `arr` and which will be set to `true` for undefined
-pixels and to `false` elsewhere.
+Keyword `null` may be specified with a reference to a value of the same type as the elements
+of the destination `arr` (`Ref{eltype(arr)}()`) to retrieve the value of undefined pixels.
+Unless reading a rectangular sub-image, keyword `null` may be set with an array of `Bool` of
+same size as `arr` and which will be set to `true` for undefined pixels and to `false`
+elsewhere.
 
 Output arrays `arr` and `null` must have contiguous elements, in other words, they must be
 *dense arrays*.
@@ -173,9 +170,9 @@ function read!(arr::DenseArray{T,L},
     len = length(arr)
     anynul = Ref{Cint}(anynull isa Ref{Bool} && len > 0)
     if first isa Tuple && last isa Tuple && null isa Union{Ref{T},Nothing}
-        # Read a rectangular sub-image. NOTE: First and last pxiels must both be specified
-        # because it is not possible to guess one given the other and the size of the
-        # array to read as it may have fewer dimensions than the image.
+        # Read a rectangular sub-image. NOTE: First and last pixels must both be specified
+        # because it is not possible to guess one given the other and the size of the array
+        # to read as it may have fewer dimensions than the image.
         if step === nothing
             ipix = NTuple(i -> one(Clong), Val(N))::NTuple{N,Clong}
         else
@@ -197,8 +194,8 @@ function read!(arr::DenseArray{T,L},
                 hdu, type, Ref(fpix), Ref(lpix), Ref(ipix), _null, arr, anynul, Ref{Status}(0)))
         end
     elseif first isa Union{Integer,Nothing} && last isa Union{Integer,Nothing} && step isa Nothing
-        # Read a range of consecutive pixels. NOTE: The indices of the first and last
-        # pixel to write can be both optional in this case.
+        # Read a range of consecutive pixels. NOTE: The indices of the first and last pixel
+        # to write can be both optional in this case.
         if first === nothing
             if last === nothing
                 size(arr) == dims || throw(DimensionMismatch(
@@ -236,8 +233,7 @@ function read!(arr::DenseArray{T,L},
     return arr
 end
 
-#----------------------------------------------------------------------------------------
-# WRITING FITS IMAGES
+#-------------------------------------------------------------------------- Writing images -
 
 """
     hdu = FitsImageHDU(file::FitsFile, dims...; bitpix=...)
@@ -249,8 +245,8 @@ type `T` and size `dims...`. If the FITS file is currently empty then a primary 
 created, otherwise a new image extension is appended to the file. Pixel type can be
 specified as a numeric type `T` or as an integer BITPIX code `bitpix`.
 
-An object to manage the new extension is returned which can be used to push header cards
-and then to write the data.
+An object to manage the new extension is returned which can be used to push header cards and
+then to write the data.
 
 If the array to be written is available, the element type and dimensions can be inferred
 from the array itself:
@@ -267,10 +263,10 @@ For example:
 
 will create a new Header Data Unit (HDU) storing array `arr` with 3 additional header
 records: one named `"KEY1"` with value `val1` and no comments, another named `"KEY2"` with
-value `val2` and comment string `str2`, and yet another one named `"KEY3"` with no value
-and with comment string `str3`. Note that special names `"COMMENT"`, `"HISTORY"`, and `""`
-indicating commentary entries have no associated, only a comment string, say `str` which
-can be specified as `str` or as `(nothing,str)`.
+value `val2` and comment string `str2`, and yet another one named `"KEY3"` with no value and
+with comment string `str3`. Note that special names `"COMMENT"`, `"HISTORY"`, and `""`
+indicating commentary entries have no associated, only a comment string, say `str` which can
+be specified as `str` or as `(nothing,str)`.
 
 """
 function FitsImageHDU{T,N}(file::FitsFile, dims::DimsLike) where {T,N}
@@ -340,9 +336,9 @@ end
     write(file::FitsFile, hdr, arr::AbstractArray) -> file
     write(file::FitsFile, hdr, nothing) -> file
 
-write a new FITS Image Extension in `file` with non-structural header keywords specified
-by `hdr` and data specified by array `arr` or by `nothing`. In the latter case, the data
-part is empty.
+write a new FITS Image Extension in `file` with non-structural header keywords specified by
+`hdr` and data specified by array `arr` or by `nothing`. In the latter case, the data part
+is empty.
 
 """
 function write(file::FitsFile, hdr::OptionalHeader,
@@ -360,28 +356,28 @@ end
 """
     write(hdu::FitsImageHDU, arr::AbstractArray{<:Number}) -> hdu
 
-writes all the elements of the array `arr` to the pixels of the FITS image extension of
-the header data unit `hdu`. The element of `arr` are converted to the type of the pixels.
-The default is to write the complete image pixels, so the size of the destination `arr`
-must be identical to the dimensions of the FITS image extension. This behavior may be
-changed by specifying another value than `nothing` for the keywords `first` and/or `last`:
+writes all the elements of the array `arr` to the pixels of the FITS image extension of the
+header data unit `hdu`. The element of `arr` are converted to the type of the pixels. The
+default is to write the complete image pixels, so the size of the destination `arr` must be
+identical to the dimensions of the FITS image extension. This behavior may be changed by
+specifying another value than `nothing` for the keywords `first` and/or `last`:
 
-* To write a rectangular sub-image, specify keywords `first` and `last` with the
-  coordinates of the first and last pixels to write as an `N`-tuple of integers, with `N`
-  the number of dimensions of the FITS image extension.
+* To write a rectangular sub-image, specify keywords `first` and `last` with the coordinates
+  of the first and last pixels to write as an `N`-tuple of integers, with `N` the number of
+  dimensions of the FITS image extension.
 
 * To write consecutive pixels, specify at least one of the keywords `first` and/or `last`
   with the index of the first and/or last pixels to write as an integer.
 
-When at least one of the keywords `first` and/or `last` is not `nothing`, the dimensions
-of `arr` are not considered. In any case, the number of elements of `arr` must be equal to
-the number of pixels to write.
+When at least one of the keywords `first` and/or `last` is not `nothing`, the dimensions of
+`arr` are not considered. In any case, the number of elements of `arr` must be equal to the
+number of pixels to write.
 
 Unless writing a rectangular sub-image, keyword `null` may be used to specify the value of
-undefined elements in `arr`. For integer FITS images, the FITS null value is defined by
-the `BLANK` keyword (an error is returned if the BLANK keyword doesn't exist). For
-floating point FITS images the special IEEE NaN (Not-a-Number) value will be written into
-the FITS file.
+undefined elements in `arr`. For integer FITS images, the FITS null value is defined by the
+`BLANK` keyword (an error is returned if the BLANK keyword doesn't exist). For floating
+point FITS images the special IEEE NaN (Not-a-Number) value will be written into the FITS
+file.
 
 """ write(::FitsImageHDU, ::Array)
 
@@ -394,9 +390,9 @@ function write(hdu::FitsImageHDU{<:Any,N},
     dims = get_img_size(hdu)
     len = length(arr)
     if first isa Tuple && last isa Tuple && null isa Nothing
-        # Write a rectangular sub-image. NOTE: First and last pxiels must both be
-        # specified because it is not possible to guess one given the other and the size
-        # of the array to write as it may have fewer dimensions than the image.
+        # Write a rectangular sub-image. NOTE: First and last pixels must both be specified
+        # because it is not possible to guess one given the other and the size of the array
+        # to write as it may have fewer dimensions than the image.
         fpix = as(NTuple{N,Clong}, first)
         lpix = as(NTuple{N,Clong}, last)
         npix = 1
@@ -417,14 +413,14 @@ function write(hdu::FitsImageHDU{<:Any,N},
         if first === nothing
             if last === nothing
                 size(arr) == dims || throw(DimensionMismatch(
-                    "image extension and input array have differente sizes"))
+                    "image extension and input array have different sizes"))
                 fpix = 1
             else first === nothing
                 fpix = Int(fpix, len + 1 - last)::Int
             end
         else
             last === nothing || last + 1 - first == len || throw(DimensionMismatch(
-                "specified pixel range and input array have differente lengths"))
+                "specified pixel range and input array have different lengths"))
             fpix = Int(first)::Int
         end
         1 ≤ fpix && fpix - 1 + len ≤ prod(dims) || bad_argument("out of range interval of pixels")

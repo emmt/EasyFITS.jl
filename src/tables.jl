@@ -1,5 +1,4 @@
-#----------------------------------------------------------------------------------------
-# FITS TABLES PROPERTIES
+#----------------------------------------------------------------------- Tables properties -
 
 Base.propertynames(::FitsTableHDU) = (:nrows, :rows, :first_row, :last_row,
                                       :ncols, :columns, :first_column, :last_column,
@@ -69,8 +68,7 @@ function get_colnames(hdu::FitsTableHDU)
     return names
 end
 
-#----------------------------------------------------------------------------------------
-# READING FITS TABLES
+#--------------------------------------------------------------------- Reading FITS tables -
 
 columns_to_read(hdu::FitsTableHDU, cols::Columns) = cols
 columns_to_read(hdu::FitsTableHDU, cols::Colon) = hdu.columns
@@ -89,8 +87,8 @@ last_row_to_read(hdu::FitsTableHDU, rows::Colon) = hdu.last_row
     hdu.column_units(col; case=false) -> str
 
 yield the units for the column `col` of FITS table `hdu`. Keyword `case` specifies whether
-the case of letters matters when `col` is a (symbolic) name. The result is always a
-string, possibly empty.
+the case of letters matters when `col` is a (symbolic) name. The result is always a string,
+possibly empty.
 
 """
 function get_units(hdu::FitsTableHDU, col::ColumnIdent; case::Bool = false)
@@ -104,8 +102,8 @@ end
     hdu.column_number(col; case=false) -> num
 
 yields the column number of column matching `col` (a string, a symbol, or an integer) in
-FITS table extension of `hdu`. Keyword `case` specifies whether the case of letters
-matters if `col` is a string or a symbol.
+FITS table extension of `hdu`. Keyword `case` specifies whether the case of letters matters
+if `col` is a string or a symbol.
 
 """
 @inline function get_colnum(hdu::FitsTableHDU, col::Integer; case::Bool = false)
@@ -132,8 +130,8 @@ Base.checkbounds(hdu::FitsTableHDU, col::Integer) =
 
 yields the column name and number of column matching `col` (a string, a symbol, or an
 integer) in FITS table extension of `hdu`. Keyword `case` specifies whether the case of
-letters matters if `col` is a string or a symbol. If `case` is false, the column name
-`str` is converted to upper-case letters.
+letters matters if `col` is a string or a symbol. If `case` is false, the column name `str`
+is converted to upper-case letters.
 
 """
 function get_colname(hdu::FitsTableHDU, col::Integer; case::Bool = false)
@@ -186,24 +184,23 @@ end
 """
     read([R=Array,] hdu::FitsTableHDU, col[, rows]; kwds...) -> vals::R
 
-reads a single column `col` of the FITS table extension in `hdu` and returns its values
-and, possibly, its units.
+reads a single column `col` of the FITS table extension in `hdu` and returns its values and,
+possibly, its units.
 
 The column `col` may be specified by its name or by its number. If `col` is a string or a
 symbol, keyword `case` specifies whether the case of letters matters (`case = false` by
 default).
 
 Optional leading argument `R` is to specify the type of the result which can be an array
-type, to only retrieve the column values, or a tuple of array and string types, to
-retrieve the column values and their units.
+type, to only retrieve the column values, or a tuple of array and string types, to retrieve
+the column values and their units.
 
 Optional argument `rows` is to specify which rows to read. It can be an integer to read a
 single row, a unit range of integers to read these rows, or a colon `:` to read all rows
 (the default). Use `hdu.first_row` and `hdu.last_row` to retrieve the first and last row
 numbers.
 
-See [`read!`](@ref read!(::Array,::FitsTableHDU,::String)) for the other possible
-keywords.
+See [`read!`](@ref read!(::Array,::FitsTableHDU,::String)) for the other possible keywords.
 
 """ read(::FitsTableHDU, ::String)
 
@@ -464,14 +461,14 @@ is_null(c::Char) = c == '\0'
 
 reads several columns of the FITS table extension in `hdu` as a dictionary indexed by the
 column names. The columns to read can be specified by `cols` which may be a single column
-name/index, a tuple/range/vector of column names/numbers, or a colon `:` to read all
-columns (the default). Column names may be strings or symbols (not a mixture of these).
-The rows to read can be specified by `rows` as a single row index, a unit range of row
-numbers, or a colon `:` to read all rows (the default).
+name/index, a tuple/range/vector of column names/numbers, or a colon `:` to read all columns
+(the default). Column names may be strings or symbols (not a mixture of these). The rows to
+read can be specified by `rows` as a single row index, a unit range of row numbers, or a
+colon `:` to read all rows (the default).
 
-Keyword `rename` is to specify a function to change column names. If unspecified, the
-colmun names are left unchanged if keyword `case` is true and converted to uppercase
-letters otherwise.
+Keyword `rename` is to specify a function to change column names. If unspecified, the column
+names are left unchanged if keyword `case` is true and converted to uppercase letters
+otherwise.
 
 Keyword `units` can be used to indicate whether to retrieve the units of the columns. If
 `units` is `String`, the values of the dictionary will be 2-tuples `(data,units)` with
@@ -514,8 +511,8 @@ end
 """
     read!(dict, hdu::FitsTableHDU[, cols[, rows]]) -> dict
 
-merges the contents of the dictionary `dict` with the column(s) `cols` read from the
-FITS table extension in `hdu` and returns the dictionary.
+merges the contents of the dictionary `dict` with the column(s) `cols` read from the FITS
+table extension in `hdu` and returns the dictionary.
 
 Previous contents of `dict` is not erased, call `read!(empty!(dict),hdu,...)` to erase any
 contents prior to reading.
@@ -546,20 +543,20 @@ end
 """
     read(Vector, hdu::FitsTableHDU[, cols[, rows]]) -> vec::Vector
 
-reads some columns of the FITS table extension in `hdu` as a vector. The columns to read
-can be specified by `cols` which may be a single column name/index, a tuple/range/vector
-of column names/numbers, or a colon `:` to read all columns (the default). Column names
-may be strings or symbols (not a mixture of these). The rows to read can be specified by
-`rows` as a single row index, a unit range of row numbers, or a colon `:` to read all rows
-(the default). `V` is the type of the result.
+reads some columns of the FITS table extension in `hdu` as a vector. The columns to read can
+be specified by `cols` which may be a single column name/index, a tuple/range/vector of
+column names/numbers, or a colon `:` to read all columns (the default). Column names may be
+strings or symbols (not a mixture of these). The rows to read can be specified by `rows` as
+a single row index, a unit range of row numbers, or a colon `:` to read all rows (the
+default). `V` is the type of the result.
 
 Keyword `units` can be used to indicate whether to retrieve the units of the columns. If
-`units` is `String`, the elements of the result will be 2-tuples `(data,units)` with
-`data` the column data and `units` the column units as a string. Otherwise, if
-`units=nothing` (the default), the elements of the result will just be the columns data.
+`units` is `String`, the elements of the result will be 2-tuples `(data,units)` with `data`
+the column data and `units` the column units as a string. Otherwise, if `units=nothing` (the
+default), the elements of the result will just be the columns data.
 
-To avoid the `units` keyword and allow more control on the type of the result, the
-following 2 methods are provided:
+To avoid the `units` keyword and allow more control on the type of the result, the following
+2 methods are provided:
 
     read(Vector{<:Array},               hdu[, cols[, rows]])
     read(Vector{Tuple{<:Array,String}}, hdu[, cols[, rows]])
@@ -605,16 +602,16 @@ The column `col` may be specified by its name or by its number. If `col` is a st
 symbol, keyword `case` indicates whether the case of letters matters (`case = false` by
 default).
 
-Keyword `first` may be specified with the index of the first row to read. By default,
-`first = hdu.first_row` and reading starts at the first row of the table.
+Keyword `first` may be specified with the index of the first row to read. By default, `first
+= hdu.first_row` and reading starts at the first row of the table.
 
-Keyword `anynull` may be specified with a reference to a boolean (`Ref{Bool}()`) to
-retrieve whether any of the read values is undefined.
+Keyword `anynull` may be specified with a reference to a boolean (`Ref{Bool}()`) to retrieve
+whether any of the read values is undefined.
 
-Keyword `null` may be specified with a reference to a value of the same type as the
-elements of the destination `arr` (`Ref{eltype(arr)}()`) to retrieve the value of
-undefined values. Keyword `null` may also be set with an array of `Bool` of same size as
-`arr` and which will be set to `true` for undefined values and to `false` elsewhere.
+Keyword `null` may be specified with a reference to a value of the same type as the elements
+of the destination `arr` (`Ref{eltype(arr)}()`) to retrieve the value of undefined values.
+Keyword `null` may also be set with an array of `Bool` of same size as `arr` and which will
+be set to `true` for undefined values and to `false` elsewhere.
 
 Output arrays `arr` and `null` must have contiguous elements, in other words, they must be
 *dense arrays*.
@@ -680,8 +677,7 @@ for T in NUMERIC_TYPES
     end
 end
 
-#----------------------------------------------------------------------------------------
-# WRITING FITS TABLES
+#--------------------------------------------------------------------- Writing FITS tables -
 
 """
     hdu = FitsTableHDU(file, cols...)
@@ -729,9 +725,9 @@ to write column data. Typically:
     write(hdu, col1 => arr1) # write a first column
     ...                      # write other columns
 
-where `key1 => val1`, `key2 => val2`, etc. specify header cards, while `col1 => arr1`,
-`col2 => arr2`, etc. specify columns names and associated data. Such a table may be
-created in a single call:
+where `key1 => val1`, `key2 => val2`, etc. specify header cards, while `col1 => arr1`, `col2
+=> arr2`, etc. specify columns names and associated data. Such a table may be created in a
+single call:
 
     write(file, [key1 => val1, key2 => val2, ...], [col1 => arr1, col2 => arr2, ...])
 
@@ -752,32 +748,32 @@ end
           first=hdu.first_row, case=false, null=nothing) -> hdu
 
 writes columns `cols...` into the FITS table extension of `hdu`. Columns are specified as
-pairs like `col => vals` or `col => (vals, units)` with `col` the column name/number,
-`vals` an array of column values, and `units` optional units. The following examples are
-equivalent (assuming `COUNT`, `WEIGHT`, and `TIME` are the respective names of the 1st,
-2nd, and 3rd columns):
+pairs like `col => vals` or `col => (vals, units)` with `col` the column name/number, `vals`
+an array of column values, and `units` optional units. The following examples are equivalent
+(assuming `COUNT`, `WEIGHT`, and `TIME` are the respective names of the 1st, 2nd, and 3rd
+columns):
 
     write(hdu, "COUNT" => cnt, "WEIGHT" => (wgt, "kg"), "TIME" => (t, "s"))
     write(hdu, :COUNT => cnt, :WEIGHT => (wgt, "kg"), :TIME => (t, "s"))
     write(hdu, 1 => cnt, 2 => (wgt, "kg"), 3 => (t, "s"))
 
-where `cnt`, `wgt`, and `t` are column data. Note that columns can be specified in any
-order and that writing columns may be split in several calls to `write`.
+where `cnt`, `wgt`, and `t` are column data. Note that columns can be specified in any order
+and that writing columns may be split in several calls to `write`.
 
-Columns `cols...` can also be specified as a vector or a tuple of such pairs, or as a
-named tuple. The above examples may also be written as:
+Columns `cols...` can also be specified as a vector or a tuple of such pairs, or as a named
+tuple. The above examples may also be written as:
 
     write(hdu, ["COUNT" => cnt, "WEIGHT" => (wgt, "kg"), "TIME" => (t, "s")])
     write(hdu, (COUNT = cnt, WEIGHT = (wgt, "kg"), TIME = (t, "s")))
 
-For a given column, if `col` is a column name, keyword `case` indicates whether the case
-of letters matters (default is `false`) and, if units are specified, they must match the
-value of the FITS keyword `"TUNIT\$n"` in the header of `hdu` with `n` the column number.
+For a given column, if `col` is a column name, keyword `case` indicates whether the case of
+letters matters (default is `false`) and, if units are specified, they must match the value
+of the FITS keyword `"TUNIT\$n"` in the header of `hdu` with `n` the column number.
 
 Column values are converted as needed and are written starting at the row specified by
-`first`. The leading dimensions of `vals` should be the same as those specified by the
-FITS keyword `"TDIM\$n"` (with `n` the column number) in the header of `hdu` and the
-remaining last dimension, if any, corresponds to the *row* index of the table.
+`first`. The leading dimensions of `vals` should be the same as those specified by the FITS
+keyword `"TDIM\$n"` (with `n` the column number) in the header of `hdu` and the remaining
+last dimension, if any, corresponds to the *row* index of the table.
 
 Keyword `null` may be used to specify the value of undefined elements in `arr`.
 
@@ -882,8 +878,8 @@ function write(hdu::FitsTableHDU, cols::Union{Tuple{Vararg{Pair{<:ColumnIdent}}}
                                               AbstractVector{<:Pair{<:ColumnIdent}},
                                               NamedTuple}; kwds...)
     for (key, val) in pairs_producer(cols)
-        # NOTE: The pair `key => val` must be rebuilt to have a more specific
-        #       type than `Any` for `val`.
+        # NOTE: The pair `key => val` must be rebuilt to have a more specific type than
+        #       `Any` for `val`.
         write(hdu, key => val; kwds...)
     end
     return hdu
@@ -895,8 +891,8 @@ end
 creates a FITS table extension in `file` with additional keywords given by `header` and
 columns `cols...`. The columns `cols` are specified as a collection of pairs like `key =>
 vals` or `key => (vals, units)` with `key` the (symbolic) name of the column, `vals` its
-values, and `units` its optional units. The collection can be a dictionary, a named tuple,
-a vector of pairs, or a tuple of pairs.
+values, and `units` its optional units. The collection can be a dictionary, a named tuple, a
+vector of pairs, or a tuple of pairs.
 
 """
 function write(file::FitsFile, header::OptionalHeader, cols::TableData; kwds...)
