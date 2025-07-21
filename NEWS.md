@@ -4,10 +4,9 @@
 
 ## Changed
 
-- `Clang.jl` is no longer used to generate the wrapper code. The new generator is a simple
-  parser of CFITSIO header files, it is faster and has no dependencies other than `CFITSIO_jll`.
-
-## Version 0.6.2
+- [Clang.jl](https://github.com/JuliaInterop/Clang.jl) is no longer used to generate the
+  wrapper code. The new generator is a simple parser of CFITSIO header files, it is faster
+  and has no dependencies other than `CFITSIO_jll`.
 
 ## New features
 
@@ -23,7 +22,7 @@
 
 - `merge!(dict::AbstractDict,hdu::FitsTableHDU,...)` to merge some columns of the FITS
   table in `hdu` with the contents of `dict` is no longer supported as it is inconsistent
-  with the ususal meaning of `merge!`. Call `read!(dict,hdu,...)` instead.
+  with the usual meaning of `merge!`. Call `read!(dict,hdu,...)` instead.
 
 - `push!(vec::AbstractVector,hdu::FitsTableHDU,...)` to append some columns of the FITS
   table in `hdu` to the vector `vec` is no longer supported as it is inconsistent with the
@@ -52,8 +51,6 @@ implement the usual behavior of a base method:
 
 - Deprecate `write(FitsFile,filename,...)` and `write!(FitsFile,filename,...)` in favor of
   `writefits(filename,...)` and `writefits!(filename,...)`.
-
-- Deprecate `openfits` method in favor of constructor `FitsFile`.
 
 
 ## Version 0.6.1

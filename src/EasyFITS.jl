@@ -34,6 +34,7 @@ export
     FitsFile,
     readfits,
     readfits!,
+    openfits,
     write!,
     writefits,
     writefits!

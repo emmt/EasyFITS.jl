@@ -1,13 +1,39 @@
 #------------------------------------------------------------------------- Open FITS files -
 
 """
+    file = openfits(filename, mode="r"; extended=false)
+    file = FitsFile(filename, mode="r"; extended=false)
+
+open FITS file `filename` for reading if `mode` is `"r"`, for reading and writing if mode is
+"r+", or creates a new file if mode is `"w"` or `"w!"`. File must not exists if mode is
+`"w"`. File is overwritten if it exists and mode is `"w!"`. The file is automatically closed
+when the `file` object is finalized, it is however necessary to call [`close(file)`](@ref
+close(::FitsFile)) or [`flush(file)`](@ref flush(::FitsFile)) when `mode` is `"w"` or `"w!"`
+to make sure its content is up to date.
+
+Keyword `extended` specifies whether to use extended file name syntax featured by the
+CFITSIO library.
+
+"""
+openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...) =
+    FitsFile(filename, mode; kwds...)
+
+"""
+    openfits(func::Function, filename, mode="r"; kwds...)
+    FitsFile(func::Function, filename, mode="r"; kwds...)
+
+execute `func(file)` with `file` the FITS file `filename` open for `mode` access and close
+`file` even though `func` may throw an exception. This is typically used with the `do`-block
+syntax:
+
     FitsFile(filename, mode="r"; kwds...) do file
         ... # use file
     end
 
-do-block syntax to open a FITS file which is automatically closed at the end of the block.
-
 """
+openfits(func::Function, filename::AbstractString, mode::AbstractString = "r"; kwds...) =
+    FitsFile(func, filename, mode; kwds...)
+
 function FitsFile(func::Function, filename::AbstractString,
                   mode::AbstractString = "r"; kwds...)
     file = FitsFile(filename, mode; kwds...)
