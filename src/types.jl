@@ -9,6 +9,10 @@ const SubArrayIndices{N} = NTuple{N,SubArrayIndex}
 # the correct type) and tuples of integers (if passed by reference).
 const DimsLike = Union{Tuple{Vararg{Integer}},AbstractVector{<:Integer}}
 
+if !isdefined(Base, :Memory)
+    const Memory{T} = Vector{T}
+end
+
 """
     EasyFITS.Header
 

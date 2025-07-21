@@ -118,7 +118,7 @@ Examples:
 
 """
 function Base.getindex(hdu::FitsHDU, key::Union{CardName,Integer})
-    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    buf = Memory{UInt8}(undef, CFITSIO.FLEN_CARD)
     status = @inbounds try_read!(buf, hdu, key)
     if iszero(status)
         return parse_cstring(FitsCard, buf)
@@ -130,7 +130,7 @@ function Base.getindex(hdu::FitsHDU, key::Union{CardName,Integer})
 end
 
 function Base.get(hdu::FitsHDU, key::Union{CardName,Integer}, def)
-    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    buf = Memory{UInt8}(undef, CFITSIO.FLEN_CARD)
     status = @inbounds try_read!(buf, hdu, key)
     if iszero(status)
         return parse_cstring(FitsCard, buf)
@@ -143,7 +143,7 @@ end
 
 Base.haskey(hdu::FitsHDU, key::Integer) = key ∈ keys(hdu)
 function Base.haskey(hdu::FitsHDU, key::CardName)
-    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    buf = Memory{UInt8}(undef, CFITSIO.FLEN_CARD)
     status = @inbounds try_read!(buf, hdu, key)
     iszero(status) && return true
     status == CFITSIO.KEY_NO_EXIST && return false
@@ -154,13 +154,19 @@ end
                            key::Union{CardName,Integer})
     length(buf) ≥ CFITSIO.FLEN_CARD || error("buffer is too small")
     if !(key isa Integer)
-        return CFITSIO.fits_read_card(hdu, key, buf, Ref{Status}(0))
+        GC.@preserve buf begin
+            return CFITSIO.fits_read_card(hdu, key, unsafe_cstring(buf), Ref{Status}(0))
+        end
     elseif key ≥ firstindex(hdu)
-        return CFITSIO.fits_read_record(hdu, key, buf, Ref{Status}(0))
+        GC.@preserve buf begin
+            return CFITSIO.fits_read_record(hdu, key, unsafe_cstring(buf), Ref{Status}(0))
+        end
     else
         return CFITSIO.KEY_OUT_BOUNDS
     end
 end
+
+unsafe_cstring(buf::AbstractVector{T}) where {T<:Union{UInt8,Int8}} = Cstring(pointer(buf))
 
 # This function is needed to truncate C-string at 1st null, we take the opportunity of
 # this filtering to strip trailing spaces.
@@ -191,10 +197,13 @@ function FITSHeaders.FitsHeader(hdu::FitsHDU)
     file = get_file_at(hdu)
     len = length(hdu)
     hdr = sizehint!(FitsHeader(), len)
-    buf = SmallVector{CFITSIO.FLEN_CARD,UInt8}(undef)
+    buf = Memory{UInt8}(undef, CFITSIO.FLEN_CARD)
     status = Ref{Status}(0)
     @inbounds for i in 1:len
-        check(CFITSIO.fits_read_record(file, i, buf, status))
+        GC.@preserve buf begin
+            CFITSIO.fits_read_record(file, i, unsafe_cstring(buf), status)
+        end
+        check(status)
         push!(hdr, parse_cstring(FitsCard, buf))
     end
     return hdr

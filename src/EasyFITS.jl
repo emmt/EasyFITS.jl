@@ -68,8 +68,6 @@ let file = joinpath(@__DIR__, "..", "deps", "deps.jl")
     include(file)
 end
 include("types.jl")
-include("SmallVectors.jl")
-using .SmallVectors
 include("utils.jl")
 include("files.jl")
 include("hdus.jl")
