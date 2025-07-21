@@ -338,14 +338,22 @@ end
 
 """
     write(file::FitsFile, hdr, arr::AbstractArray) -> file
+    write(file::FitsFile, hdr, nothing) -> file
 
-writes a new FITS Image Extension in `file` with non-structural header keywords specified
-by `hdr` and data specified by array `arr`.
+write a new FITS Image Extension in `file` with non-structural header keywords specified
+by `hdr` and data specified by array `arr` or by `nothing`. In the latter case, the data
+part is empty.
 
 """
 function write(file::FitsFile, hdr::OptionalHeader,
                arr::AbstractArray{T,N}) where {T<:Number,N}
     write(merge!(FitsImageHDU{T,N}(file, size(arr)), hdr), arr)
+    return file # returns the file not the HDU
+end
+
+# Write a new HDU with no data.
+function write(file::FitsFile, hdr::OptionalHeader, ::Nothing)
+    merge!(FitsImageHDU(file), hdr)
     return file # returns the file not the HDU
 end
 
