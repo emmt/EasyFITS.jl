@@ -8,7 +8,10 @@
   wrapper code. The new generator is a simple parser of CFITSIO header files, it is faster
   and has no dependencies other than `CFITSIO_jll`.
 
-## New features
+- Pass all [`Aqua.jl`](https://github.com/JuliaTesting/Aqua.jl) tests.
+
+
+## Added
 
 - `hdu = file[pred]` can be used to retrieve the first HDU of the FITS `file` for which
   predicate function `pred` is true.

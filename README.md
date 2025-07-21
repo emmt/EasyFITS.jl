@@ -5,6 +5,7 @@
 [![Build Status](https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/EasyFITS.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/EasyFITS.jl?svg=true)](https://ci.appveyor.com/project/emmt/EasyFITS-jl)
 [![Coverage](https://codecov.io/gh/emmt/EasyFITS.jl/graph/badge.svg?token=7QTvjQqn5O)](https://codecov.io/gh/emmt/EasyFITS.jl)
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 `EasyFITS` is a [Julia](https://julialang.org/) package designed to make it easier to read
 and write data in [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) format without
