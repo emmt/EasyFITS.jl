@@ -70,7 +70,9 @@ function Base.isequal(::FitsLogic, s1::AbstractString, s2::AbstractString)
     end
     return true
 end
-Base.isequal(::FitsLogic, x) = y -> isequal(FitsLogic(), x, y)
+for type in (:Missing, :Any)
+    @eval Base.isequal(::FitsLogic, x::$type) = y -> isequal(FitsLogic(), x, y)
+end
 
 """
     EasyFITS.get_field_index(T::Type, name::Union{AbstractSring,Symbol}) -> i::Int

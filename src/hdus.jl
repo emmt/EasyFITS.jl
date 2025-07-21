@@ -129,15 +129,18 @@ function Base.getindex(hdu::FitsHDU, key::Union{CardName,Integer})
     end
 end
 
-function Base.get(hdu::FitsHDU, key::Union{CardName,Integer}, def)
-    buf = Memory{UInt8}(undef, CFITSIO.FLEN_CARD)
-    status = @inbounds try_read!(buf, hdu, key)
-    if iszero(status)
-        return parse_cstring(FitsCard, buf)
-    elseif status == (key isa Integer ? CFITSIO.KEY_OUT_BOUNDS : CFITSIO.KEY_NO_EXIST)
-        return def
-    else
-        throw(FitsError(status))
+for (type, code) in (:Integer  => CFITSIO.KEY_OUT_BOUNDS,
+                     :CardName => CFITSIO.KEY_NO_EXIST)
+    @eval function Base.get(hdu::FitsHDU, key::$type, def)
+        buf = Memory{UInt8}(undef, CFITSIO.FLEN_CARD)
+        status = @inbounds try_read!(buf, hdu, key)
+        if iszero(status)
+            return parse_cstring(FitsCard, buf)
+        elseif status == $code
+            return def
+        else
+            throw(FitsError(status))
+        end
     end
 end
 
