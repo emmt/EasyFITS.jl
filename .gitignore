@@ -1,4 +1,5 @@
 *~
+*.bak
 *.jl.cov
 *.jl.mem
 build/

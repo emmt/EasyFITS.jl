@@ -1,5 +1,11 @@
 # Things to do in EasyFITS
 
+- Document how to:
+  - Copy a HDU from a file to another.
+  - Change column name.
+  - Change keyword name.
+  - Edit keyword comment.
+
 - Add properties `hdu.column_eltype`, `hdu.cell_size`, `hdu.cell_ndims`,
   `hdu.cell_eltype` or alike.
 
@@ -49,3 +55,18 @@
   `HIERARCH` keywords. Equal sign `=` (hexadecimal code `0x3D`) followed by a
   space is used to indicate a keyword value. A slash `/` (hexadecimal code
   `0x2F`) is used to separate value and comment.
+
+
+## Examples
+
+Create an empty Image HDU with a header:
+
+```julia
+f = openfits(filename, "w!);
+hdu = FitsImageHDU(f); # same as: hdu = FitsImageHDU{UInt8,0}(f,());
+hdu[key_1] = (value_1, "comment_1");
+hdu[key_2] = (value_2, "comment_2");
+# etc.
+hdu = ... # Create anothe HDU
+Base.write(f::FitsFile, hdr::HeaderLike, nothing)
+```
