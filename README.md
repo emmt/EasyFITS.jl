@@ -16,13 +16,13 @@ sacrificing performances, flexibility, or readability.
 The full documentation is available [on-line][doc-dev-url].
 
 The *Flexible Image Transport System* (or
-[FITS](https://fits.gsfc.nasa.gov/fits_standard.html) for short) is a file
-format widely used in Astronomy to store many kinds of data (images, tables,
-etc.) and metadata. FITS files consist in a concatenation of Header Data Units
-(HDUs) which each have a header part followed by a data part.
+[FITS](https://fits.gsfc.nasa.gov/fits_standard.html) for short) is a file format widely
+used in Astronomy to store many kinds of data (images, tables, etc.) and metadata. FITS
+files consist in a concatenation of Header Data Units (HDUs) which each have a header part
+followed by a data part.
 
-The following example demonstrates how to write a FITS file with 3 HDUs, an
-*Image Extension* and two *Table Extensions*:
+The following example demonstrates how to write a FITS file with 3 HDUs, an *Image
+Extension* and two *Table Extensions*:
 
 ```julia
 using Dates, EasyFITS
@@ -73,16 +73,16 @@ writefits(filename,
            :xy => (hcat(x,y)', "V")])
 ```
 
-Each HDU has a header part (the metadata) and a data part which is reflected by the pairs
-of arguments after`filename`, the name of the file, in the above call to `writefits`. The
+Each HDU has a header part (the metadata) and a data part which is reflected by the pairs of
+arguments after`filename`, the name of the file, in the above call to `writefits`. The
 headers are provided by collections (a vector for the 1st one, a tuple for the 2nd one) of
-pairs or by a named tuples (3rd one) associating a keyword with a value and a comment
-(both optional). In a FITS *Image Extension*, the data can be any real-valued Julia array.
-In a FITS *Table Extension* , the data part is provided by a collection of column names
-associated with columns values and optional units. The columns in a FITS table must have
-the same trailing dimension (interpreted as the rows of the table) but may have different
-leading dimensions corresponding to the sizes of the column cells. In the above example,
-the `"Position"` column has 3 values per cell (presumably the 3D coordinates), while other
+pairs or by a named tuples (3rd one) associating a keyword with a value and a comment (both
+optional). In a FITS *Image Extension*, the data can be any real-valued Julia array. In a
+FITS *Table Extension* , the data part is provided by a collection of column names
+associated with columns values and optional units. The columns in a FITS table must have the
+same trailing dimension (interpreted as the rows of the table) but may have different
+leading dimensions corresponding to the sizes of the column cells. In the above example, the
+`"Position"` column has 3 values per cell (presumably the 3D coordinates), while other
 columns have a single value per cell. Note that the 1st HDU, so-called *Primary HDU*, of a
 FITS file must be a *Fits Image* (possibly empty), not a *FITS Table*.
 
@@ -122,16 +122,16 @@ pkg"registry add https://github.com/emmt/EmmtRegistry"
 pkg"add EasyFITS"
 ```
 
-Adding the `General` registry (2nd line of the above example) is mandatory to have access
-to the official Julia packages if you never have used the package manager before.
+Adding the `General` registry (2nd line of the above example) is mandatory to have access to
+the official Julia packages if you never have used the package manager before.
 
 
 ## Related projects
 
 The [FITSIO](https://github.com/JuliaAstro/FITSIO.jl) package is another alternative to
-read/write FITS files. `EasyFITS` is no longer based on `FITSIO` and now exploits
-[Clang.jl](https://github.com/JuliaInterop/Clang.jl) to directly call the functions of the [CFITSIO](https://github.com/JuliaAstro/CFITSIO.jl) library
-and [`FITSHeaders`](https://github.com/emmt/FITSHeaders.jl) to parse metadata (FITS header
+read/write FITS files. `EasyFITS` is no longer based on `FITSIO` and now directly call the
+functions of the CFITSIO library as provided by `CFITSIO_jll` artifact and uses
+[`FITSHeaders`](https://github.com/emmt/FITSHeaders.jl) to parse metadata (FITS header
 cards).
 
 
