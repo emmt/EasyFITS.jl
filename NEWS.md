@@ -28,6 +28,9 @@
   table in `hdu` to the vector `vec` is no longer supported as it is inconsistent with the
   usual meaning of `push!`. Call `append!(vec, read(Vector,hdu,...))` instead.
 
+- To avoid type-piracy, `read(FitsHeader, filename)` is replaced by `readfits(FitsHeader,
+  filename)`.
+
 
 ### Deprecations
 

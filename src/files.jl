@@ -47,19 +47,18 @@ end
 #------------------------------------------------------------------------- Read FITS files -
 
 """
-    read(FitsHeader, filename; ext=1, kwds...) -> hdr::FitsHeader
+    readfits(FitsHeader, filename; ext=1, kwds...) -> hdr::FitsHeader
 
-yields the header of the `ext` extension of the FITS file `filename`. See
-[`FitsFile`](@ref) for the possible keywords `kwds...`.
+yields the header of the `ext` extension of the FITS file `filename`. See [`FitsFile`](@ref)
+for the possible keywords `kwds...`.
 
 """
-function read(::Type{FitsHeader}, filename::AbstractString;
-              ext::Union{AbstractString,Integer} = 1, kwds...)
+function readfits(::Type{FitsHeader}, filename::AbstractString;
+                  ext::Union{AbstractString,Integer} = 1, kwds...)
     FitsFile(filename, "r"; kwds...) do file
         FitsHeader(file[ext])
     end
 end
-
 
 """
     readfits([R::Type,] filename, args...; ext=1, extended=false, kwds...) -> data
