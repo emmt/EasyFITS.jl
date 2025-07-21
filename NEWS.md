@@ -1,8 +1,8 @@
 # User visible changes for EasyFITS
 
-## Unreleased
+## Version 0.7.0 [2025-07-21]
 
-## Changed
+### Changed
 
 - [Clang.jl](https://github.com/JuliaInterop/Clang.jl) is no longer used to generate the
   wrapper code. The new generator is a simple parser of CFITSIO header files, it is faster
@@ -11,7 +11,7 @@
 - Pass all [`Aqua.jl`](https://github.com/JuliaTesting/Aqua.jl) tests.
 
 
-## Added
+### Added
 
 - `hdu = file[pred]` can be used to retrieve the first HDU of the FITS `file` for which
   predicate function `pred` is true.

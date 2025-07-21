@@ -20,7 +20,7 @@ The *Flexible Image Transport System* (or
 [FITS](https://fits.gsfc.nasa.gov/fits_standard.html) for short) is a file format widely
 used in Astronomy to store many kinds of data (images, tables, etc.) and metadata. FITS
 files consist in a concatenation of Header Data Units (HDUs) which each have a header part
-followed by a data part.
+(with textual metadata) followed by a data part.
 
 The following example demonstrates how to write a FITS file with 3 HDUs, an *Image
 Extension* and two *Table Extensions*:
