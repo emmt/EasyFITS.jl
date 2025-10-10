@@ -365,10 +365,11 @@ function generate_wrappers(io::IO; incdir::AbstractString = default_incdir, kwds
     # Preamble.
     print(io,
           "module CFITSIO\n",
-          "\nusing CFITSIO_jll\n",
-          "\n# Dynamic library.\n",
-          "const libcfitsio = CFITSIO_jll.libcfitsio\n",
-          "\n# Opaque structure.\n",
+          "\n",
+          "# Dynamic library.\n",
+          "using CFITSIO_jll: libcfitsio\n",
+          "\n",
+          "# Opaque structure.\n",
           "abstract type fitsfile end\n")
 
     # Parse <fitsio.h> using regular expressions.
