@@ -19,7 +19,7 @@ const skip_names = Set(["_FITSIO_H", "CFITS_API",
                        # Iterators.
                        "InputCol", "InputOutputCol", "OutputCol", "TemporaryCol"])
 
-# Table of type correspondances. It should be valid for different architectures.
+# Table of type correspondences. It should be valid for different architectures.
 const TYPES = Dict(
     # `fitsfile` is an opaque structure (only its address is needed).
     "fitsfile" => "fitsfile",
@@ -49,8 +49,8 @@ const TYPES = Dict(
     "size_t" => "Csize_t",
     "void" => "Cvoid")
 
-# List of reserved keywords in Julia. Note that `abstract`, `mutable`, or `type` are not
-# in this list as they must be combined with another keyword.
+# List of reserved keywords in Julia. Note that `abstract`, `mutable`, or `type` are not in
+# this list as they must be combined with another keyword.
 const RESERVED = Set([
     "baremodule",
     "begin",
