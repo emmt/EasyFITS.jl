@@ -1,7 +1,0 @@
-[deps]
-CFITSIO_jll = "b3e40c51-02ae-5482-8a39-3ace5868dcf4"
-Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
-
-[compat]
-CFITSIO_jll = "4.3"
-Libdl = "<0.0.1, 1"

@@ -34,6 +34,23 @@ check(status::Ref{Status}) = check(status[])
 check(status::Status) = status == 0 ? nothing : throw(FitsError(status))
 check(ptr::Ptr{CFITSIO.fitsfile}) = isnull(ptr) ? bad_argument("FITS file has been closed") : ptr
 
+Base.zero(x::Status) = zero(typeof(x))
+Base.zero(::Type{Status}) = Status(0)
+Base.Integer(x::Status) = x.code
+for T in (:Int32, :Int64)
+    @eval Base.$T(x::Status) = convert($T, x)
+end
+Base.convert(::Type{T}, x::Status) where {T<:Integer} = convert(T, Integer(x))
+Base.convert(::Type{Status}, x::Status) = x
+Base.convert(::Type{Status}, x::Integer) = Status(x)
+for f in (:(==), :isequal, :(<), :(<=), :(>), :(>=))
+    @eval begin
+        Base.$f(a::Status, b::Status) = $f(Integer(a), Integer(b))
+        Base.$f(a::Status, b::Integer) = $f(Integer(a), b)
+        Base.$f(a::Integer, b::Status) = $f(a, Integer(b))
+    end
+end
+
 bad_argument(str::ArgumentError.types[1]) = throw(ArgumentError(str))
 @noinline bad_argument(args...) = bad_argument(string(args...))
 

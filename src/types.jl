@@ -1,4 +1,4 @@
-const Status = Cint
+import .CFITSIO: Status
 
 # Aliases used for sub-indexing.
 const IndexRange = OrdinalRange{<:Integer,<:Integer}

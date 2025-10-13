@@ -60,14 +60,7 @@ using Base: @propagate_inbounds, string_index_err
 using Base.Order: Ordering, Forward, Reverse
 import Base: open, read, read!, write
 
-let file = normpath(joinpath(@__DIR__, "..", "deps", "cfitsio.jl"))
-    if !isfile(file)
-        error("File \"$file\" does not exists. You may may generate it by:\n",
-              "    using Pkg\n",
-              "    Pkg.build(\"$(@__MODULE__)\")")
-    end
-    include(file)
-end
+include("CFITSIO.jl")
 include("types.jl")
 include("utils.jl")
 include("files.jl")
