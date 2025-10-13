@@ -1,5 +1,14 @@
 # User visible changes for EasyFITS
 
+## Unreleased
+
+### Fixed
+
+- It should no longer be necessary to re-build `EasyFITS` for each new versions of
+  `CFITSIO_jll`. The generated wrapper code is shipped with `EasyFITS` and
+  [Clang.jl](https://github.com/JuliaInterop/Clang.jl) is only needed to regenerate this
+  code when the API of the CFITSIO library has breaking changes.
+
 ## Version 0.7.0 [2025-07-21]
 
 ### Changed
