@@ -238,7 +238,7 @@ function fits_uppercase(string)
 end
 
 function fits_get_errstatus(status, errtext)
-    @ccall libcfitsio.ffgerr(status::Cint, errtext::Cstring)::Cvoid
+    @ccall libcfitsio.ffgerr(status::Status, errtext::Ptr{UInt8})::Cvoid
 end
 
 function fits_write_errmsg(err_message)

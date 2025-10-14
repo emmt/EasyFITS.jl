@@ -1,9 +1,12 @@
 # Yield error message.
-function errmsg(status::Integer)
-    buf = Array{UInt8}(undef, CFITSIO.FLEN_ERRMSG)
-    ptr = pointer(buf)
-    GC.@preserve buf CFITSIO.fits_get_errstatus(status, ptr)
-    return unsafe_string(ptr)
+errmsg(code::Integer) = errmsg(Status(code))
+function errmsg(status::Status)
+    buf = Memory{UInt8}(undef, CFITSIO.FLEN_ERRMSG)
+    GC.@preserve buf begin
+        ptr = pointer(buf)
+        CFITSIO.fits_get_errstatus(status, ptr)
+        return unsafe_string(ptr)
+    end
 end
 
 function Base.show(io::IO, err::FitsError)
