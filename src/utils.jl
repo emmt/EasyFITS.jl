@@ -9,6 +9,17 @@ function errmsg(status::Status)
     end
 end
 
+function next_errmsg()
+    buf = Memory{UInt8}(undef, CFITSIO.FLEN_ERRMSG)
+    GC.@preserve buf begin
+        if iszero(CFITSIO.fits_read_errmsg(buf))
+            return nothing
+        else
+            return unsafe_string(pointer(buf))
+        end
+    end
+end
+
 function Base.show(io::IO, err::FitsError)
     print(io, "FitsError(")
     print(io, err.code)

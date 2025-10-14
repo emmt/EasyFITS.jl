@@ -250,7 +250,7 @@ function fits_write_errmark()
 end
 
 function fits_read_errmsg(err_message)
-    @ccall libcfitsio.ffgmsg(err_message::Cstring)::Cint
+    @ccall libcfitsio.ffgmsg(err_message::Ptr{UInt8})::Cint
 end
 
 function fits_clear_errmsg()
