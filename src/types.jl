@@ -11,6 +11,11 @@ if !isdefined(Base, :Memory)
     const Memory{T} = Vector{T}
 end
 
+# Structure used to pass a buffer as an output `Cstring` argument.
+struct OutputCstring{T<:DenseVector{UInt8}}
+    parent::T
+end
+
 """
     EasyFITS.Header
 

@@ -1,22 +1,61 @@
-# Yield error message.
-function errmsg(status::Integer)
-    buf = Memory{UInt8}(undef, CFITSIO.FLEN_ERRMSG)
-    GC.@preserve buf begin
-        ptr = pointer(buf)
-        CFITSIO.fits_get_errstatus(status, ptr)
-        return unsafe_string(ptr)
-    end
-end
 
-function next_errmsg()
-    buf = Memory{UInt8}(undef, CFITSIO.FLEN_ERRMSG)
-    GC.@preserve buf begin
-        if iszero(CFITSIO.fits_read_errmsg(buf))
-            return nothing
-        else
-            return unsafe_string(pointer(buf))
+"""
+    s = EasyFITS.OutputCstring(len)
+
+Build an object that can be used as an output C string with at most `len` characters. This
+object can be passed to a C function where an output string is expected via a `ccall` where
+the argument is assumed to be of type `Cstring`. On return of the C function, the object can
+be safely converted to a Julia string by calling `String(s)`.
+
+"""
+OutputCstring(len::Integer) = OutputCstring(Memory{UInt8}(undef, len))
+
+Base.parent(s::OutputCstring) = s.parent
+
+Base.string(s::OutputCstring) = String(s)
+
+function Base.String(s::OutputCstring)
+    buf = parent(s)
+    len = length(buf)
+    rng = Base.axes1(buf)
+    @inbounds for i in rng
+        if iszero(buf[i])
+            len = i - first(rng)
+            break
         end
     end
+    return len < 1 ? "" : GC.@preserve buf unsafe_string(pointer(buf), len)
+end
+
+# Extend `Base.cconvert` and `Base.unsafe_convert` to do the magic.
+Base.cconvert(::Type{Cstring}, s::OutputCstring) = s
+Base.unsafe_convert(::Type{Cstring}, s::OutputCstring) =
+    Cstring(Base.unsafe_convert(Ptr{Cchar}, parent(s)))
+Base.unsafe_convert(::Type{Ptr{T}}, s::OutputCstring) where {T<:Union{Cvoid,Cchar}} =
+    Base.unsafe_convert(Ptr{T}, parent(s))
+
+"""
+    EasyFITS.cfitsio_errmsg(status) -> msg::String
+
+Return the error message corresponding to CFITSIO `status`.
+
+"""
+function cfitsio_errmsg(status::Integer)
+    s = OutputCstring(CFITSIO.FLEN_ERRMSG)
+    CFITSIO.fits_get_errstatus(status, s)
+    return String(s)
+end
+
+"""
+    EasyFITS.cfitsio_errmsg() -> msg::Union{String,Nothing}
+
+Read the oldest CFITSIO error message and discard it. `nothing` is returned if there are no
+error messages left.
+
+"""
+function cfitsio_errmsg()
+    s = OutputCstring(CFITSIO.FLEN_ERRMSG)
+    return iszero(CFITSIO.fits_read_errmsg(s)) ? nothing : String(s)
 end
 
 function Base.show(io::IO, err::FitsError)
@@ -28,7 +67,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", err::FitsError)
     show(io, err)
     print(io, ": \"")
-    print(io, errmsg(err.code))
+    print(io, cfitsio_errmsg(err.code))
     print(io, "\"")
 end
 
