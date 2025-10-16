@@ -64,8 +64,12 @@ function rewrite(code::AbstractString)
         # comment unused aliases
         r"^ *(const +(ffcpimg|fits_(compress_img|decompress_img|write_nulrows)) *=.*?) *$"m => s"# \1",
 
-        # single precision constants
+        # fix single precision constants
         r"([0-9]+\.[0-9]+)[eE]([-+]?[0-9]+)F\b" => s"\1f\2",
+
+        # replace `Ptr{Ptr{...}}` by `Ptr{Cvoid}` in argument list to avoid Julia messing
+        # the pointer
+        r"(\bPtr\{Ptr\{.*?\}\}) *([,)])" => s"Ptr{Cvoid} #= NOTE \1 =#\2",
 
         # suppress empty lines
         r"(\n?\r|\n)\1\1+"m => "\n\n")

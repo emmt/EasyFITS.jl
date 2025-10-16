@@ -9,6 +9,11 @@
   [Clang.jl](https://github.com/JuliaInterop/Clang.jl) is only needed to regenerate this
   code when the API of the CFITSIO library has breaking changes.
 
+- `EasyFITS` no longer crashes on 32-bit machines. There were two potential issues: (i)
+  having the status returned as `struct Status; code::Cint; end` results in stack overflows
+  (it is now again a simple `Cint`) and (ii) `Ptr{Ptr{fitsfile}}` had to be replaced by
+  `Ptr{Cvoid}` in `@ccall` to avoid segmentation faults.
+
 ## Version 0.7.0 [2025-07-21]
 
 ### Changed

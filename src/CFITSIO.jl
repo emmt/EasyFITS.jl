@@ -150,51 +150,51 @@ struct fitsfile
 end
 
 function fits_open_memfile(fptr, name, mode, buffptr, buffsize, deltasize, mem_realloc, status)
-    @ccall libcfitsio.ffomem(fptr::Ptr{Ptr{fitsfile}}, name::Cstring, mode::Cint, buffptr::Ptr{Ptr{Cvoid}}, buffsize::Ptr{Csize_t}, deltasize::Csize_t, mem_realloc::Ptr{Cvoid}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffomem(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, name::Cstring, mode::Cint, buffptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{Cvoid}} =#, buffsize::Ptr{Csize_t}, deltasize::Csize_t, mem_realloc::Ptr{Cvoid}, status::Ptr{Cint})::Cint
 end
 
 function ffopentest(soname, fptr, filename, iomode, status)
-    @ccall libcfitsio.ffopentest(soname::Cint, fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffopentest(soname::Cint, fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
 end
 
 function fits_open_data(fptr, filename, iomode, status)
-    @ccall libcfitsio.ffdopn(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffdopn(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
 end
 
 function fits_open_extlist(fptr, filename, iomode, extlist, hdutype, status)
-    @ccall libcfitsio.ffeopn(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, iomode::Cint, extlist::Cstring, hdutype::Ptr{Cint}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffeopn(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, iomode::Cint, extlist::Cstring, hdutype::Ptr{Cint}, status::Ptr{Cint})::Cint
 end
 
 function fits_open_table(fptr, filename, iomode, status)
-    @ccall libcfitsio.fftopn(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.fftopn(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
 end
 
 function fits_open_image(fptr, filename, iomode, status)
-    @ccall libcfitsio.ffiopn(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffiopn(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
 end
 
 function fits_open_diskfile(fptr, filename, iomode, status)
-    @ccall libcfitsio.ffdkopn(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffdkopn(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
 end
 
 function fits_reopen_file(openfptr, newfptr, status)
-    @ccall libcfitsio.ffreopen(openfptr::Ptr{fitsfile}, newfptr::Ptr{Ptr{fitsfile}}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffreopen(openfptr::Ptr{fitsfile}, newfptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, status::Ptr{Cint})::Cint
 end
 
 function fits_create_file(fptr, filename, status)
-    @ccall libcfitsio.ffinit(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffinit(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, status::Ptr{Cint})::Cint
 end
 
 function fits_create_diskfile(fptr, filename, status)
-    @ccall libcfitsio.ffdkinit(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffdkinit(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, status::Ptr{Cint})::Cint
 end
 
 function fits_create_memfile(fptr, buffptr, buffsize, deltasize, mem_realloc, status)
-    @ccall libcfitsio.ffimem(fptr::Ptr{Ptr{fitsfile}}, buffptr::Ptr{Ptr{Cvoid}}, buffsize::Ptr{Csize_t}, deltasize::Csize_t, mem_realloc::Ptr{Cvoid}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffimem(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, buffptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{Cvoid}} =#, buffsize::Ptr{Csize_t}, deltasize::Csize_t, mem_realloc::Ptr{Cvoid}, status::Ptr{Cint})::Cint
 end
 
 function fits_create_template(fptr, filename, tempname, status)
-    @ccall libcfitsio.fftplt(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, tempname::Cstring, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.fftplt(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, tempname::Cstring, status::Ptr{Cint})::Cint
 end
 
 function fits_flush_file(fptr, status)
@@ -1548,7 +1548,7 @@ function fits_read_col(fptr, datatype, colnum, firstrow, firstelem, nelem, nulva
 end
 
 function fits_read_cols(fptr, ncols, datatype, colnum, firstrow, nrows, nulval, array, anynul, status)
-    @ccall libcfitsio.ffgcvn(fptr::Ptr{fitsfile}, ncols::Cint, datatype::Ptr{Cint}, colnum::Ptr{Cint}, firstrow::Clonglong, nrows::Clonglong, nulval::Ptr{Ptr{Cvoid}}, array::Ptr{Ptr{Cvoid}}, anynul::Ptr{Cint}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffgcvn(fptr::Ptr{fitsfile}, ncols::Cint, datatype::Ptr{Cint}, colnum::Ptr{Cint}, firstrow::Clonglong, nrows::Clonglong, nulval::Ptr{Cvoid} #= NOTE Ptr{Ptr{Cvoid}} =#, array::Ptr{Cvoid} #= NOTE Ptr{Ptr{Cvoid}} =#, anynul::Ptr{Cint}, status::Ptr{Cint})::Cint
 end
 
 function fits_read_colnull(fptr, datatype, colnum, firstrow, firstelem, nelem, array, nullarray, anynul, status)
@@ -2044,7 +2044,7 @@ function fits_write_col(fptr, datatype, colnum, firstrow, firstelem, nelem, arra
 end
 
 function fits_write_cols(fptr, ncols, datatype, colnum, firstrow, nrows, array, nulval, status)
-    @ccall libcfitsio.ffpcln(fptr::Ptr{fitsfile}, ncols::Cint, datatype::Ptr{Cint}, colnum::Ptr{Cint}, firstrow::Clonglong, nrows::Clonglong, array::Ptr{Ptr{Cvoid}}, nulval::Ptr{Ptr{Cvoid}}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffpcln(fptr::Ptr{fitsfile}, ncols::Cint, datatype::Ptr{Cint}, colnum::Ptr{Cint}, firstrow::Clonglong, nrows::Clonglong, array::Ptr{Cvoid} #= NOTE Ptr{Ptr{Cvoid}} =#, nulval::Ptr{Cvoid} #= NOTE Ptr{Ptr{Cvoid}} =#, status::Ptr{Cint})::Cint
 end
 
 function fits_write_col_str(fptr, colnum, firstrow, firstelem, nelem, array, status)
@@ -2352,7 +2352,7 @@ function fits_verify_group(gfptr, firstfailed, status)
 end
 
 function fits_open_group(mfptr, group, gfptr, status)
-    @ccall libcfitsio.ffgtop(mfptr::Ptr{fitsfile}, group::Cint, gfptr::Ptr{Ptr{fitsfile}}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffgtop(mfptr::Ptr{fitsfile}, group::Cint, gfptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, status::Ptr{Cint})::Cint
 end
 
 function fits_add_group_member(gfptr, mfptr, hdupos, status)
@@ -2368,7 +2368,7 @@ function fits_get_num_groups(mfptr, nmembers, status)
 end
 
 function fits_open_member(gfptr, member, mfptr, status)
-    @ccall libcfitsio.ffgmop(gfptr::Ptr{fitsfile}, member::Clong, mfptr::Ptr{Ptr{fitsfile}}, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffgmop(gfptr::Ptr{fitsfile}, member::Clong, mfptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, status::Ptr{Cint})::Cint
 end
 
 function fits_copy_member(gfptr, mfptr, member, cpopt, status)
@@ -2470,7 +2470,7 @@ function fits_init_cfitsio()
 end
 
 function ffopen(fptr, filename, iomode, status)
-    @ccall libcfitsio.ffopen(fptr::Ptr{Ptr{fitsfile}}, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffopen(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, filename::Cstring, iomode::Cint, status::Ptr{Cint})::Cint
 end
 
 function fits_delete_iraf_file(filename, status)
@@ -2602,11 +2602,11 @@ function fits_iter_get_tdisp(col)
 end
 
 function ffhist(fptr, outfile, imagetype, naxis, colname, minin, maxin, binsizein, minname, maxname, binname, weightin, wtcol, recip, rowselect, status)
-    @ccall libcfitsio.ffhist(fptr::Ptr{Ptr{fitsfile}}, outfile::Cstring, imagetype::Cint, naxis::Cint, colname::Ptr{NTuple{71, Cchar}}, minin::Ptr{Cdouble}, maxin::Ptr{Cdouble}, binsizein::Ptr{Cdouble}, minname::Ptr{NTuple{71, Cchar}}, maxname::Ptr{NTuple{71, Cchar}}, binname::Ptr{NTuple{71, Cchar}}, weightin::Cdouble, wtcol::Ptr{Cchar}, recip::Cint, rowselect::Cstring, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffhist(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, outfile::Cstring, imagetype::Cint, naxis::Cint, colname::Ptr{NTuple{71, Cchar}}, minin::Ptr{Cdouble}, maxin::Ptr{Cdouble}, binsizein::Ptr{Cdouble}, minname::Ptr{NTuple{71, Cchar}}, maxname::Ptr{NTuple{71, Cchar}}, binname::Ptr{NTuple{71, Cchar}}, weightin::Cdouble, wtcol::Ptr{Cchar}, recip::Cint, rowselect::Cstring, status::Ptr{Cint})::Cint
 end
 
 function ffhist2(fptr, outfile, imagetype, naxis, colname, minin, maxin, binsizein, minname, maxname, binname, weightin, wtcol, recip, rowselect, status)
-    @ccall libcfitsio.ffhist2(fptr::Ptr{Ptr{fitsfile}}, outfile::Cstring, imagetype::Cint, naxis::Cint, colname::Ptr{NTuple{71, Cchar}}, minin::Ptr{Cdouble}, maxin::Ptr{Cdouble}, binsizein::Ptr{Cdouble}, minname::Ptr{NTuple{71, Cchar}}, maxname::Ptr{NTuple{71, Cchar}}, binname::Ptr{NTuple{71, Cchar}}, weightin::Cdouble, wtcol::Ptr{Cchar}, recip::Cint, rowselect::Cstring, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.ffhist2(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, outfile::Cstring, imagetype::Cint, naxis::Cint, colname::Ptr{NTuple{71, Cchar}}, minin::Ptr{Cdouble}, maxin::Ptr{Cdouble}, binsizein::Ptr{Cdouble}, minname::Ptr{NTuple{71, Cchar}}, maxname::Ptr{NTuple{71, Cchar}}, binname::Ptr{NTuple{71, Cchar}}, weightin::Cdouble, wtcol::Ptr{Cchar}, recip::Cint, rowselect::Cstring, status::Ptr{Cint})::Cint
 end
 
 function ffhist3(fptr, outfile, imagetype, naxis, colname, minin, maxin, binsizein, minname, maxname, binname, weightin, wtcol, recip, selectrow, status)
@@ -2614,7 +2614,7 @@ function ffhist3(fptr, outfile, imagetype, naxis, colname, minin, maxin, binsize
 end
 
 function fits_select_image_section(fptr, outfile, imagesection, status)
-    @ccall libcfitsio.fits_select_image_section(fptr::Ptr{Ptr{fitsfile}}, outfile::Cstring, imagesection::Cstring, status::Ptr{Cint})::Cint
+    @ccall libcfitsio.fits_select_image_section(fptr::Ptr{Cvoid} #= NOTE Ptr{Ptr{fitsfile}} =#, outfile::Cstring, imagesection::Cstring, status::Ptr{Cint})::Cint
 end
 
 function fits_calc_binning(fptr, naxis, colname, minin, maxin, binsizein, minname, maxname, binname, colnum, haxes, amin, amax, binsize, status)
