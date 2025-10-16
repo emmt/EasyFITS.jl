@@ -42,7 +42,11 @@ export
 using TypeUtils
 using TypeUtils: @public
 
-@public(OutputCstring, cfitsio_errmsg)
+@public(
+    Header,
+    TableData,
+    OutputCstring,
+    cfitsio_errmsg)
 
 using FITSHeaders
 using FITSHeaders:

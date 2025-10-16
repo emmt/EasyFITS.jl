@@ -32,8 +32,6 @@ Missing `EasyFITS.write!`, `read(::FitsFile, ...)`, `read!(::DenseArray{<:Number
 
 ```@docs
 FitsFile
-isopen(::FitsFile)
-close(::FitsFile)
 pathof(::FitsFile)
 filemode(::FitsFile)
 isreadonly(::FitsFile)
@@ -77,4 +75,11 @@ FitsHeader(::FitsHDU)
 ```@docs
 nameof(::FitsHDU)
 EasyFITS.is_named
+```
+
+## Utilities
+
+```@docs
+EasyFITS.OutputCstring
+EasyFITS.cfitsio_errmsg
 ```

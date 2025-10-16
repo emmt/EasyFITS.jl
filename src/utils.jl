@@ -3,9 +3,9 @@
     s = EasyFITS.OutputCstring(len)
 
 Build an object that can be used as an output C string with at most `len` characters. This
-object can be passed to a C function where an output string is expected via a `ccall` where
-the argument is assumed to be of type `Cstring`. On return of the C function, the object can
-be safely converted to a Julia string by calling `String(s)`.
+object can be passed to a C function where an output string is expected via a `ccall` as an
+argument of type `Cstring`. On return of the C function, the object can be safely converted
+to a Julia string by calling `String(s)`.
 
 """
 OutputCstring(len::Integer) = OutputCstring(Memory{UInt8}(undef, len))

@@ -19,8 +19,7 @@ end
 """
     EasyFITS.Header
 
-is the (union of) type(s) that are accepted to specify a FITS header in
-`EasyFITS` package.
+is the (union of) type(s) that are accepted to specify a FITS header in `EasyFITS` package.
 
 A header may be a vector of pairs like `key => val`, `key => (val,com)`, or `key => com`
 with `key` the keyword name, `val` its value, and `com` its comment. The keyword name `key`

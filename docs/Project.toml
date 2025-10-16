@@ -1,6 +1,7 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 EasyFITS = "a977f4a2-36a7-4172-89e7-19c2726f82e5"
+FITSHeaders = "8163a04c-c153-4fb1-a498-3402381ec208"
 
 [compat]
 Documenter = "1"
