@@ -63,6 +63,7 @@ using FITSHeaders:
     is_naxis,
     is_structural
 
+using CEnum
 using Base: @propagate_inbounds, string_index_err
 using Base.Order: Ordering, Forward, Reverse
 import Base: open, read, read!, write

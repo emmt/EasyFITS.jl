@@ -274,7 +274,7 @@ HDU object:
 abstract type FitsHDU <: AbstractVector{FitsCard} end
 
 # Enumeration of HDU type identifiers.
-@enum FitsHDUType::Cint begin
+@cenum FitsHDUType::Cint begin
     FITS_IMAGE_HDU = CFITSIO.IMAGE_HDU
     FITS_BINARY_TABLE_HDU = CFITSIO.BINARY_TBL
     FITS_ASCII_TABLE_HDU = CFITSIO.ASCII_TBL
