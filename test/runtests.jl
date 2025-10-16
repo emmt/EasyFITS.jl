@@ -3,6 +3,7 @@ module TestingEasyFITS
 using Test, EasyFITS, Dates, DataFrames
 
 using EasyFITS: FitsInteger, FitsFloat, FitsComplex
+using EasyFITS: CFITSIO, cfitsio_errmsg
 
 const Undef = typeof(undef)
 
@@ -180,6 +181,10 @@ end
         @test string_length(" a ") == 2
         @test string_length(" a  ") == 2
     end
+
+    # Error messages.
+    @test cfitsio_errmsg(CFITSIO.NUM_OVERFLOW) == "datatype conversion overflow"
+    @test cfitsio_errmsg() isa Union{String,Nothing}
 end
 
 # Get comment as a string from header card settings.

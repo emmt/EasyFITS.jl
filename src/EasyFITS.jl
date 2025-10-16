@@ -40,6 +40,9 @@ export
     writefits!
 
 using TypeUtils
+using TypeUtils: @public
+
+@public(OutputCstring, cfitsio_errmsg)
 
 using FITSHeaders
 using FITSHeaders:

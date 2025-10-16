@@ -14,6 +14,14 @@
   (it is now again a simple `Cint`) and (ii) `Ptr{Ptr{fitsfile}}` had to be replaced by
   `Ptr{Cvoid}` in `@ccall` to avoid segmentation faults.
 
+### Added
+
+- Non-exported public type `EasyFITS.OutputCstring` for output C string arguments in
+  `ccall`.
+
+- Non-exported public function `EasyFITS.cfitsio_errmsg` to retrieve CFITSION error
+  messages.
+
 ## Version 0.7.0 [2025-07-21]
 
 ### Changed
