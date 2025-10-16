@@ -1,13 +1,8 @@
 # User visible changes for EasyFITS
 
-## Unreleased
+## Version 0.7.1 [2025-10-16]
 
 ### Fixed
-
-- It should no longer be necessary to re-build `EasyFITS` for each new versions of
-  `CFITSIO_jll`. The generated wrapper code is shipped with `EasyFITS` and
-  [Clang.jl](https://github.com/JuliaInterop/Clang.jl) is only needed to regenerate this
-  code when the API of the CFITSIO library has breaking changes.
 
 - `EasyFITS` no longer crashes on 32-bit machines. There were two potential issues: (i)
   having the status returned as `struct Status; code::Cint; end` results in stack overflows
@@ -15,6 +10,11 @@
   `Ptr{Cvoid}` in `@ccall` to avoid segmentation faults.
 
 ### Changed
+
+- It should no longer be necessary to re-build `EasyFITS` for each new versions of
+  `CFITSIO_jll`. The generated wrapper code is shipped with `EasyFITS` and
+  [Clang.jl](https://github.com/JuliaInterop/Clang.jl) is only needed to regenerate this
+  code when the API of the CFITSIO library has breaking changes.
 
 - The absolute path of the FITS file is saved in the `FitsFile` structure and returned by
   the `pathof` function.
