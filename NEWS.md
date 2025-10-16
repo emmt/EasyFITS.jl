@@ -14,6 +14,11 @@
   (it is now again a simple `Cint`) and (ii) `Ptr{Ptr{fitsfile}}` had to be replaced by
   `Ptr{Cvoid}` in `@ccall` to avoid segmentation faults.
 
+### Changed
+
+- The absolute path of the FITS file is saved in the `FitsFile` structure and returned by
+  the `pathof` function.
+
 ### Added
 
 - Non-exported public type `EasyFITS.OutputCstring` for output C string arguments in

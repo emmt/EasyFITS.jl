@@ -287,42 +287,6 @@ mutable struct FitsFile <: AbstractVector{FitsHDU}
     mode::Symbol
     path::String
     nhdus::Int
-    function FitsFile(filename::AbstractString, mode::AbstractString = "r";
-                      extended::Bool=false)
-        access = mode == "r" ? :r :
-            mode == "r+" ? :rw :
-            mode == "w" || mode == "w!" ? :w :
-            throw(ArgumentError("mode must be \"r\", \"r+\", \"w\" or \"w!\""))
-        status = Ref{Cint}(0)
-        handle = Ref{Ptr{CFITSIO.fitsfile}}(0)
-        num = Ref{Cint}(0)
-        if access === :w
-            if extended
-                prefix = (mode == "w!" && ! startswith(filename, '!') ? "!" : "")
-                check(CFITSIO.fits_create_file(handle, prefix*filename, status))
-            else
-                if isfile(filename)
-                    mode == "w!" || throw_file_already_exists(filename, "use mode \"w!\" to overwrite")
-                    rm(filename; force=true)
-                end
-                check(CFITSIO.fits_create_diskfile(handle, filename, status))
-            end
-        else
-            iomode = (access === :rw ? CFITSIO.READWRITE : CFITSIO.READONLY)
-            if extended
-                check(CFITSIO.fits_open_file(handle, filename, iomode, status))
-            else
-                check(CFITSIO.fits_open_diskfile(handle, filename, iomode, status))
-            end
-            if !iszero(CFITSIO.fits_get_num_hdus(handle[], num, status))
-                errcode = status[]
-                status[] = 0
-                CFITSIO.fits_close_file(ptr, status)
-                throw(FitsError(errcode))
-            end
-        end
-        return finalizer(close_handle, new(handle[], access, filename, num[]))
-    end
 end
 
 """

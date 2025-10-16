@@ -1,28 +1,97 @@
 #------------------------------------------------------------------------- Open FITS files -
 
 """
-    file = openfits(filename, mode="r"; extended=false)
     file = FitsFile(filename, mode="r"; extended=false)
 
-open FITS file `filename` for reading if `mode` is `"r"`, for reading and writing if mode is
-"r+", or creates a new file if mode is `"w"` or `"w!"`. File must not exists if mode is
-`"w"`. File is overwritten if it exists and mode is `"w!"`. The file is automatically closed
-when the `file` object is finalized, it is however necessary to call [`close(file)`](@ref
-close(::FitsFile)) or [`flush(file)`](@ref flush(::FitsFile)) when `mode` is `"w"` or `"w!"`
-to make sure its content is up to date.
+Open FITS file `filename` for reading if `mode` is `"r"`, for reading and writing if mode is
+"rw", or create a new file if mode is `"w"` or `"w!"`.
+
+ File must not exists if mode is `"w"`. File is overwritten if it exists and mode is `"w!"`.
+The file is automatically closed when the `file` object is finalized, it is however
+necessary to call `close(file)` (FIXME really?) or [`flush(file)`](@ref flush(::FitsFile))
+when `mode` is `"w"` or `"w!"` to make sure its content is up to date.
 
 Keyword `extended` specifies whether to use extended file name syntax featured by the
 CFITSIO library.
 
 """
-openfits(filename::AbstractString, mode::AbstractString = "r"; kwds...) =
-    FitsFile(filename, mode; kwds...)
+function FitsFile(filename::AbstractString, mode::AbstractString = "r";
+                  extended::Bool = false)
+    # Open the FITS file according to the mode and keywords.
+    refptr = Ref{Ptr{CFITSIO.fitsfile}}(0)
+    access = mode == "r" ? :r :
+        mode == "rw" ? :rw :
+        mode == "w" || mode == "w!" ? :w :
+        throw(ArgumentError("mode must be \"r\", \"rw\", \"w\", or \"w!\""))
+    if access === :w
+        # Create a new file.
+        mode == "w!" && isfile(filename) && rm(filename; force=true)
+        if extended
+            check(CFITSIO.fits_create_file(refptr, filename, Ref{Cint}(0)))
+        else
+            check(CFITSIO.fits_create_diskfile(refptr, filename, Ref{Cint}(0)))
+        end
+    else
+        # Open an existing file.
+        iomode = access === :rw ? CFITSIO.READWRITE : CFITSIO.READONLY
+        if extended
+            check(CFITSIO.fits_open_file(refptr, filename, iomode, Ref{Cint}(0)))
+        else
+            check(CFITSIO.fits_open_diskfile(refptr, filename, iomode, Ref{Cint}(0)))
+        end
+    end
+
+    # Create the object with a finalizer so that any error automatically closes the file.
+    file = FitsFile(refptr[], access, "", 0)
+    finalizer(finalize, file)
+    if access != :w
+        # Get the number of HDSs.
+        nhdus = get_num_hdus(file)
+        setfield!(file, :nhdus, Int(nhdus)::Int)
+    end
+
+    # Store the full path of the file.
+    s = OutputCstring(CFITSIO.FLEN_FILENAME)
+    check(CFITSIO.fits_file_name(file, s, Ref{Cint}(0)))
+    setfield!(file, :path, abspath(String(s))::String)
+
+    # Return the fully instantiated FITS file.
+    return file
+end
+
+finalize(file::FitsFile) = close(file; check=pass)
+
+pass(x) = nothing
+
+function get_num_hdus(file::FitsFile)
+    num = Ref{Cint}()
+    check(CFITSIO.fits_get_num_hdus(file, num, Ref{Cint}(0)))
+    return num[]
+end
+
+Base.isopen(file::FitsFile) = getfield(file, :handle) != C_NULL
+
+function Base.close(file::FitsFile; check::Function = EasyFITS.check)
+    fptr = getfield(file, :handle)
+    if fptr != C_NULL
+        setfield!(file, :handle, Ptr{CFITSIO.fitsfile}(0))
+        check(CFITSIO.fits_close_file(fptr, Ref{Cint}(0)))
+    end
+    return nothing
+end
+
+# Extend Base.unsafe_convert to automatically extract and check the FITS file handle from a
+# FitsFile object. This secures and simplifies calls to functions of the CFITSIO library.
+function Base.unsafe_convert(::Type{Ptr{CFITSIO.fitsfile}}, file::FitsFile)
+    fptr = getfield(file, :handle)
+    fptr == C_NULL && throw(ArgumentError("FITS file has been closed"))
+    return fptr
+end
 
 """
-    openfits(func::Function, filename, mode="r"; kwds...)
     FitsFile(func::Function, filename, mode="r"; kwds...)
 
-execute `func(file)` with `file` the FITS file `filename` open for `mode` access and close
+Execute `func(file)` with `file` the FITS file `filename` open for `mode` access and close
 `file` even though `func` may throw an exception. This is typically used with the `do`-block
 syntax:
 
@@ -31,9 +100,6 @@ syntax:
     end
 
 """
-openfits(func::Function, filename::AbstractString, mode::AbstractString = "r"; kwds...) =
-    FitsFile(func, filename, mode; kwds...)
-
 function FitsFile(func::Function, filename::AbstractString,
                   mode::AbstractString = "r"; kwds...)
     file = FitsFile(filename, mode; kwds...)
@@ -43,6 +109,14 @@ function FitsFile(func::Function, filename::AbstractString,
         close(file)
     end
 end
+
+"""
+    file = openfits(args...; kwds..)
+
+Open or create a FITS file. See [`FitsFile`](@ref) for details.
+
+"""
+@inline openfits(args...; kwds...) = FitsFile(args...; kwds...)
 
 #------------------------------------------------------------------------- Read FITS files -
 
@@ -181,63 +255,9 @@ end
 # Interface to FITS files.
 
 """
-    EasyFITS.get_handle(file::FitsFile)
+    pathof(file::FitsFile) -> filename
 
-yields the pointer to the opaque FITS file structure for `file`. It is the caller
-responsibility to insure that the pointer is and remains valid as long as it is needed.
-
-!!! warning
-    This function should never be directly called. When calling a function of the CFITSIO
-    library (with `ccall` or equivalent), directly pass the `FitsFile` object so that (1)
-    the validity of the pointer is checked and (2) the `FitsFile` object is preserved to not
-    be garbage collected before the C function be called thus eliminating the risk of the
-    file being closed and the pointer becoming invalid. `EasyFITS` simply achieves this by
-    properly extending `Base.cconvert` and `Base.unsafe_convert`. In fact there are only 2
-    functions in `EasyFITS` which calls `get_handle`: `Base.isopen` which amounts to just
-    checking whether the pointer is not null and, of course, `Base.unsafe_convert`.
-
-"""
-get_handle(file::FitsFile) = getfield(file, :handle)
-
-# Extend Base.unsafe_convert to automatically extract and check the FITS file handle from a
-# FitsFile object. This secures and simplifies calls to functions of the CFITSIO library.
-# See `EasyFITS.get_handle` doc.
-Base.unsafe_convert(::Type{Ptr{CFITSIO.fitsfile}}, file::FitsFile) =
-    check(get_handle(file))
-
-"""
-    isopen(file::FitsFile)
-
-returns whether `file` is open.
-
-"""
-Base.isopen(file::FitsFile) = !isnull(get_handle(file))
-
-"""
-    close(file::FitsFile)
-
-closes the file associated with `file`.
-
-"""
-function Base.close(file::FitsFile)
-    check(close_handle(file))
-    nothing
-end
-
-# The following method is used to finalize or to close the object.
-function close_handle(file::FitsFile)
-    status = Ref{Cint}(0)
-    if isopen(file)
-        CFITSIO.fits_close_file(file, status)
-        setfield!(file, :handle, Ptr{CFITSIO.fitsfile}(0))
-    end
-    return status[]
-end
-
-"""
-    pathof(file::FitsFile) -> str
-
-yields the name of the FITS file associated with `file`.
+Return the name of the FITS file associated with `file`.
 
 """
 Base.pathof(file::FitsFile) = getfield(file, :path)
@@ -245,7 +265,7 @@ Base.pathof(file::FitsFile) = getfield(file, :path)
 """
     filemode(file::FitsFile)
 
-yields `:r`, `:rw`, or `:w` depending whether `file` is open for reading, reading and
+Return `:r`, `:rw`, or `:w` depending whether `file` is open for reading only, reading and
 writing, or writing.
 
 """
@@ -254,7 +274,7 @@ Base.filemode(file::FitsFile) = getfield(file, :mode)
 """
     isreadable(file::FitsFile)
 
-returns whether `file` is readable.
+Return whether `file` is readable.
 
 """
 Base.isreadable(file::FitsFile) = (filemode(file) !== :w) && isopen(file)
@@ -262,7 +282,7 @@ Base.isreadable(file::FitsFile) = (filemode(file) !== :w) && isopen(file)
 """
     isreadonly(file::FitsFile)
 
-returns whether `file` is read-only.
+Return whether `file` is read-only.
 
 """
 Base.isreadonly(file::FitsFile) = (filemode(file) === :r) && isopen(file)
@@ -270,7 +290,7 @@ Base.isreadonly(file::FitsFile) = (filemode(file) === :r) && isopen(file)
 """
     iswritable(file::FitsFile)
 
-returns whether `file` is writable.
+Return whether `file` is writable.
 
 """
 Base.iswritable(file::FitsFile) = (filemode(file) !== :r) && isopen(file)
@@ -335,12 +355,6 @@ See also [`seek(::FitsFile)`](@ref).
 function Base.position(file::FitsFile)
     num = Ref{Cint}()
     return Int(CFITSIO.fits_get_hdu_num(file, num))
-end
-
-function get_nhdus(file::FitsFile)
-    num = Ref{Cint}()
-    check(CFITSIO.fits_get_num_hdus(file, num, Ref{Cint}(0)))
-    return Int(num[])
 end
 
 """

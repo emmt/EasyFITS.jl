@@ -73,13 +73,6 @@ end
 
 Base.showerror(io::IO, err::FitsError) = show(io, MIME("text/plain"), err)
 
-# Yield whether a pointer is null.
-isnull(ptr::Ptr) = (ptr === null(ptr))
-
-# Yield a null pointer of a given type.
-null(ptr::Ptr) = null(typeof(ptr))
-null(::Type{Ptr{T}}) where {T} = Ptr{T}(0)
-
 # Check argument whether it is a status code returned by one the CFITSIO library function or
 # a pointer to a FITS file.
 check(status::Ref{Cint}) = check(status[])
