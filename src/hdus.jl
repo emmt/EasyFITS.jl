@@ -41,7 +41,7 @@ still open and moving the file position of `file` to that of `hdu`.
 function get_file_at(hdu::FitsHDU)
     file = get_file(hdu)
     check(CFITSIO.fits_movabs_hdu(file, get_number(hdu),
-                                  Ptr{Cint}(0), Ref{Status}(0)))
+                                  Ptr{Cint}(0), Ref{Cint}(0)))
     return file
 end
 
@@ -158,11 +158,11 @@ end
     length(buf) ≥ CFITSIO.FLEN_CARD || error("buffer is too small")
     if !(key isa Integer)
         GC.@preserve buf begin
-            return CFITSIO.fits_read_card(hdu, key, unsafe_cstring(buf), Ref{Status}(0))
+            return CFITSIO.fits_read_card(hdu, key, unsafe_cstring(buf), Ref{Cint}(0))
         end
     elseif key ≥ firstindex(hdu)
         GC.@preserve buf begin
-            return CFITSIO.fits_read_record(hdu, key, unsafe_cstring(buf), Ref{Status}(0))
+            return CFITSIO.fits_read_record(hdu, key, unsafe_cstring(buf), Ref{Cint}(0))
         end
     else
         return CFITSIO.KEY_OUT_BOUNDS
@@ -201,7 +201,7 @@ function FITSHeaders.FitsHeader(hdu::FitsHDU)
     len = length(hdu)
     hdr = sizehint!(FitsHeader(), len)
     buf = Memory{UInt8}(undef, CFITSIO.FLEN_CARD)
-    status = Ref{Status}(0)
+    status = Ref{Cint}(0)
     @inbounds for i in 1:len
         GC.@preserve buf begin
             CFITSIO.fits_read_record(file, i, unsafe_cstring(buf), status)
@@ -219,7 +219,7 @@ reset the search by wild card characters in FITS header of `hdu` to the first re
 
 """
 function Base.reset(hdu::FitsHDU)
-    check(CFITSIO.fits_read_record(hdu, 0, Ptr{Cchar}(0), Ref{Status}(0)))
+    check(CFITSIO.fits_read_record(hdu, 0, Ptr{Cchar}(0), Ref{Cint}(0)))
     return hdu
 end
 
@@ -326,12 +326,12 @@ deletes from FITS header data unit `hdu` the header card identified by the name 
 
 """
 function Base.delete!(hdu::FitsHDU, key::CardName)
-    check(CFITSIO.fits_delete_key(hdu, key, Ref{Status}(0)))
+    check(CFITSIO.fits_delete_key(hdu, key, Ref{Cint}(0)))
     return hdu
 end
 
 function Base.delete!(hdu::FitsHDU, key::Integer)
-    check(CFITSIO.fits_delete_record(hdu, key, Ref{Status}(0)))
+    check(CFITSIO.fits_delete_record(hdu, key, Ref{Cint}(0)))
     return hdu
 end
 
@@ -359,7 +359,7 @@ update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::Nothing) = hdu
 function update_key(hdu::FitsHDU, key::CardName, val::Nothing, com::AbstractString)
     # BUG: When modifying the comment of an existing keyword which has an undefined value,
     #      the keyword becomes a commentary keyword.
-    check(CFITSIO.fits_modify_comment(hdu, key, com, Ref{Status}(0)))
+    check(CFITSIO.fits_modify_comment(hdu, key, com, Ref{Cint}(0)))
     return hdu
 end
 
@@ -377,26 +377,26 @@ for func in (:update_key, :write_key),
         # Commentary (nothing) card or undefined value (undef or missing).
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             check(CFITSIO.$(Symbol("fits_",func,"_null"))(
-                dst, key, unsafe_optional_string(com), Ref{Status}(0)))
+                dst, key, unsafe_optional_string(com), Ref{Cint}(0)))
             return dst
         end
     elseif T === String
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             check(CFITSIO.$(Symbol("fits_",func,"_str"))(
-                dst, key, val, unsafe_optional_string(com), Ref{Status}(0)))
+                dst, key, val, unsafe_optional_string(com), Ref{Cint}(0)))
             return dst
         end
     elseif T === Bool
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             check(CFITSIO.$(Symbol("fits_",func,"_log"))(
-                dst, key, val, unsafe_optional_string(com), Ref{Status}(0)))
+                dst, key, val, unsafe_optional_string(com), Ref{Cint}(0)))
             return dst
         end
     else # FIXME: use more specialized CFITSIO routines?
         @eval function $func(dst, key::CardName, val::$V, com::CardComment=nothing)
             check(CFITSIO.$(Symbol("fits_",func))(
                 dst, type_to_code($T), key, Ref{$T}(val),
-                unsafe_optional_string(com), Ref{Status}(0)))
+                unsafe_optional_string(com), Ref{Cint}(0)))
             return dst
         end
     end
@@ -423,7 +423,7 @@ Base.keys(hdu::FitsHDU) = Base.OneTo(length(hdu))
 function get_hdrspace(hdu::FitsHDU)
     existing = Ref{Cint}()
     remaining = Ref{Cint}()
-    check(CFITSIO.fits_get_hdrspace(hdu, existing, remaining, Ref{Status}(0)))
+    check(CFITSIO.fits_get_hdrspace(hdu, existing, remaining, Ref{Cint}(0)))
     return (Int(existing[]), Int(remaining[]))
 end
 
@@ -446,7 +446,7 @@ be continued over multiple cards if `str` is longer than 70 characters.
 for func in (:write_comment, :write_history)
     @eval begin
         function $func(dst, str::AbstractString)
-            check(CFITSIO.$(Symbol("fits_",func))(dst, str, Ref{Status}(0)))
+            check(CFITSIO.$(Symbol("fits_",func))(dst, str, Ref{Cint}(0)))
             return dst
         end
     end
@@ -459,27 +459,27 @@ creates or updates a FITS comment record of `hdu` with the current date.
 
 """
 function write_date(hdu::FitsHDU)
-    check(CFITSIO.fits_write_date(hdu, Ref{Status}(0)))
+    check(CFITSIO.fits_write_date(hdu, Ref{Cint}(0)))
     return hdu
 end
 
 function write_comment(hdu::FitsHDU, str::AbstractString)
-    check(CFITSIO.fits_write_comment(hdu, str, Ref{Status}(0)))
+    check(CFITSIO.fits_write_comment(hdu, str, Ref{Cint}(0)))
     return hdu
 end
 
 function write_history(hdu::FitsHDU, str::AbstractString)
-    check(CFITSIO.fits_write_history(hdu, str, Ref{Status}(0)))
+    check(CFITSIO.fits_write_history(hdu, str, Ref{Cint}(0)))
     return hdu
 end
 
 function write_record(f::Union{FitsFile,FitsHDU}, card::FitsCard)
-    check(CFITSIO.fits_write_record(f, card, Ref{Status}(0)))
+    check(CFITSIO.fits_write_record(f, card, Ref{Cint}(0)))
     return f
 end
 
 function update_record(f::Union{FitsFile,FitsHDU}, key::CardName, card::FitsCard)
-    check(CFITSIO.fits_update_card(f, key, card, Ref{Status}(0)))
+    check(CFITSIO.fits_update_card(f, key, card, Ref{Cint}(0)))
     return f
 end
 

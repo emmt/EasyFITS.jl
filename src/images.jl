@@ -11,19 +11,19 @@ Base.getproperty(hdu::FitsImageHDU,      ::Val{:data_axes}) = map(Base.OneTo, hd
 
 function get_img_type(f::Union{FitsFile,FitsImageHDU})
     bitpix = Ref{Cint}()
-    check(CFITSIO.fits_get_img_type(f, bitpix, Ref{Status}(0)))
+    check(CFITSIO.fits_get_img_type(f, bitpix, Ref{Cint}(0)))
     return Int(bitpix[])
 end
 
 function get_img_equivtype(f::Union{FitsFile,FitsImageHDU})
     bitpix = Ref{Cint}()
-    check(CFITSIO.fits_get_img_equivtype(f, bitpix, Ref{Status}(0)))
+    check(CFITSIO.fits_get_img_equivtype(f, bitpix, Ref{Cint}(0)))
     return Int(bitpix[])
 end
 
 function get_img_dim(f::Union{FitsFile,FitsImageHDU})
     naxis = Ref{Cint}()
-    check(CFITSIO.fits_get_img_dim(f, naxis, Ref{Status}(0)))
+    check(CFITSIO.fits_get_img_dim(f, naxis, Ref{Cint}(0)))
     return Int(naxis[])
 end
 
@@ -31,7 +31,7 @@ function get_img_size(hdu::FitsImageHDU{T,N}) where {T,N}
     file = get_file_at(hdu) # small optimization to avoid multiple seeks
     N == get_img_dim(file) || error("number of dimensions has changed, rebuild the HDU")
     dims = Ref{NTuple{N,Clong}}()
-    check(CFITSIO.fits_get_img_size(file, N, dims, Ref{Status}(0)))
+    check(CFITSIO.fits_get_img_size(file, N, dims, Ref{Cint}(0)))
     return Dims{N}(dims[])
 end
 
@@ -191,7 +191,7 @@ function read!(arr::DenseArray{T,L},
         if len > 0
             _null = (null === nothing ? C_NULL : null)
             check(CFITSIO.fits_read_subset(
-                hdu, type, Ref(fpix), Ref(lpix), Ref(ipix), _null, arr, anynul, Ref{Status}(0)))
+                hdu, type, Ref(fpix), Ref(lpix), Ref(ipix), _null, arr, anynul, Ref{Cint}(0)))
         end
     elseif first isa Union{Integer,Nothing} && last isa Union{Integer,Nothing} && step isa Nothing
         # Read a range of consecutive pixels. NOTE: The indices of the first and last pixel
@@ -216,13 +216,13 @@ function read!(arr::DenseArray{T,L},
                 # NOTE: `GC.@protect null` is not needed here.
                 _null = logical_pointer(null)
                 check(CFITSIO.fits_read_imgnull(
-                    hdu, type, fpix, len, _null, arr, anynul, Ref{Status}(0)))
+                    hdu, type, fpix, len, _null, arr, anynul, Ref{Cint}(0)))
                 fix_logicals!(null)
             end
         elseif len > 0
             _null = (null === nothing ? C_NULL : null)
             check(CFITSIO.fits_read_img(
-                hdu, type, fpix, len, _null, arr, anynul, Ref{Status}(0)))
+                hdu, type, fpix, len, _null, arr, anynul, Ref{Cint}(0)))
         end
     else
         error("invalid combination of options")
@@ -276,7 +276,7 @@ function FitsImageHDU{T,N}(file::FitsFile, dims::DimsLike) where {T,N}
 
     check(CFITSIO.fits_create_img(file, type_to_bitpix(T), N,
                                   size_for_fits_create_img(dims),
-                                  Ref{Status}(0)))
+                                  Ref{Cint}(0)))
     # The number of HDUs as returned by `fits_get_num_hdus` is only incremented after
     # writing data.
     n = position(file)
@@ -405,7 +405,7 @@ function write(hdu::FitsImageHDU{<:Any,N},
         npix == len || bad_argument("rectangular sub-image and input array have different lengths")
         if len > 0
             check(CFITSIO.fits_write_subset(
-                hdu, type, Ref(fpix), Ref(lpix), dense_array(arr), Ref{Status}(0)))
+                hdu, type, Ref(fpix), Ref(lpix), dense_array(arr), Ref{Cint}(0)))
         end
     elseif first isa Union{Integer,Nothing}
         # Write a range of consecutive pixels. NOTE: The indices of the first and last
@@ -427,11 +427,11 @@ function write(hdu::FitsImageHDU{<:Any,N},
         if len > 0
             if null === nothing
                 check(CFITSIO.fits_write_img(
-                    hdu, type, fpix, len, dense_array(arr), Ref{Status}(0)))
+                    hdu, type, fpix, len, dense_array(arr), Ref{Cint}(0)))
             else
                 check(CFITSIO.fits_write_imgnull(
                     hdu, type, fpix, len, dense_array(arr), Ref{eltype(arr)}(null),
-                    Ref{Status}(0)))
+                    Ref{Cint}(0)))
             end
         end
     else

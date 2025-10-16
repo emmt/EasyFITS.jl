@@ -18,7 +18,7 @@ Base.getproperty(hdu::FitsTableHDU, ::Val{:last_row}) = get_nrows(hdu)
 Base.getproperty(hdu::FitsTableHDU, ::Val{:nrows}) = get_nrows(hdu)
 function get_nrows(f::Union{FitsFile,FitsTableHDU})
     nrows = Ref{Clonglong}()
-    check(CFITSIO.fits_get_num_rowsll(f, nrows, Ref{Status}(0)))
+    check(CFITSIO.fits_get_num_rowsll(f, nrows, Ref{Cint}(0)))
     return as(Int, nrows[])
 end
 
@@ -28,7 +28,7 @@ Base.getproperty(hdu::FitsTableHDU, ::Val{:last_column}) = get_ncols(hdu)
 Base.getproperty(hdu::FitsTableHDU, ::Val{:ncols}) = get_ncols(hdu)
 function get_ncols(f::Union{FitsFile,FitsTableHDU})
     ncols = Ref{Cint}()
-    check(CFITSIO.fits_get_num_cols(f, ncols, Ref{Status}(0)))
+    check(CFITSIO.fits_get_num_cols(f, ncols, Ref{Cint}(0)))
     return as(Int, ncols[])
 end
 
@@ -114,7 +114,7 @@ end
 function get_colnum(hdu::FitsTableHDU, col::ColumnName; case::Bool = false)
     colnum = Ref{Cint}()
     status = CFITSIO.fits_get_colnum(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
-                                     col, colnum, Ref{Status}(0))
+                                     col, colnum, Ref{Cint}(0))
     iszero(status) && return as(Int, colnum[])
     status == CFITSIO.COL_NOT_FOUND && throw(ErrorException(
         "column `$(case ? string(col) : uppercase(string(col)))` not found in FITS table"))
@@ -145,7 +145,7 @@ function get_colname(hdu::FitsTableHDU, col::ColumnName; case::Bool = false)
     colnum = Ref{Cint}()
     buffer = Vector{UInt8}(undef, CFITSIO.FLEN_VALUE)
     check(CFITSIO.fits_get_colname(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
-                                   col, pointer(buffer), colnum, Ref{Status}(0)))
+                                   col, pointer(buffer), colnum, Ref{Cint}(0)))
     colname = to_string!(buffer)
     return (case ? colname : uppercase(colname), as(Int, colnum[]))
 end
@@ -161,7 +161,7 @@ for func in (:get_coltype, :get_eqcoltype)
         type = Ref{Cint}()
         repeat = Ref{Clonglong}()
         width = Ref{Clonglong}()
-        check(CFITSIO.$cfunc(f, col, type, repeat, width, Ref{Status}(0)))
+        check(CFITSIO.$cfunc(f, col, type, repeat, width, Ref{Cint}(0)))
         return (type[], as(Int, repeat[]), as(Int, width[]))
     end
 end
@@ -174,7 +174,7 @@ function read_tdim(f::Union{FitsFile,FitsTableHDU}, col::Integer)
     ndims = Ref{Cint}()
     dims = Vector{Clonglong}(undef, 5)
     while true # 1 or 2 passes may be necessary
-        check(CFITSIO.fits_read_tdimll(f, col, length(dims), ndims, dims, Ref{Status}(0)))
+        check(CFITSIO.fits_read_tdimll(f, col, length(dims), ndims, dims, Ref{Cint}(0)))
         ok = ndims[] ≤ length(dims)
         ndims[] != length(dims) && resize!(dims, ndims[])
         ok && return dims
@@ -649,14 +649,14 @@ for T in NUMERIC_TYPES
             axes(null) == axes(arr) || error("incompatible array axes")
             if nelem > 0
                 GC.@preserve arr null check(CFITSIO.$(cfunc("fits_read_colnull_", T))(
-                    hdu, col, row, elem, nelem, cpointer(null), cpointer(arr), anynull, Ref{Status}(0)))
+                    hdu, col, row, elem, nelem, cpointer(null), cpointer(arr), anynull, Ref{Cint}(0)))
                 fix_booleans!(null)
             end
         else
             null = (Null <: Number ? as($T, null) : zero($T))
             if nelem > 0
                 GC.@preserve arr check(CFITSIO.$(cfunc("fits_read_col_", T))(
-                    hdu, col, row, elem, nelem, null, cpointer(arr), anynull, Ref{Status}(0)))
+                    hdu, col, row, elem, nelem, null, cpointer(arr), anynull, Ref{Cint}(0)))
             end
         end
         return nothing
@@ -668,10 +668,10 @@ for T in NUMERIC_TYPES
         if nelem > 0
             if Null <: Nothing
                 GC.@preserve arr check(CFITSIO.$(cfunc("fits_write_col_", T))(
-                    hdu, col, row, elem, nelem, cpointer(arr), Ref{Status}(0)))
+                    hdu, col, row, elem, nelem, cpointer(arr), Ref{Cint}(0)))
             else
                 GC.@preserve arr check(CFITSIO.$(cfunc("fits_write_colnull_", T))(
-                    hdu, col, row, elem, nelem, cpointer(arr), Ref{$T}(null), Ref{Status}(0)))
+                    hdu, col, row, elem, nelem, cpointer(arr), Ref{$T}(null), Ref{Cint}(0)))
             end
         end
     end
@@ -925,7 +925,7 @@ function create_table(file::FitsFile, cols; ascii::Bool=false, nrows::Integer=0)
         parse_column_definition!(ttype, tform, tunit, key => val, k)
     end
     check(CFITSIO.fits_create_tbl(file, tabletype, nrows, ncols, ttype, tform, tunit,
-                                  C_NULL, Ref{Status}(0)))
+                                  C_NULL, Ref{Cint}(0)))
 
     # Write cell dimensions if needed.
     for (k, (key, val)) in enumerate(pairs_producer(cols))
@@ -1002,11 +1002,11 @@ for T in (Clong === Clonglong ? (Clong,) : (Clong, Clonglong))
     @eval begin
         function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
                             dims::DenseVector{$T})
-            check(CFITSIO.$cfunc(f, colnum, length(dims), dims, Ref{Status}(0)))
+            check(CFITSIO.$cfunc(f, colnum, length(dims), dims, Ref{Cint}(0)))
         end
         function write_tdim(f::Union{FitsFile,FitsTableHDU}, colnum::Integer,
                             dims::NTuple{N,$T}) where {N}
-            check(CFITSIO.$cfunc(f, colnum, N, Ref(dims), Ref{Status}(0)))
+            check(CFITSIO.$cfunc(f, colnum, N, Ref(dims), Ref{Cint}(0)))
         end
     end
 end

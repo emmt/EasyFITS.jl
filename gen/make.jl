@@ -67,10 +67,6 @@ function rewrite(code::AbstractString)
         # single precision constants
         r"([0-9]+\.[0-9]+)[eE]([-+]?[0-9]+)F\b" => s"\1f\2",
 
-        # status is special
-        r"^( *@ccall +libcfitsio\..*?), *status *:: *Ptr\{ *Cint *\} *\) *:: *Cint *$"m =>
-            s"\1, status::Ptr{Status})::Status",
-
         # suppress empty lines
         r"(\n?\r|\n)\1\1+"m => "\n\n")
 

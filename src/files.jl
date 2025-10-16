@@ -226,7 +226,7 @@ end
 
 # The following method is used to finalize or to close the object.
 function close_handle(file::FitsFile)
-    status = Ref{Status}(0)
+    status = Ref{Cint}(0)
     if isopen(file)
         CFITSIO.fits_close_file(file, status)
         setfield!(file, :handle, Ptr{CFITSIO.fitsfile}(0))
@@ -297,7 +297,7 @@ See also [`seekstart(::FitsFile)`](@ref), [`seekend(::FitsFile)`](@ref), and
 """
 function Base.seek(file::FitsFile, i::Integer)
     type = Ref{Cint}()
-    check(CFITSIO.fits_movabs_hdu(file, i, type, Ref{Status}(0)))
+    check(CFITSIO.fits_movabs_hdu(file, i, type, Ref{Cint}(0)))
     return Int(type[])
 end
 
@@ -339,7 +339,7 @@ end
 
 function get_nhdus(file::FitsFile)
     num = Ref{Cint}()
-    check(CFITSIO.fits_get_num_hdus(file, num, Ref{Status}(0)))
+    check(CFITSIO.fits_get_num_hdus(file, num, Ref{Cint}(0)))
     return Int(num[])
 end
 
@@ -350,7 +350,7 @@ flushes the internal data buffers of `f` to the associated output FITS file.
 
 """
 Base.flush(f::Union{FitsFile,FitsHDU}) =
-    check(CFITSIO.fits_flush_buffer(f, 0, Ref{Status}(0)))
+    check(CFITSIO.fits_flush_buffer(f, 0, Ref{Cint}(0)))
 
 # Implement abstract array API for FitsFile objects.
 Base.length(file::FitsFile) = isopen(file) ? getfield(file, :nhdus) : 0
@@ -400,7 +400,7 @@ The returned object has the following read-only properties:
 
 """
 function Base.getindex(file::FitsFile, i::Integer)
-    status = Ref{Status}(0)
+    status = Ref{Cint}(0)
     type = Ref{Cint}()
     check(CFITSIO.fits_movabs_hdu(file, i, type, status))
     type = FitsHDUType(type[])

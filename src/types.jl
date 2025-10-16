@@ -1,5 +1,3 @@
-import .CFITSIO: Status
-
 # Aliases used for sub-indexing.
 const IndexRange = OrdinalRange{<:Integer,<:Integer}
 const SubArrayIndex = Union{Colon,Integer,IndexRange}
@@ -290,7 +288,7 @@ mutable struct FitsFile <: AbstractVector{FitsHDU}
             mode == "r+" ? :rw :
             mode == "w" || mode == "w!" ? :w :
             throw(ArgumentError("mode must be \"r\", \"r+\", \"w\" or \"w!\""))
-        status = Ref{Status}(0)
+        status = Ref{Cint}(0)
         handle = Ref{Ptr{CFITSIO.fitsfile}}(0)
         num = Ref{Cint}(0)
         if access === :w
@@ -389,5 +387,5 @@ FITS files.
 
 """
 struct FitsError <: Exception
-    code::Status
+    code::Cint
 end
