@@ -8,7 +8,11 @@ argument of type `Cstring`. On return of the C function, the object can be safel
 to a Julia string by calling `String(s)`.
 
 """
-OutputCstring(len::Integer) = OutputCstring(Memory{UInt8}(undef, len))
+function OutputCstring(len::Integer)
+    buf = Memory{UInt8}(undef, len)
+    len > 0 && (buf[1] = 0x00)
+    return OutputCstring(buf)
+end
 
 Base.parent(s::OutputCstring) = s.parent
 
