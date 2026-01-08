@@ -221,14 +221,14 @@ end
 creates a new FITS file named `filename` whose contents is specified by `args...`. If the
 file already exists, it is (silently) overwritten. This method is equivalent to:
 
-    writefits(filename, args...; overwrite = true, kwds...)
+    writefits(filename, args...;  kwds..., overwrite = true)
 
 See [`writefits`](@ref) for the meaning of `args...` and [`FitsFile`](@ref) for other
 keywords that may be specified when opening the file.
 
 """
 writefits!(filename::AbstractString, args...; kwds...) =
-    writefits(filename, args...; overwrite = true, kwds...)
+    writefits(filename, args...; kwds..., overwrite = true)
 
 function write(file::FitsFile, header::OptionalHeader,
                data::Union{ImageData,TableData}, args...)

@@ -719,6 +719,9 @@ end
     @test x3["XY"] == xy
     @test x3["LABEL"] == label
 
+    # Check `overwrite` keyword and similar.
+    @test_throws FitsError openfits(tempfile, "w")
+
     # write (version with columns given as varargs)
     FitsFile(tempfile, "w!") do fitsfile
         @test FitsTableHDU(fitsfile, :col1 => Float32) isa FitsTableHDU
