@@ -70,9 +70,8 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", err::FitsError)
     show(io, err)
-    print(io, ": \"")
+    print(io, ": ")
     print(io, cfitsio_errmsg(err.code))
-    print(io, "\"")
 end
 
 Base.showerror(io::IO, err::FitsError) = show(io, MIME("text/plain"), err)
