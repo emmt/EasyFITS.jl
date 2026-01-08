@@ -7,7 +7,7 @@ SOURCES = \
     src/files.md \
     src/images.md \
     src/tables.md \
-    src/library.md \
+    src/reference.md \
     src/links.md
 
 default: build/index.html

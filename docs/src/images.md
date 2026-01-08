@@ -1,9 +1,9 @@
 # FITS Image HDUs
 
 FITS Image HDUs store multi-dimensional arrays with numerical values exactly as regular
-Julia arrays. In `EasyFITS`, a FITS Image HDU is represented by an object of type
-[`FitsImageDHU{T,N}`](@ref FitsImageHDU) with `T` the element type and `N` the number of
-dimensions.
+Julia arrays (of type `Array`). In `EasyFITS`, a FITS Image HDU is represented by an object
+of type [`FitsImageDHU{T,N}`](@ref FitsImageHDU) with `T` the element type and `N` the
+number of dimensions.
 
 
 ## Image HDU properties
@@ -26,15 +26,15 @@ An image HDU has the following properties:
 
 ## Reading a FITS image
 
-To read the data stored by the *Header Data Unit* (HDU) object `hdu` of type
-`FitsImageDHU` HDU as an array `arr`, call [`read`](@ref read(::FitsImageHDU)) as:
+To read the data stored by the *Header Data Unit* (HDU) object `hdu` of type `FitsImageDHU`
+HDU as an array `arr`, call [`read`](@ref read(::FitsImageHDU)) as:
 
 ``` julia
 arr = read(hdu)
 ```
 
 The result is type-stable: `arr` is of type `Array{T,N}` if `hdu isa FitsImageDHU{T,N}`
-holds. To choose another element type, say, `S`, just do:
+holds. To choose another element type, say `S`, just do:
 
 ``` julia
 arr = read(Array{S}, hdu)
@@ -64,8 +64,8 @@ read!(arr, hdu)
 ```
 
 An hyper-rectangular sub-image can be read using the same syntax as for a Julia `view` by
-specifying indices, index ranges, or colons after the `hdu` argument. Index ranges may
-have non-unit steps but steps must all be positive. For example:
+specifying indices, index ranges, or colons after the `hdu` argument. Index ranges may have
+non-unit steps but steps must all be positive. For example:
 
 ``` julia
 arr = read(hdu, :, :, 2)
@@ -76,14 +76,14 @@ yields the 2nd slice in a 3-dimensional FITS image.
 The result is similar to:
 
 ``` julia
-arr = read(R, hdu)[:,:,2]
+arr = read(hdu)[:,:,2]
 ```
 
-but should be more efficient as no array other than the result is allocated and fewer
-values are read.
+but should be more efficient as no array other than the result is allocated and fewer values
+are read.
 
-Call `read!` instead of `read` to overwrite the contents of an existing array. Following
-the previous example, reading the next slice could be done by:
+Call `read!` instead of `read` to overwrite the contents of an existing array. Following the
+previous example, reading the next slice could be done by:
 
 ``` julia
 read!(arr, hdu, :, :, 3)
@@ -92,7 +92,7 @@ read!(arr, hdu, :, :, 3)
 
 ## Creating an image HDU
 
-To create a new FITS image HDU in an open FITS `file`, there are several possibilities:
+To start a new FITS image HDU in an open FITS `file`, there are several possibilities:
 
 ``` julia
 hdu = FitsImageHDU(file, dims...; bitpix=...)
@@ -100,10 +100,9 @@ hdu = FitsImageHDU{T}(file, dims...)
 hdu = FitsImageHDU{T,N}(file, dims...)
 ```
 
-with pixel type specified by its Julia data-type via the parameter `T` or by its FITS
-BITPIX code via the keyword `bitpix` and image size given by `dims...`. The number of
-dimensions `N` can be inferred from the image size but may be explicitly specified for
-better type-stability.
+with pixel type specified by its Julia data-type via the parameter `T` or by its FITS BITPIX
+code via the keyword `bitpix` and image size given by `dims...`. The number of dimensions
+`N` can be inferred from the image size but may be explicitly specified for assertion.
 
 If the FITS file is currently empty then a primary array is created, otherwise a new image
 HDU is appended to the file.
@@ -124,19 +123,22 @@ where `T = eltype(arr)` and `N = ndims(arr)` are assumed if these parameters are
 explicitly specified. Specifying a different pixel type than `eltype(arr)` is possible,
 conversion will automatically be performed when writing the array values.
 
+After starting a new HDU, the non structural keywords of its header part of the HDU can be
+written and then the data part of the HDU must be written (unless empty).
+
 For example:
 
 ``` julia
 hdu = FitsImageHDU(file, arr)
 hdu["KEY1"] = val1             # add a 1st header record
-hdu["KEY2"] = (val2, str2)     # add a 2nd header record
-hdu["KEY3"] = (nothing, str3)  # add a 3rd header record
+hdu["KEY2"] = (val2, com2)     # add a 2nd header record
+hdu["KEY3"] = (nothing, com3)  # add a 3rd header record
 write(hdu, arr)                # write data
 ```
 
 will create a new Header Data Unit (HDU) storing array `arr` with 3 additional header
 records: one named `"KEY1"` with value `val1` and no comments, another named `"KEY2"` with
-value `val2` and comment string `str2`, and yet another one named `"KEY3"` with no value
-and with comment string `str3`. Note that special names `"COMMENT"`, `"HISTORY"`, and `""`
-indicating commentary entries have no associated, only a comment string, say `str` which
-can be specified as `str` or as `(nothing,str)`.
+value `val2` and comment string `com2`, and yet another one named `"KEY3"` with no value and
+with comment string `com3`. Note that special names `"COMMENT"`, `"HISTORY"`, and `""`
+indicating commentary entries have no associated, only a comment string, say `com` which can
+be specified as `com` or as `(nothing,com)`.

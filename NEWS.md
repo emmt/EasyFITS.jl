@@ -10,6 +10,7 @@ Versioning](https://semver.org).
 
 - `writefits!` always overwrite even though `overwrite=false` is specified.
 
+- Doc. has been updated and fixed.
 
 ## Version 0.7.2 [2026-01-08]
 

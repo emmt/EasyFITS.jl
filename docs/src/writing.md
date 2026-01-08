@@ -2,7 +2,7 @@
 
 This section explains how to directly write a FITS file in a single function call whose
 arguments readily reflects the structure of the FITS file or how to create and write the
-contents of a FITS file *piece-by-piece*.
+content of a FITS file *piece-by-piece*.
 
 
 ## Direct writing of a FITS file
@@ -14,30 +14,29 @@ to [`writefits`](@ref) or [`writefits!`](@ref) as:
 writefits(filename, hdr1, dat1, hdr2, dat2, ...; kwds...)
 ```
 
-where `filename` is the name of the FITS file, `hdr1` and `dat1` specify the header and
-data parts of the first HDU, `hdr2` and `dat2` specify the header and data parts of the
-second HDU and so on. Here `kwds...` represent keywords that are passed to
-[`FitsFile`](@ref). The call `writefits!(args...; kwds...)` is a shortcut for
-`writefits(args...; overwrite = true, kwds...)` which overwrites `filename` if it already
-exists.
+where `filename` is the name of the FITS file, `hdr1` and `dat1` specify the header and data
+parts of the first HDU, `hdr2` and `dat2` specify the header and data parts of the second
+HDU, and so on. Here `kwds...` represent keywords that are passed to [`FitsFile`](@ref). The
+call `writefits!(args...; kwds...)` is a shortcut for `writefits(args...; overwrite = true,
+kwds...)` which overwrites `filename` if it already exists.
 
 In `EasyFITS`, there are many different possible ways to specify a HDU header and data:
 
 * A header may be `nothing` if there are no additional keywords other than the *structural
   keywords* describing the data part. Otherwise, the possible types for a header are given
   by the union [`EasyFITS.Header`](@ref): a header may be a collection of `FitsCard`
-  instances (i.e. an instance of `FitsHeader`, a tuple, or a vector of FITS cards), a
-  named tuple, a tuple or a vector of pairs like `key => val` or `key => (val, com)` with
-  `key` the keyword name, `val` its value, and `com` a comment.
+  instances (i.e. an instance of `FitsHeader`, a tuple, or a vector of FITS cards), a named
+  tuple, a tuple or a vector of pairs like `key => val` or `key => (val, com)` with `key`
+  the keyword name, `val` its value, and `com` a comment.
 
 * For a FITS Image HDU, the data part is specified as a numerical Julia array.
 
 * For a FITS Table HDU, the data part may be specified by a dictionary (whose keys are the
-  column names and whose values are the corresponding column data), a vector of column
-  data, a named tuple, a tuple or a vector of pairs like `col => val` with `col` the
-  column name and `val` the column data. The data of each column of a table is a Julia
-  array, the number of rows of the table is the last dimension of these arrays which must
-  be the same for all columns.
+  column names and whose values are the corresponding column data), a vector of column data,
+  a named tuple, a tuple or a vector of pairs like `col => val` with `col` the column name
+  and `val` the column data. The data of each column of a table is a Julia array, the number
+  of rows of the table is the last dimension of these arrays which must be the same for all
+  columns.
 
 Calling [`writefits`](@ref) or [`writefits!`](@ref), the structure of the resulting FITS
 file can be made obvious by the code as in the following complex example with array `arr`
@@ -89,9 +88,12 @@ writefits(filename,
           # can be strings or symbols but not a mixture):
           [:phase => ((180/π).*phase, "deg"),
            :amplitude => (amplitude, "V"),
-           :xy => (hcat(x,y)', "V")])
+           :xy => (hcat(x,y)', "mm")])
 ```
 
+The difference between [`writefits`](@ref) or [`writefits!`](@ref) is that `writefits!`
+silently overwrite `filename` if it already exists while `writefits` would complain and
+refuse to do that unless keyword `overwrite=true` is set.
 
 ## Advanced writing of a FITS file
 
@@ -101,37 +103,38 @@ readily shows the structure of the file. This is not suitable when not all conte
 immediately available or when it is more convenient to write the FITS file piece by piece.
 The latter is typically done by the following steps:
 
-1. Create a new empty FITS file for writing with the [`FitsFile`](@ref) constructor.
+1. Create a new empty FITS file for writing with the [`FitsFile`](@ref) constructor or the
+   [`openfits`](@ref) function.
 
-2. Append a new HDU to with the [`FitsImageHDU`](@ref) constructor or the
-   [`FitsTableHDU`](@ref) constructor.
+2. Start a new HDU with the [`FitsImageHDU`](@ref) constructor or the [`FitsTableHDU`](@ref)
+   constructor.
 
 3. Instantiate the FITS keywords of the header part of the HDU.
 
-4. Write the data part of the HDU. This may be done by chunks and this
-   depend on whether the HDU is an image or a table.
+4. Write the data part of the HDU. This may be done by chunks and this depends on whether
+   the HDU is a FITS Image or a FITS Table.
 
 4. Eventually close the FITS file with `close`. Closing the FITS file is automatically done
    when the object representing the file is no longer used and garbage collected, closing
-   the file is therefore optional.
+   the file is therefore optional. However, explicitly closing the file makes sure that its
+   content is effectively written.
 
 Remarks:
 
 - Steps 2 to 4 can be repeated as many times as necessary to create more than one HDU.
 
-
 For example, with `arr` a Julia array to be written in the data part of the HDU:
 
 ```julia
-# Create the file:
+# 1. Create the file:
 file = FitsFile(filename, "w")
-# Appends a new HDU to store array data `arr`:
+# 2. Start a new HDU to store array data `arr`:
 hdu = FitsImageHDU(file, arr)
-# Set some keywords in the header part of the HDU:
+# 3. Set some keywords in the header part of the HDU:
 hdu["HDUNAME"] = ("SOME_NAME", "Name of this HDU")
 hdu["COMMENT"] = "Some comment."
-# Write the data part of the HDU:
+# 4. Write the data part of the HDU:
 write(hdu, arr)
-# Close the file:
+# 5. Close the file:
 close(file)
 ```

@@ -1,14 +1,15 @@
 # FITS Table HDUs
 
-FITS Table HDUs store table data. In a given table column, cells may contain more than a
-single value. In `EasyFITS`, a FITS Table HDU is represented by an object of type
-[`FitsTableDHU`](@ref FitsTableHDU).
+FITS Table HDUs store table data. A **table cell** is the table entry at a given row and
+column of the table. The cells of a given table column may contain more than a single value.
+In `EasyFITS`, a FITS Table HDU is represented by an object of type [`FitsTableDHU`](@ref
+FitsTableHDU).
 
 !!! note
     The elements of a column of a FITS table HDU are stored in the same memory order as in
     an ordinary Julia array. As a result, the **rows** of a column in a FITS table HDU
-    correspond to the **last** index in the equivalent Julia array. Method `permutedims`
-    can be used is this convention does not suit you.
+    correspond to the **last** index in the equivalent Julia array. Method `permutedims` can
+    be used is this convention does not suit you.
 
 
 ## Reading a single table column
@@ -19,11 +20,11 @@ To read a single column in a FITS table HDU as an array `arr`, call `read` as:
 arr = read(hdu, col)
 ```
 
-with `hdu` the *Header Data Unit* containing the table and `col` the column name or
-number. The names of the columns are given by `hdu.column_names` and valid column numbers
-are in the range `hdu.columns` (see [Table HDU Properties](#Table-HDU-Properties) for a
-list of all properties). If `col` is a string or a symbol, keyword `case` can be used to
-specify whether uppercase/lowercase matters (`case` is false by default).
+with `hdu` the *Header Data Unit* containing the table and `col` the column name or number.
+The names of the columns are given by `hdu.column_names` and valid column numbers are in the
+range `hdu.columns` (see [Table HDU Properties](#Table-HDU-Properties) for a list of all
+properties). If `col` is a string or a symbol, keyword `case` can be used to specify whether
+uppercase/lowercase matters (`case` is false by default).
 
 By default, all rows are read but it is possible to specify which rows to read:
 
@@ -89,10 +90,9 @@ columns will be left unchanged whatever the keyword `case` while with `rename=lo
 the names of the columns will be converted to lower-case letters.
 
 In order to retrieve the units of the columns, specify keyword `units=String` and get a
-dictionary whose values are 2-tuples of the form `(data,units)` with `data` the column
-cells and `units` the column units as a string. The default behavior, that is to get a
-dictionary whose values are simply be the cells of the columns, corresponds to
-`units=nothing`.
+dictionary whose values are 2-tuples of the form `(data,units)` with `data` the column cells
+and `units` the column units as a string. The default behavior, that is to get a dictionary
+whose values are simply the cells of the columns, corresponds to `units=nothing`.
 
 To have a dictionary when `cols` is a single column name/number, just specify the type of
 the expected result as the leading argument. For example:
@@ -174,10 +174,10 @@ push!(vect, hdu, cols, rows)
 
 ## Creating a table HDU
 
-To create a new FITS table HDU in the FITS file `file`, call:
+To start a new FITS Table HDU in the FITS file `file`, call:
 
 ``` julia
-hdu = write(file, FitsTableHDU, cols)
+hdu = FitsTableHDU(file, cols)
 ```
 
 with `cols` defining the columns of the table. Each column definition is a pair `name =>
@@ -194,9 +194,9 @@ name => (type, units, dims)
 name => (type, dims, units)
 ```
 
-where `type` is either a Julia type (`Number` or `String`) or a letter (see
-table below), `dims` is an integer or a tuple of integers, and `units` is a
-string. By default, `dims = (1,)` and `units = ""`.
+where `type` is either a Julia type (a numerical type or `String`) or a letter (see table
+below for the correspondence), `dims` is the cell shape (an integer or a tuple of integers),
+and `units` is a string. By default, `dims = (1,)` and `units = ""`.
 
 | Type               | Letter | Remarks          |
 |:-------------------|:-------|:-----------------|
@@ -216,11 +216,11 @@ string. By default, `dims = (1,)` and `units = ""`.
 | `Complex{Float64}` | `'M'`  |                  |
 | `FitsBit`          | `'X'`  |  bits
 
-The returned object, `hdu`, can be used to add FITS keywords to the header of
-the table and, then, to write column data. Typically:
+The returned object, `hdu`, can be used to add FITS keywords to the header of the table and,
+then, to write column data. Typically:
 
 ```julia
-hdu = write(file, FitsTableHDU, cols)
+hdu = FitsTableHDU(file, cols)
 push!(hdu, key1 => val1)         # add a first header keyword
 push!(hdu, key2 => (val2, com2)) # add a second header keyword with a comment
 ...                              # add other header keywords
@@ -235,8 +235,8 @@ created in a single call:
 
 ```julia
 write(file,
-      [key1 => val1, key2 => (val2, com2), ...],
-      [col1 => arr1, col2 => arr2, ...])
+      [key1 => val1, key2 => (val2, com2), ...], # <--- header part
+      [col1 => arr1, col2 => arr2, ...]) # <----------- data part
 ```
 
 which follows the `write(dest, header, data)` convention in `EasyFITS` with `dest` the
@@ -254,9 +254,9 @@ To write a single column into the FITS table HDU `hdu`:
 write(hdu, col => arr, ...; first=hdu.first_row, case=false, null=nothing) -> hdu
 ```
 
-where `col` is the column name/number and `arr` is an array of column values. Column
-values are converted as needed and are written starting at the row specified by `first`.
-The leading dimensions of `arr` should be the same as those specified by the corresponding
+where `col` is the column name/number and `arr` is an array of column values. Column values
+are converted as needed and are written starting at the row specified by `first`. The
+leading dimensions of `arr` should be the same as those specified by the corresponding
 `TDIMn` keyword (with `n` the column number) and the remaining last dimension, if any,
 corresponds to the *row* index of the table.
 
@@ -307,5 +307,5 @@ hdu.column_name(col; case=false) -> name::String
 hdu.column_number(col; case=false) -> number::Int
 ```
 
-Keyword `case` specifies whether the case of letters does matters when `col` is a
-(symbolic) name. The result of `hdu.column_units(col)` is always a string, possibly empty.
+Keyword `case` specifies whether the case of letters does matters when `col` is a (symbolic)
+name. The result of `hdu.column_units(col)` is always a string, possibly empty.

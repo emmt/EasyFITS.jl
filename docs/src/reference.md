@@ -32,6 +32,7 @@ Missing `EasyFITS.write!`, `read(::FitsFile, ...)`, `read!(::DenseArray{<:Number
 
 ```@docs
 FitsFile
+openfits
 pathof(::FitsFile)
 filemode(::FitsFile)
 isreadonly(::FitsFile)

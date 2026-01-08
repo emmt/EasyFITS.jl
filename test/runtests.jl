@@ -692,7 +692,7 @@ end
         [:phase => ((180/π).*phase, "deg"),
          :amplitude => (amplitude, "V"),
          :name => name,
-         :xy => (xy, "V"),
+         :xy => (xy, "mm"),
          :label => label])
     h1 = read(FitsHeader, tempfile)
     @test h1 isa FitsHeader

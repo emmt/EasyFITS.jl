@@ -25,7 +25,7 @@ makedocs(
         "files.md",
         "images.md",
         "tables.md",
-        "library.md",
+        "reference.md",
         "links.md",
     ]
 )
