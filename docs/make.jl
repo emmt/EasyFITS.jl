@@ -13,7 +13,7 @@ DEPLOYDOCS = (get(ENV, "CI", nothing) == "true")
 makedocs(
     sitename = "Easy access to FITS files in Julia",
     format = Documenter.HTML(
-        edit_link = "master",
+        edit_link = "main",
         prettyurls = DEPLOYDOCS,
     ),
     authors = "Éric Thiébaut and contributors",
