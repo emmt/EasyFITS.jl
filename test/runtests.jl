@@ -602,6 +602,16 @@ end
         @test dict isa Dict{String,<:Array}
         @test dict[hdu.column_names[1]] == fill(cols[1][5])
         @test dict[hdu.column_names[2]] == fill(cols[2][5])
+        # OIFITS expects that a FITS exception is thrown if the keyword or the column is not
+        # found.
+        r = try; read(hdu, "NON-EXISTING-COLUMN"); catch ex; ex; end
+        @test r isa FitsError
+        @test r === FitsError(EasyFITS.CFITSIO.COL_NOT_FOUND)
+        r = try; hdu["NON-EXISTING-KEYWORD"]; catch ex; ex; end
+        @test r isa FitsError || r isa KeyError
+        if r isa FitsError
+            @test r === FitsError(EasyFITS.KEY_NO_EXIST)
+        end
     end
 
     # High-level API.

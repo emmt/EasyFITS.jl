@@ -1,5 +1,15 @@
 # User visible changes for EasyFITS
 
+## Unreleased
+
+### Fixed
+
+- When reading a column of a FITS table, it is always a `FitsError` that is thrown if the
+  error occurs in a call to a C function of the `CFITSIO` library. Formerly, `EasyFITS`
+  could throw a detailed `ErrorException` if the error was due to a non-existing column
+  (with status `EasyFITS.CFITSIO.COL_NOT_FOUND`). This should fix a bug in the `OIFITS`
+  package.
+
 ## Version 0.7.1 [2025-10-16]
 
 ### Fixed

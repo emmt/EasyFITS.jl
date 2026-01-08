@@ -113,12 +113,9 @@ end
 
 function get_colnum(hdu::FitsTableHDU, col::ColumnName; case::Bool = false)
     colnum = Ref{Cint}()
-    status = CFITSIO.fits_get_colnum(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
-                                     col, colnum, Ref{Cint}(0))
-    iszero(status) && return as(Int, colnum[])
-    status == CFITSIO.COL_NOT_FOUND && throw(ErrorException(
-        "column `$(case ? string(col) : uppercase(string(col)))` not found in FITS table"))
-    throw(FitsError(status))
+    check(CFITSIO.fits_get_colnum(hdu, (case ? CFITSIO.CASESEN : CFITSIO.CASEINSEN),
+                                  col, colnum, Ref{Cint}(0)))
+    return as(Int, colnum[])
 end
 
 Base.checkbounds(hdu::FitsTableHDU, col::Integer) =
