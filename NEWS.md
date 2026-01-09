@@ -8,7 +8,7 @@ Versioning](https://semver.org).
 
 ### Fixed
 
-- `writefits!` always overwrite even though `overwrite=false` is specified.
+- `writefits!` always overwrites even though `overwrite=false` is specified.
 
 - Doc. has been updated and fixed.
 
@@ -16,7 +16,7 @@ Versioning](https://semver.org).
 
 ### Fixed
 
-- When reading a column of a FITS table, it is always a `FitsError` that is thrown if the
+- When reading a column of a FITS Table, it is always a `FitsError` that is thrown if the
   error occurs in a call to a C function of the `CFITSIO` library. Formerly, `EasyFITS`
   could throw a detailed `ErrorException` if the error was due to a non-existing column
   (with status `EasyFITS.CFITSIO.COL_NOT_FOUND`). This should fix a bug in the `OIFITS`
@@ -68,16 +68,16 @@ Versioning](https://semver.org).
 
 ### Breaking changes
 
-- `read!(dict::AbstractDict,hdu::FitsTableHDU,...)` merges some columns of the FITS table
+- `read!(dict::AbstractDict,hdu::FitsTableHDU,...)` merges some columns of the FITS Table
   in `hdu` with the contents of `dict` but no longer deletes existing contents of `dict`.
   Call `read!(empty!(dict),hdu,...)` for that.
 
 - `merge!(dict::AbstractDict,hdu::FitsTableHDU,...)` to merge some columns of the FITS
-  table in `hdu` with the contents of `dict` is no longer supported as it is inconsistent
+  Table in `hdu` with the contents of `dict` is no longer supported as it is inconsistent
   with the usual meaning of `merge!`. Call `read!(dict,hdu,...)` instead.
 
 - `push!(vec::AbstractVector,hdu::FitsTableHDU,...)` to append some columns of the FITS
-  table in `hdu` to the vector `vec` is no longer supported as it is inconsistent with the
+  Table in `hdu` to the vector `vec` is no longer supported as it is inconsistent with the
   usual meaning of `push!`. Call `append!(vec, read(Vector,hdu,...))` instead.
 
 - To avoid type-piracy, `read(FitsHeader, filename)` is replaced by `readfits(FitsHeader,
@@ -158,7 +158,7 @@ implement the usual behavior of a base method:
 
 ## Version 0.5.12
 
-- Columns of strings in FITS tables:
+- Columns of strings in FITS Tables:
   - An error is raised when attempting to write strings longer than the maximal
     length in a column of strings. The previous behavior was to truncate the
     strings and display a warning.
@@ -199,14 +199,14 @@ implement the usual behavior of a base method:
 
 ## Version 0.5.6
 
-This version introduces many changes mostly for reading/writing FITS table
+This version introduces many changes mostly for reading/writing FITS Table
 extensions:
 
 - The `rename` keyword can be used to specify a function to rename column names
-  when reading a FITS table in a dictionary.
+  when reading a FITS Table in a dictionary.
 
 - Keywords `first` and `last` to specify the range of rows to read in a FITS
-  table with the `read` method have been replaced by a `rows` argument which
+  Table with the `read` method have been replaced by a `rows` argument which
   may be a single row index, a unit range of row numbers, or a colon `:` to
   read all rows (the default). The `read!` method keeps its `first` keyword to
   specify the first row to read.
@@ -215,14 +215,14 @@ extensions:
   for a table yield a 0-dimensional result along the corresponding dimension.
 
 - `read!(dict,hdu[,cols[,rows]])` replaces the contents of dictionary `dict`
-  with columns `cols` of the FITS table `hdu` while
-  `merge!(dict,hdu[,cols[,rows]])` merges columns `cols` of the FITS table
+  with columns `cols` of the FITS Table `hdu` while
+  `merge!(dict,hdu[,cols[,rows]])` merges columns `cols` of the FITS Table
   `hdu` to the contents the dictionary `dict`.
 
-- Reading column(s) from a FITS table can yield the column(s) values or the
+- Reading column(s) from a FITS Table can yield the column(s) values or the
   column(s) values *and* their units.
 
-- FITS table extensions can be written by `write(file,hdr,cols)` with `hdr`
+- FITS Table extensions can be written by `write(file,hdr,cols)` with `hdr`
   specifying additional header records, columns `cols` specified by a
   collection of pairs like `key => vals` or `key => (vals, units)` with `key`
   the (symbolic) name of the column, `vals` its values, and `units` its
@@ -251,7 +251,7 @@ extensions:
     spaces if which case the first space is considered as significant (and
     kept). This is intended to distinguish null (empty) and non-null strings.
 
-There are also some changes not related to FITS table extensions:
+There are also some changes not related to FITS Table extensions:
 
 - The constant `EasyFITS.CFITSIO_VERSION` gives the version of the CFITSIO
   library for which the package has been built. At load time, it is checked
@@ -262,26 +262,26 @@ There are also some changes not related to FITS table extensions:
 - `read(FitsHeader,filename;ext=...)` can be used to read the header of FITS
   extension `ext` in file `filename`.
 
-- Empty FITS image extensions can be written.
+- Empty FITS Image extensions can be written.
 
 ## Version 0.5.4
 
 - Use `AsType` package.
 
-- Save arrays of Booleans as bytes in FITS image extensions.
+- Save arrays of Booleans as bytes in FITS Image extensions.
 
 ## Version 0.5.3
 
-- Fix directly writing a FITS image extension in a file with a given header and
+- Fix directly writing a FITS Image extension in a file with a given header and
   image array.
 
 ## Version 0.5.2
 
-- Call `write(file::FitsFile,FitsImageHDU{T},dims...)` to create a new FITS image HDU
+- Call `write(file::FitsFile,FitsImageHDU{T},dims...)` to create a new FITS Image HDU
   with elements of type `T` and dimensions `dims...`.
 
 - Fix writing image extensions with values of type `Bool`. In CFITSIO library,
-  logical values must be considered as bytes in FITS image extensions.
+  logical values must be considered as bytes in FITS Image extensions.
 
 ## Version 0.5.1
 
@@ -324,7 +324,7 @@ using non-exported ones, *properties* are used extensively.
   the card value, and to get the card units if any.
 
 
-### FITS table extensions
+### FITS Table extensions
 
 - When creating table extensions, columns are defined by vectors of `col =>
   def` pairs with column name `col` and column definition `def` that must
@@ -332,14 +332,14 @@ using non-exported ones, *properties* are used extensively.
   the dimensions of the column cells.
 
 - Writing columns is done by `write(hdu,col=>vals,...)` where `hdu` is the
-  header data unit object of the FITS table extension, `col` is the column
+  header data unit object of the FITS Table extension, `col` is the column
   name/number, and `vals` are the values to write. The ellipsis `...` may be
   any other column data to write. Automatic type conversion is performed.
   Partial writing is possible by using the keyword `firstrow` to specify the
   first row to write.
 
 - Reading column values is done by `read(hdu,col)` where `hdu` is the header
-  data unit object of the FITS table extension and `col` is the column
+  data unit object of the FITS Table extension and `col` is the column
   name/number. Partial reading is possible by using the keywords `first` and
   `last` to specify the first and last rows to read.
 
