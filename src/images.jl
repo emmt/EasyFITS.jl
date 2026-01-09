@@ -40,7 +40,7 @@ end
 """
     read(R::Type = Array, hdu::FitsImageHDU[, inds...]) -> arr::R
 
-reads the FITS image data in `hdu` or the rectangular sub-region defined by the indices
+Read the FITS Image data in `hdu` or the rectangular sub-region defined by the indices
 `inds...` if specified.
 
 Optional argument `R` is to restrict the ouput type and improve type-stability. For example:
@@ -108,8 +108,8 @@ end
 """
     read!(arr::DenseArray{<:Number}, hdu::FitsImageHDU[, inds...]) -> arr
 
-overwrites all the elements of the array `arr` with pixel values read from the FITS image
-data in `hdu` and returns `arr`. Pixel values are converted to the element type of `arr`.
+Overwrite the elements of the array `arr` with pixel values read from the FITS Image data in
+`hdu` and returns `arr`. Pixel values are converted to the element type of `arr`.
 
 If `inds...` are specified, only the rectangular sub-region defined by `inds...` is read and
 the destination array must have the same dimensions as this region (the same rules as for
@@ -122,7 +122,7 @@ If `inds...` are not specified, the complete image is read unless another value 
   integers indicating the coordinates of the first and last pixels to read. Optionally,
   keyword `step` may be set to an `N`-tuple of integers to indicate the increment along each
   dimensions. Increments must be positive. Here `N` is the number of dimensions of the FITS
-  image extension.
+  Image extension.
 
 * To read consecutive pixels, specify at least one of the keywords `first` and/or `last`
   with an integer indicating the index of the first and/or last pixels to read.
@@ -240,10 +240,10 @@ end
     hdu = FitsImageHDU{T}(file::FitsFile, dims...)
     hdu = FitsImageHDU{T,N}(file::FitsFile, dims...)
 
-create a new primary array or image extension in FITS file `file` with a specified pixel
-type `T` and size `dims...`. If the FITS file is currently empty then a primary array is
-created, otherwise a new image extension is appended to the file. Pixel type can be
-specified as a numeric type `T` or as an integer BITPIX code `bitpix`.
+Start a new primary array or image extension in FITS file `file` with a specified pixel type
+`T` and size `dims...`. If the FITS file is currently empty then a primary array is created,
+otherwise a new image extension is appended to the file. Pixel type can be specified as a
+numeric type `T` or as an integer BITPIX code `bitpix`.
 
 An object to manage the new extension is returned which can be used to push header cards and
 then to write the data.
@@ -336,7 +336,7 @@ end
     write(file::FitsFile, hdr, arr::AbstractArray) -> file
     write(file::FitsFile, hdr, nothing) -> file
 
-write a new FITS Image Extension in `file` with non-structural header keywords specified by
+Write a new FITS Image Extension in `file` with non-structural header keywords specified by
 `hdr` and data specified by array `arr` or by `nothing`. In the latter case, the data part
 is empty.
 
@@ -356,15 +356,15 @@ end
 """
     write(hdu::FitsImageHDU, arr::AbstractArray{<:Number}) -> hdu
 
-writes all the elements of the array `arr` to the pixels of the FITS image extension of the
+Write the elements of the array `arr` to the pixels of the FITS Image extension of the
 header data unit `hdu`. The element of `arr` are converted to the type of the pixels. The
 default is to write the complete image pixels, so the size of the destination `arr` must be
-identical to the dimensions of the FITS image extension. This behavior may be changed by
+identical to the dimensions of the FITS Image extension. This behavior may be changed by
 specifying another value than `nothing` for the keywords `first` and/or `last`:
 
 * To write a rectangular sub-image, specify keywords `first` and `last` with the coordinates
   of the first and last pixels to write as an `N`-tuple of integers, with `N` the number of
-  dimensions of the FITS image extension.
+  dimensions of the FITS Image extension.
 
 * To write consecutive pixels, specify at least one of the keywords `first` and/or `last`
   with the index of the first and/or last pixels to write as an integer.
@@ -374,9 +374,9 @@ When at least one of the keywords `first` and/or `last` is not `nothing`, the di
 number of pixels to write.
 
 Unless writing a rectangular sub-image, keyword `null` may be used to specify the value of
-undefined elements in `arr`. For integer FITS images, the FITS null value is defined by the
+undefined elements in `arr`. For integer FITS Images, the FITS null value is defined by the
 `BLANK` keyword (an error is returned if the BLANK keyword doesn't exist). For floating
-point FITS images the special IEEE NaN (Not-a-Number) value will be written into the FITS
+point FITS Images the special IEEE NaN (Not-a-Number) value will be written into the FITS
 file.
 
 """ write(::FitsImageHDU, ::Array)

@@ -3,7 +3,7 @@ using Requires
 """
     EasyFITS.CFITSIO_VERSION
 
-is the version number of the CFITSIO library for which `EasyFITS` has been built. When
+VErsion number of the CFITSIO library for which `EasyFITS` has been built. When
 `EasyFITS` is loaded, it is checked that the version of the CFITSIO library does match this
 version.
 
@@ -18,7 +18,7 @@ function __init__()
         """
             nrow(hdu::FitsTableHDU)
 
-        yields the number of rows of the FITS table extension in `hdu`.
+        Return the number of rows of the FITS Table extension in `hdu`.
 
         """
         DataFrames.nrow(hdu::FitsTableHDU) = hdu.nrows
@@ -26,7 +26,7 @@ function __init__()
         """
             ncol(hdu::FitsTableHDU)
 
-        yields the number of columns of the FITS table extension in `hdu`.
+        Return the number of columns of the FITS Table extension in `hdu`.
 
         """
         DataFrames.ncol(hdu::FitsTableHDU) = hdu.ncols

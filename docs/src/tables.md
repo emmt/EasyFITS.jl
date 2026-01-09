@@ -6,15 +6,15 @@ In `EasyFITS`, a FITS Table HDU is represented by an object of type [`FitsTableD
 FitsTableHDU).
 
 !!! note
-    The elements of a column of a FITS table HDU are stored in the same memory order as in
-    an ordinary Julia array. As a result, the **rows** of a column in a FITS table HDU
+    The elements of a column of a FITS Table HDU are stored in the same memory order as in
+    an ordinary Julia array. As a result, the **rows** of a column in a FITS Table HDU
     correspond to the **last** index in the equivalent Julia array. Method `permutedims` can
     be used is this convention does not suit you.
 
 
 ## Reading a single table column
 
-To read a single column in a FITS table HDU as an array `arr`, call `read` as:
+To read a single column in a FITS Table HDU as an array `arr`, call `read` as:
 
 ``` julia
 arr = read(hdu, col)
@@ -146,7 +146,7 @@ vect = read(Vector{Tuple{Array,String}}, hdu, cols, rows)
 ```
 
 With the `read!` method, the contents of an existing dictionary may be replaced by columns
-from a FITS table:
+from a FITS Table:
 
 ``` julia
 read!(dict, hdu)
@@ -248,7 +248,7 @@ methods. Similarly, the columns may be specified in various forms as explained b
 
 ## Writing table columns
 
-To write a single column into the FITS table HDU `hdu`:
+To write a single column into the FITS Table HDU `hdu`:
 
 ```julia
 write(hdu, col => arr, ...; first=hdu.first_row, case=false, null=nothing) -> hdu
@@ -271,7 +271,7 @@ all columns.
 
 ## Table HDU Properties
 
-The following table lists all properties of a FITS table HDU.
+The following table lists all properties of a FITS Table HDU.
 
 | Property        | Description                                                 |
 |:----------------|:------------------------------------------------------------|
@@ -297,7 +297,7 @@ The following table lists all properties of a FITS table HDU.
 | `type`          | HDU type: `FITS_BINARY_TABLE_HDU` or `FITS_ASCII_TABLE_HDU` |
 | `xtension`      | Extension name: `"BINTABLE"` or `"TABLE"`                   |
 
-To retrieve the units, the number, or the name of column `col` in the FITS table `hdu`
+To retrieve the units, the number, or the name of column `col` in the FITS Table `hdu`
 object, use the properties `column_units`, `column_number`, or `column_name` properties as
 follows:
 

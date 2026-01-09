@@ -19,7 +19,7 @@ end
 """
     EasyFITS.Header
 
-is the (union of) type(s) that are accepted to specify a FITS header in `EasyFITS` package.
+Union of acceptable type(s) to specify a FITS header in `EasyFITS` package.
 
 A header may be a vector of pairs like `key => val`, `key => (val,com)`, or `key => com`
 with `key` the keyword name, `val` its value, and `com` its comment. The keyword name `key`
@@ -74,8 +74,7 @@ const Header = Union{
 """
     EasyFITS.OptionalHeader
 
-is the union of `Nothing` and of type(s) that are accepted to specify a FITS header in
-`EasyFITS` package.
+Union of `Nothing` and of acceptable type(s) to specify a FITS header in `EasyFITS` package.
 
 """
 const OptionalHeader = Union{Nothing,Header}
@@ -83,7 +82,7 @@ const OptionalHeader = Union{Nothing,Header}
 """
     EasyFITS.ImageData{T,N}
 
-is the possible type(s) for the pixels of a `N`-dimensional FITS image extension with
+Alias of the acceptable type(s) for the data of a `N`-dimensional FITS Image extension with
 elements of type `T`.
 
 """
@@ -92,8 +91,7 @@ const ImageData{T<:Number,N} = AbstractArray{T,N}
 """
     EasyFITS.ColumnName
 
-is the union of possible types for specifying the name of a column in a FITS table
-extension.
+Union of acceptable types for the name of a column in a FITS Table extension.
 
 """
 const ColumnName = Union{AbstractString,Symbol}
@@ -101,7 +99,7 @@ const ColumnName = Union{AbstractString,Symbol}
 """
     EasyFITS.ColumnIdent
 
-is the union of possible types for identifying a single column in a FITS table extension.
+Union of acceptable types for identifying a single column in a FITS Table extension.
 
 """
 const ColumnIdent = Union{ColumnName,Integer}
@@ -109,7 +107,7 @@ const ColumnIdent = Union{ColumnName,Integer}
 """
     EasyFITS.Columns
 
-is the union of possible types for specifying several columns in a FITS table extension.
+Union of acceptable types to specify several columns in a FITS Table extension.
 
 The method:
 
@@ -128,8 +126,7 @@ const Columns = Union{Colon,
 """
     EasyFITS.Rows
 
-is the union of possible types for specifying one or several rows in a FITS table
-extension.
+Union of possible types to specify one or several rows in a FITS Table extension.
 
 The following methods are provided:
 
@@ -146,8 +143,8 @@ const Rows = Union{Colon,Integer,AbstractUnitRange{<:Integer}}
 """
     EasyFITS.ColumnData{T,N}
 
-is the possible type(s) for the cells of a `N`-dimensional column with values of type `T` in
-a FITS table extension.
+Alias for the possible type(s) of the cells of a `N`-dimensional column with values of type
+`T` in a FITS Table extension.
 
 """
 const ColumnData{T,N} = AbstractArray{T,N}
@@ -155,7 +152,7 @@ const ColumnData{T,N} = AbstractArray{T,N}
 """
     EasyFITS.ColumnUnits
 
-is the possible type(s) for the units of a column in a FITS table extension.
+Alias for the possible type(s) for the units of a column in a FITS Table extension.
 
 """
 const ColumnUnits = AbstractString
@@ -163,8 +160,8 @@ const ColumnUnits = AbstractString
 """
     EasyFITS.ColumnEltype
 
-is the possible type(s) for specifying the types of the values in a column of a FITS table
-extension.
+Alias for the possible type(s) to specify the types of the values in a column of a FITS
+Table extension.
 
 """
 const ColumnEltype = Union{Type,Char}
@@ -172,7 +169,7 @@ const ColumnEltype = Union{Type,Char}
 """
     EasyFITS.ColumnDims
 
-is the possible type(s) for specifying the cell dimensions in a column of a FITS table
+Alias for the possible type(s) to specify the cell dimensions in a column of a FITS Table
 extension.
 
 """
@@ -181,8 +178,9 @@ const ColumnDims = Union{Integer,Tuple{Vararg{Integer}}}
 """
     EasyFITS.ColumnSpec
 
-is the possible type(s) for specifying the type of values, cell dimensions, and units of a
-column of a FITS table extension. The element type is mandatory and must be specified first.
+Alias for the possible type(s) to specify the type of values, cell dimensions, and units of
+a column of a FITS Table extension. The element type is mandatory and must be specified
+first.
 
 """
 const ColumnSpec = Union{ColumnEltype,
@@ -195,8 +193,8 @@ const ColumnSpec = Union{ColumnEltype,
 """
     EasyFITS.ColumnNameSpecPair
 
-is the possible type(s) for specifying a column when creating a table. Instances of this
-kind are pairs like `col => type` or `col => (type,dims,units)` with `col` the column name
+Alias for possible type(s) to specify a column when creating a table. Instances of this kind
+are pairs like `col => type` or `col => (type,dims,units)` with `col` the column name
 number, `type` the type of the column values, `dims` the cell dimensions, and `units` the
 units of the values. `dims` and `units` are optional and may appear in any order after
 `type` which is mandatory.
@@ -207,8 +205,8 @@ const ColumnNameSpecPair = Pair{<:ColumnName,<:ColumnSpec}
 """
     EasyFITS.ColumnIdentDataPair
 
-is the possible type(s) for specifying a column with its data and, optionally, its units to
-be written in a FITS table extension. Instances of this kind are pairs like `col => vals` or
+Alias for possible type(s) to specify a column with its data and, optionally, its units to
+be written in a FITS Table extension. Instances of this kind are pairs like `col => vals` or
 `col => (vals, units)` with `col` the column name or number, `vals` the column values, and
 `units` optional units.
 
@@ -222,8 +220,8 @@ const ColumnIdentDataPair = Pair{<:ColumnIdent,
 """
     EasyFITS.ColumnNameDataPair
 
-is the possible type(s) for specifying a column with its data and, optionally, its units to
-be written in a FITS table extension. Instances of this kind are pairs like `col => vals` or
+Alias for possible type(s) to specify a column with its data and, optionally, its units to
+be written in a FITS Table extension. Instances of this kind are pairs like `col => vals` or
 `col => (vals, units)` with `col` the column name, `vals` the column values, and `units`
 optional units.
 
@@ -236,8 +234,8 @@ const ColumnNameDataPair = Pair{<:ColumnName,
 """
     EasyFITS.TableData
 
-is the union of types that can possibly be that of FITS table data. Instances of this kind
-are collections of `key => vals` or `key => (vals, units)` pairs with `key` the column name,
+Union of types that can possibly be that of FITS Table data. Instances of this kind are
+collections of `key => vals` or `key => (vals, units)` pairs with `key` the column name,
 `vals` the column values, and `units` the optional units of these values. Such collections
 can be dictionaries, named tuples, vectors, or tuples.
 
@@ -261,12 +259,12 @@ const TableData = Union{AbstractDict{<:ColumnName,<:Any},
 """
     FitsHDU
 
-is the abstract type of FITS Header Data Units which consists in a header and a data parts.
-Concrete instances of `FitsHDU` behave as vectors whose elements are FITS header records,
-a.k.a. FITS cards, and which can be indexed by integers or by names.
+Abstract type of FITS Header Data Units (HDU). Each HDU consist in a header and a data
+parts. Concrete instances of `FitsHDU` behave as vectors whose elements are FITS header
+records, a.k.a. FITS cards, and which can be indexed by integers or by names.
 
 For faster access to the records of a header, consider creating a FITS header object from a
-HDU object:
+HDU object with:
 
     hdr = FitsHeader(hdu::FitsHDU)
 
@@ -291,8 +289,8 @@ end
 """
     EasyFITS.Invalid
 
-is the singleton type of the object used to indicate invalid arguments while sparing
-throwing an exception.
+Singleton type of the object used to indicate invalid arguments while sparing throwing an
+exception.
 
 """
 struct Invalid end
@@ -330,8 +328,8 @@ end
 """
     FitsLogic()
 
-yields a singleton object to indicate that FITS rules should be applied for some logical
-operation. For example:
+Singleton object indicating that FITS rules should be applied for some logical operation.
+For example:
 
     isequal(FitsLogic(), s1, s2)
 
@@ -350,8 +348,8 @@ struct Bit end
 """
     FitsError <: Exception
 
-is the type of exceptions thrown when an error occurs in the FITSIO library used to manage
-FITS files.
+Type of exceptions thrown when an error occurs in the FITSIO library used to manage FITS
+files.
 
 """
 struct FitsError <: Exception

@@ -54,7 +54,7 @@ Base.getproperty(hdu::FitsTableHDU, ::Val{:column_name}) = ColumnNameGetter(hdu)
     names(hdu::FitsTableHDU)
     hdu.column_names
 
-yield a vector of the column names of the FITS table extension in `hdu`.
+Return a vector of the column names of the FITS Table extension in `hdu`.
 
 """
 Base.names(hdu::FitsTableHDU) = get_colnames(hdu)
@@ -68,7 +68,7 @@ function get_colnames(hdu::FitsTableHDU)
     return names
 end
 
-#--------------------------------------------------------------------- Reading FITS tables -
+#--------------------------------------------------------------------- Reading FITS Tables -
 
 columns_to_read(hdu::FitsTableHDU, cols::Columns) = cols
 columns_to_read(hdu::FitsTableHDU, cols::Colon) = hdu.columns
@@ -86,7 +86,7 @@ last_row_to_read(hdu::FitsTableHDU, rows::Colon) = hdu.last_row
     EasyFITS.get_units(hdu, col; case=false) -> str
     hdu.column_units(col; case=false) -> str
 
-yield the units for the column `col` of FITS table `hdu`. Keyword `case` specifies whether
+Return the units for the column `col` of FITS Table `hdu`. Keyword `case` specifies whether
 the case of letters matters when `col` is a (symbolic) name. The result is always a string,
 possibly empty.
 
@@ -101,8 +101,8 @@ end
     EasyFITS.get_colnum(hdu::FitsTableHDU, col; case=false) -> num
     hdu.column_number(col; case=false) -> num
 
-yields the column number of column matching `col` (a string, a symbol, or an integer) in
-FITS table extension of `hdu`. Keyword `case` specifies whether the case of letters matters
+Return the column number of column matching `col` (a string, a symbol, or an integer) in
+FITS Table extension of `hdu`. Keyword `case` specifies whether the case of letters matters
 if `col` is a string or a symbol.
 
 """
@@ -125,8 +125,8 @@ Base.checkbounds(hdu::FitsTableHDU, col::Integer) =
     EasyFITS.get_colname(hdu::FitsTableHDU, col; case=false) -> (str, num)
     hdu.column_name(col; case=false) -> str
 
-yields the column name and number of column matching `col` (a string, a symbol, or an
-integer) in FITS table extension of `hdu`. Keyword `case` specifies whether the case of
+Return the column name and number of column matching `col` (a string, a symbol, or an
+integer) in FITS Table extension of `hdu`. Keyword `case` specifies whether the case of
 letters matters if `col` is a string or a symbol. If `case` is false, the column name `str`
 is converted to upper-case letters.
 
@@ -181,7 +181,7 @@ end
 """
     read([R=Array,] hdu::FitsTableHDU, col[, rows]; kwds...) -> vals::R
 
-reads a single column `col` of the FITS table extension in `hdu` and returns its values and,
+Read a single column `col` of the FITS Table extension in `hdu` and return its values and,
 possibly, its units.
 
 The column `col` may be specified by its name or by its number. If `col` is a string or a
@@ -314,7 +314,7 @@ output_eltype(::Type{<:AbstractArray}) = nothing
     EasyFITS.eltypes_to_read(T::Type, S::Type) -> T, R
     EasyFITS.eltypes_to_read(nothing, S::Type) -> T, R
 
-yields the type `R` of the elements to read for a column with elements of type `S` when
+Return the type `R` of the elements to read for a column with elements of type `S` when
 caller has requested values of type `T` on output. If first argument is `nothing`, `T = S`
 is assumed.
 
@@ -456,7 +456,7 @@ is_null(c::Char) = c == '\0'
 """
     read([Dict,] hdu::FitsTableHDU[, cols[, rows]]) -> dict
 
-reads several columns of the FITS table extension in `hdu` as a dictionary indexed by the
+Read several columns of the FITS Table extension in `hdu` as a dictionary indexed by the
 column names. The columns to read can be specified by `cols` which may be a single column
 name/index, a tuple/range/vector of column names/numbers, or a colon `:` to read all columns
 (the default). Column names may be strings or symbols (not a mixture of these). The rows to
@@ -508,8 +508,8 @@ end
 """
     read!(dict, hdu::FitsTableHDU[, cols[, rows]]) -> dict
 
-merges the contents of the dictionary `dict` with the column(s) `cols` read from the FITS
-table extension in `hdu` and returns the dictionary.
+Merge the contents of the dictionary `dict` with the column(s) `cols` read from the FITS
+Table extension in `hdu` and return the dictionary.
 
 Previous contents of `dict` is not erased, call `read!(empty!(dict),hdu,...)` to erase any
 contents prior to reading.
@@ -540,7 +540,7 @@ end
 """
     read(Vector, hdu::FitsTableHDU[, cols[, rows]]) -> vec::Vector
 
-reads some columns of the FITS table extension in `hdu` as a vector. The columns to read can
+Read some columns of the FITS Table extension in `hdu` as a vector. The columns to read can
 be specified by `cols` which may be a single column name/index, a tuple/range/vector of
 column names/numbers, or a colon `:` to read all columns (the default). Column names may be
 strings or symbols (not a mixture of these). The rows to read can be specified by `rows` as
@@ -592,7 +592,7 @@ end
 """
     read!(arr::DenseArray, hdu::FitsTableHDU, col) -> arr
 
-overwrites the elements of array `arr` with values of the column `col` of the FITS table
+Overwrite the elements of array `arr` with values of the column `col` of the FITS Table
 extension in `hdu` and returns `arr`.
 
 The column `col` may be specified by its name or by its number. If `col` is a string or a
@@ -674,15 +674,15 @@ for T in NUMERIC_TYPES
     end
 end
 
-#--------------------------------------------------------------------- Writing FITS tables -
+#--------------------------------------------------------------------- Writing FITS Tables -
 
 """
     hdu = FitsTableHDU(file, cols...)
 
-creates a new FITS table extension in FITS file `file` with columns defined by `cols...`.
-Each column definition is a pair `name => format` where `name` is the column name while
-`format` specifies the type of the column values and, optionally, their units and the size
-of the column cells. The following definitions are possible:
+Start a new FITS Table extension in FITS file `file` with columns defined by `cols...`. Each
+column definition is a pair `name => format` where `name` is the column name while `format`
+specifies the type of the column values and, optionally, their units and the size of the
+column cells. The following definitions are possible:
 
     name => type
     name => (type,)
@@ -744,7 +744,7 @@ end
     write(hdu::FitsTableHDU, cols...;
           first=hdu.first_row, case=false, null=nothing) -> hdu
 
-writes columns `cols...` into the FITS table extension of `hdu`. Columns are specified as
+Write columns `cols...` into the FITS Table extension of `hdu`. Columns are specified as
 pairs like `col => vals` or `col => (vals, units)` with `col` the column name/number, `vals`
 an array of column values, and `units` optional units. The following examples are equivalent
 (assuming `COUNT`, `WEIGHT`, and `TIME` are the respective names of the 1st, 2nd, and 3rd
@@ -885,7 +885,7 @@ end
 """
     write(file::FitsFile, header, cols; ascii=false) -> file
 
-creates a FITS table extension in `file` with additional keywords given by `header` and
+Append a FITS Table extension in `file` with additional keywords given by `header` and
 columns `cols...`. The columns `cols` are specified as a collection of pairs like `key =>
 vals` or `key => (vals, units)` with `key` the (symbolic) name of the column, `vals` its
 values, and `units` its optional units. The collection can be a dictionary, a named tuple, a
@@ -893,7 +893,7 @@ vector of pairs, or a tuple of pairs.
 
 """
 function write(file::FitsFile, header::OptionalHeader, cols::TableData; kwds...)
-    # Create a new FITS table HDU with column definitions.
+    # Create a new FITS Table HDU with column definitions.
     hdu = create_table(file, cols; kwds...)
 
     # Merge the keywords provided by the caller.

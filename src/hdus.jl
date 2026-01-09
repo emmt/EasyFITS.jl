@@ -18,7 +18,7 @@ Base.setproperty!(hdu::FitsHDU, sym::Symbol, x) =
     hdu.hduname
     EasyFITS.hduname(hdu::FitsHDU)
 
-yield the value of the keyword `HDUNAME` in the FITS Header Data Unit `hdu` or `nothing` if
+Return the value of the keyword `HDUNAME` in the FITS Header Data Unit `hdu` or `nothing` if
 no such keyword exists.
 
 It is suggested that foreign packages extend this function so that:
@@ -34,7 +34,7 @@ hduname(hdu::FitsHDU) = get_hduname(hdu)
 """
     EasyFITS.get_file_at(hdu::FitsHDU) -> file
 
-yields the FITS file associated with FITS Header Data Unit `hdu` checking that the file is
+Return the FITS file associated with FITS Header Data Unit `hdu` checking that the file is
 still open and moving the file position of `file` to that of `hdu`.
 
 """
@@ -70,7 +70,7 @@ end
     FitsHDUType(hdu)
     hdu.type
 
-yield the type code of the FITS header data unit `hdu`, one of:
+Return the type code of the FITS header data unit `hdu`, one of:
 
     FITS_ANY_HDU           # HDU type unknown or not yet defined
     FITS_IMAGE_HDU         # FITS Image, i.e. multi-dimensional array
@@ -85,7 +85,7 @@ FitsHDUType(hdu::FitsTableHDU) = isascii(hdu) ? FITS_ASCII_TABLE_HDU : FITS_BINA
 """
     isascii(hdu::FitsHDU) -> bool
 
-yields whether FITS HDU `hdu` is an ASCII table.
+Return whether FITS HDU `hdu` is an ASCII table.
 
 """
 Base.isascii(hdu::FitsHDU) = false
@@ -95,7 +95,7 @@ Base.isascii(hdu::FitsTableHDU) = getfield(hdu, :ascii)
     getindex(hdu::FitsHDU, key) -> card::FitsCard
     hdu[key] -> card
 
-yield the FITS header card at index `key` (can be an integer or a string) in header data
+Return the FITS header card at index `key` (can be an integer or a string) in header data
 unit `hdu`. The result is a `FitsCard` object with the following properties:
 
     card.type                  # type of card: FITS_LOGICAL, FITS_INTEGER, etc.
@@ -193,7 +193,7 @@ end
 """
     FitsHeader(hdu::FitsHDU)
 
-reads all records of the header of `hdu` and returns an efficient object representing them.
+Read all records of the header of `hdu` and returns an efficient object representing them.
 
 """
 function FITSHeaders.FitsHeader(hdu::FitsHDU)
@@ -215,7 +215,7 @@ end
 """
     reset(hdu::FitsHDU) -> hdu
 
-reset the search by wild card characters in FITS header of `hdu` to the first record.
+Reset the search by wild card characters in FITS header of `hdu` to the first record.
 
 """
 function Base.reset(hdu::FitsHDU)
@@ -228,7 +228,7 @@ end
     hdu[key] = x
     push!(hdu, key => x)
 
-updates or appends a record associating the keyword `key` with `x` in the header of the FITS
+Update or append a record associating the keyword `key` with `x` in the header of the FITS
 header data unit `hdu` (see `push!`). Depending on the type of the FITS keyword `key`, the
 argument `x` can be `val`, `com`, or `(val,com)` with `val` and `com` the value and the
 comment of the FITS card.
@@ -239,7 +239,7 @@ Base.setindex!(hdu::FitsHDU, x, key::CardName) = push!(hdu, key => x)
 """
     push!(hdu::FitsHDU, rec; append=false) -> hdu
 
-updates or appends header record `rec` to FITS Header Data Units `hdu`. If the name of `rec`
+Update or append header record `rec` to FITS Header Data Units `hdu`. If the name of `rec`
 does not yet exist in the header part of `hdu` or if it is a commentary or continuation FITS
 keyword (`"COMMENT"`, `"HISTORY"`, `""`, or `"CONTINUE"`), a new record is appended to the
 header part of `hdu`; otherwise, the existing record in `hdu` is updated. If keyword
@@ -288,7 +288,8 @@ Base.push!(hdu::FitsHDU, rec; kwds...) = push!(hdu, FitsCard(rec); kwds...)
 """
     merge!(hdu::FitsHDU, recs) -> hdu
 
-pushes all FITS header cards in `recs` into FITS Header Data Units `hdu` and returns it.
+Push all FITS header cards in `recs` into FITS Header Data Units `hdu` and returns it.
+
 Examples:
 
     merge!(hdu::FitsHDU, ["key1" => dat1, "key2" => dat2, ...]) -> hdu
@@ -321,7 +322,7 @@ end
 """
     delete!(hdu::FitsHDU, key) -> hdu
 
-deletes from FITS header data unit `hdu` the header card identified by the name or number
+Delete from FITS Header Data Unit `hdu` the header card identified by the name or number
 `key`.
 
 """
@@ -338,7 +339,7 @@ end
 """
     EasyFITS.write_key(dst, key, val, com=nothing) -> dst
 
-appends a new FITS header card in `dst` associating value `val` and comment `com` to the
+Append a new FITS header card in `dst` associating value `val` and comment `com` to the
 keyword `key`.
 
 """ write_key
@@ -346,7 +347,7 @@ keyword `key`.
 """
     EasyFITS.update_key(dst, key, val, com=nothing) -> dst
 
-updates or appends a FITS header card in `dst` associating value `val` and comment `com` to
+Update or append a FITS header card in `dst` associating value `val` and comment `com` to
 the keyword `key`.
 
 The card is considered to have an undefined value if `val` is `missing` or `undef`.
@@ -430,16 +431,16 @@ end
 """
     EasyFITS.write_comment(dst, str) -> dst
 
-appends a new FITS comment record in `dst` with text string `str`. The comment record will
-be continued over multiple cards if `str` is longer than 70 characters.
+Append a new FITS comment record in `dst` with text string `str`. The comment record will be
+continued over multiple cards if `str` is longer than 70 characters.
 
 """ write_comment
 
 """
     EasyFITS.write_history(dst, str) -> dst
 
-appends a new FITS history record in `dst` with text string `str`. The history record will
-be continued over multiple cards if `str` is longer than 70 characters.
+Append a new FITS history record in `dst` with text string `str`. The history record will be
+continued over multiple cards if `str` is longer than 70 characters.
 
 """ write_history
 
@@ -455,7 +456,7 @@ end
 """
     EasyFITS.write_date(hdu::FitsHDU) -> hdu
 
-creates or updates a FITS comment record of `hdu` with the current date.
+Create or update a FITS comment record of `hdu` with the current date.
 
 """
 function write_date(hdu::FitsHDU)

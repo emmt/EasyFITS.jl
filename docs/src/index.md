@@ -27,5 +27,5 @@ The source code of `EasyFITS` is on [GitHub](https://github.com/emmt/EasyFITS.jl
 ## Table of contents
 
 ```@contents
-Pages = ["structure.md", "reading.md", "writing.md", "files.md","images.md", "tables.md", "reference.md", "links.md"]
+Pages = ["structure.md", "reading.md", "writing.md", "files.md", "images.md", "tables.md", "reference.md", "links.md"]
 ```

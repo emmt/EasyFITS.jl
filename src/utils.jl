@@ -140,14 +140,14 @@ get_field_index(::Type{T}, name::AbstractString) where {T} = get_field_index(T, 
 """
     EasyFITS.type_to_bitpix(T)
 
-yields the code for FITS image pixels of type `T`. Argument can also be an array instance or
-type.
+Return the *BITPIX* constant for FITS Image pixels of type `T`. Argument can also be an
+array instance or type. This is the inverse of [`EasyFITS.type_from_bitpix`](@ref).
 
 Basic numeric types are recognized by this method which may be extended by other packages to
 yield the CFITSIO codes equivalent to their own types. The CFITSIO constants (to be prefixed
 by `EasyFITS.CFITSIO.`) and their corresponding Julia types and standard BITPIX code are:
 
-| CFITSIO Constant | Julia Type | `BITPIX` |
+| CFITSIO Constant | Julia Type | *BITPIX* |
 |:-----------------|:-----------|---------:|
 | `BYTE_IMG`       | `UInt8`    |        8 |
 | `SBYTE_IMG`      | `Int8`     |          |
@@ -160,7 +160,7 @@ by `EasyFITS.CFITSIO.`) and their corresponding Julia types and standard BITPIX 
 | `FLOAT_IMG`      | `Float32`  |      -32 |
 | `DOUBLE_IMG`     | `Float64`  |      -64 |
 
-Note that CFITSIO can read/write non-standard pixel types (those without a `BITPIX` value
+Note that CFITSIO can read/write non-standard pixel types (those without a *BITPIX* value
 above) by setting keywords `BSCALE` and `BZERO` with special values as explicitly allowed by
 the FITS Standard (version 4).
 
@@ -172,7 +172,8 @@ type_to_bitpix(::Type{Bool}) = type_to_bitpix(UInt8)
 """
     EasyFITS.type_from_bitpix(b) -> T
 
-yields the Julia type `T` corresponding to FITS "BITPIX" `b`.
+Return the Julia type `T` corresponding to FITS *BITPIX* `b`. This is the inverse of
+[`EasyFITS.type_to_bitpix`](@ref).
 
 """
 type_from_bitpix(b::Integer) = type_from_bitpix(Int(b)::Int)
@@ -196,10 +197,10 @@ let expr = :(bad_argument("invalid BITPIX value"))
 end
 
 """
-    EasyFITS.type_to_code(T)
+    EasyFITS.type_to_code(T) -> c
 
-yields the CFITSIO type code for a keyword value or table cells of type `T`. Argument can
-also be an array instance or type.
+Return the CFITSIO type code for a keyword value or table cells of type `T`. Argument can
+also be an array instance or type. This is the inverse of [`EasyFITS.type_from_code`](@ref).
 
 Basic numeric types and string types are recognized by this method which may be extended by
 other packages to yield the CFITSIO codes equivalent to their own types. The CFITSIO type
@@ -233,7 +234,7 @@ type_to_code(::Type{<:AbstractArray{T}}) where {T} = type_to_code(T)
 """
     EasyFITS.pixeltype_to_code(T)
 
-yields the CFITSIO type code for an image extension storing an array of elements type `T`.
+Return the CFITSIO type code for an image extension storing an array of elements type `T`.
 Argument can also be an array instance or type.
 
 """
@@ -241,15 +242,15 @@ pixeltype_to_code(arr::AbstractArray) = pixeltype_to_code(typeof(arr))
 pixeltype_to_code(::Type{<:AbstractArray{T}}) where {T} = pixeltype_to_code(T)
 pixeltype_to_code(::Type{T}) where {T} = type_to_code(T)
 pixeltype_to_code(::Type{Bool}) =
-    # NOTE: For FITS image extension Booleans must be considered as bytes in
+    # NOTE: For FITS Image extension Booleans must be considered as bytes in
     # CFITSIO library.
     type_to_code(UInt8)
-
 
 """
     EasyFITS.type_from_code(c) -> T
 
-yields the Julia type `T` corresponding to CFITSIO type code `c`.
+Return the Julia type `T` corresponding to CFITSIO type code `c`. This is the inverse of
+[`EasyFITS.type_to_code`](@ref).
 
 """
 type_from_code(c::Integer) = type_from_code(as(Int, c))
@@ -305,10 +306,11 @@ let types = Set{DataType}(),
 end
 
 """
-    EasyFITS.type_to_letter(T)
+    EasyFITS.type_to_letter(T) -> c::Char
 
-yields the letter of the `TFORMn` keyword representing table cells of type `T` in FITS.
-Argument can also be an array instance or type.
+Return the letter of the `TFORMn` keyword representing table cells of type `T` in FITS.
+Argument can also be an array instance or type. This is the inverse of
+[`EasyFITS.type_from_letter`](@ref).
 
 """
 type_to_letter(arr::AbstractArray) = type_to_letter(typeof(arr))
@@ -317,13 +319,13 @@ type_to_letter(::Type{<:AbstractArray{T}}) where {T} = type_to_letter(T)
 """
     EasyFITS.type_from_letter(c) -> T
 
-yields the Julia type `T` corresponding to CFITSIO column type letter `c` as assumed for the
-`TFORMn` keywords.
+Return the Julia type `T` corresponding to CFITSIO column type letter `c` as assumed for the
+`TFORMn` keywords. This is the inverse of [`EasyFITS.type_to_letter`](@ref).
 
 """
 type_from_letter(c::Integer) = type_from_letter(Char(c)::Char)
 
-# FITS table extension column types as specified by the TFORMn keywords.
+# FITS Table extension column types as specified by the TFORMn keywords.
 let expr = :(bad_argument("invalid TFORM type letter"))
     for (type, letter) in ((String,     'A'),
                            (Bool,       'L'),
@@ -389,7 +391,7 @@ const ComplexTypes = Union{COMPLEX_TYPES...,}
 """
     EasyFITS.cfunc(pfx::Union{AbstractString,Symbol}, T::Type) -> sym
 
-yields the symbolic name of the function in the CFITSIO library whose prefix is `pfx` and
+Return the symbolic name of the function in the CFITSIO library whose prefix is `pfx` and
 whose suffix is deduced from the type `T`. Long/short function names are supported and
 automatically detected depending on whether `pfx` ends with an underscore character.
 
@@ -401,7 +403,7 @@ cfunc(func::AbstractString, ::Type{T}) where {T} =
 """
     EasyFITS.ctype(T) -> T′
 
-yields the C type equivalent to `T` in CFITSIO library. This is mostly for Booleans which
+Return the C type equivalent to `T` in CFITSIO library. This is mostly for Booleans which
 are treated as C `char` in the library, the other basic numerical types being unchanged. An
 error is thrown if the returned type has a different size than that of `T`. This is to make
 sure that Julia arrays with elements of type `T` can safely be used to store values of type
@@ -428,7 +430,7 @@ end
 """
     EasyFITS.cpointer(arr::AbstractArray) -> ptr::Ptr{ctype(eltype(arr))}
 
-yields a pointer to the elements of array `arr` that can be used in calls to functions of
+Return a pointer to the elements of array `arr` that can be used in calls to functions of
 the CFITSIO library. Compared to `Ptr{Cvoid}(pointer(arr))`, this function yields a typed
 pointer which prevents using arguments of the wrong type.
 
@@ -442,8 +444,8 @@ cpointer(arr::AbstractArray) = convert(Ptr{ctype(eltype(arr))}, pointer(arr))
 """
     EasyFITS.fix_booleans!(arr::AbstractArray{Bool}) -> arr
 
-makes sure that the values in array of booleans `arr` read by a function of the CFITSIO
-library are only `true` or `false`.
+Ensure that the values in array of booleans `arr` read by a function of the CFITSIO library
+are only `true` or `false`.
 
 """
 function fix_booleans!(arr::AbstractArray{Bool})
@@ -457,7 +459,7 @@ end
 """
     EasyFITS.map_recursively(f, r, a1, a2; missing=missing)
 
-yields the result of applying function `f` recursively to update result `r` for each pair of
+Return the result of applying function `f` recursively to update result `r` for each pair of
 values of tuples `a1` and `a2`. The recursion stops when the longest of `a1` and `a2` is
 exhausted. In this process, missing values are specified by the keyword `missing`. This is
 equivalent to:
@@ -482,7 +484,7 @@ except that in-lining is used to unroll the loop.
 """
     EasyFITS.subarray_params(dims, inds) -> (d, f, s, l)
 
-yields resulting dimensions `d`, first indices `f`, steps `s`, and last indices `l` when
+Return resulting dimensions `d`, first indices `f`, steps `s`, and last indices `l` when
 sub-indexing an array of size `dims` with sub-indices `inds`. Tuples `f`, `s`, and `l` have
 the same number of values as `dims`; `d` may have fewer values.
 
@@ -542,7 +544,7 @@ end
 """
     EasyFITS.new_array(T, dims...) -> arr
 
-yields a new array with element type `T` and dimensions `dims...` which may be specified as
+Return a new array with element type `T` and dimensions `dims...` which may be specified as
 for the `Array` constructor or as a vector of integers. In this latter case, the result is
 not type-stable.
 
@@ -570,7 +572,7 @@ end
 """
     EasyFITS.dense_array(arr)
 
-yields a dense array, that is an array that stores its elements contiguously, with same
+Return a dense array, that is an array that stores its elements contiguously, with same
 dimensions and values as `arr`. If `arr` is already a dense array, it is returned.
 
 """
@@ -590,7 +592,7 @@ end
 """
     EasyFITS.string_length(str)
 
-yields the length of the string `str` not counting non-significant trailing spaces. As
+Return the length of the string `str` not counting non-significant trailing spaces. As
 assumed in the CFITSIO library and by FITS standard, if there are only spaces in `str`, the
 first space is considered to be significant. This is intended to distinguish null (empty)
 and non-null strings.

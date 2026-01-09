@@ -24,7 +24,7 @@ An image HDU has the following properties:
 | `xtension`    | Extension name, i.e. `"IMAGE"`  |
 
 
-## Reading a FITS image
+## Reading a FITS Image
 
 To read the data stored by the *Header Data Unit* (HDU) object `hdu` of type `FitsImageDHU`
 HDU as an array `arr`, call [`read`](@ref read(::FitsImageHDU)) as:
@@ -57,7 +57,7 @@ arr = read(Matrix{Float32}, hdu)
 both warrant that `arr` will be a 2-dimensional image with pixels of type `Float32`.
 
 Call [`read!`](@ref) to overwrite the elements of an existing array with the contents of
-the FITS image HDU. For example:
+the FITS Image HDU. For example:
 
 ``` julia
 read!(arr, hdu)
@@ -71,7 +71,7 @@ non-unit steps but steps must all be positive. For example:
 arr = read(hdu, :, :, 2)
 ```
 
-yields the 2nd slice in a 3-dimensional FITS image.
+yields the 2nd slice in a 3-dimensional FITS Image.
 
 The result is similar to:
 
@@ -92,7 +92,7 @@ read!(arr, hdu, :, :, 3)
 
 ## Creating an image HDU
 
-To start a new FITS image HDU in an open FITS `file`, there are several possibilities:
+To start a new FITS Image HDU in an open FITS `file`, there are several possibilities:
 
 ``` julia
 hdu = FitsImageHDU(file, dims...; bitpix=...)

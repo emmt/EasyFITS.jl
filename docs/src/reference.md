@@ -45,7 +45,7 @@ flush(::FitsFile)
 eachmatch(::Any, ::FitsFile)
 ```
 
-## FITS image HDUs
+## FITS Image HDUs
 
 ```@docs
 FitsImageHDU
@@ -54,7 +54,7 @@ read!(::Array, ::FitsImageHDU)
 write(::FitsImageHDU, ::Array)
 ```
 
-## FITS table HDUs
+## FITS Table HDUs
 
 ```@docs
 FitsTableHDU
