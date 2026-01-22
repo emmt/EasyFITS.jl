@@ -388,7 +388,7 @@ function write(hdu::FitsImageHDU{<:Any,N},
                null::Union{Number,Nothing} = nothing) where {T<:Number,L,N}
     type = pixeltype_to_code(arr) # clash if unsupported pixel type
     dims = get_img_size(hdu)
-    len = length(arr)
+    len = iszero(ndims(arr)) ? 0 : length(arr)
     if first isa Tuple && last isa Tuple && null isa Nothing
         # Write a rectangular sub-image. NOTE: First and last pixels must both be specified
         # because it is not possible to guess one given the other and the size of the array
